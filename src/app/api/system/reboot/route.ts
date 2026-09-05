@@ -7,12 +7,6 @@ import { safeReqJson } from '@/lib/safe-json';
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
-// ── SYSTEM REBOOT ──────────────────────────────────────────────────
-// Pulls enhanced files from GitHub back to the local filesystem.
-// Creates timestamped backups before overwriting any local file.
-// Only touches files that were actually mutated by DARLEK CANN.
-// ───────────────────────────────────────────────────────────────────
-
 interface RebootFileResult {
   file: string;
   status: 'updated' | 'skipped' | 'error';
@@ -57,12 +51,91 @@ const ALLOWED_ROOT_FILES = new Set([
 ]);
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.css', '.json', '.html']);
+const RATE_LIMIT_DELAY_MS = 300;
+const FETCH_TIMEOUT_MS = 8000;
 
 function isAllowedFile(filePath: string): boolean {
-  if (filePath.startsWith('src/') || filePath.startsWith('public/')) {
-    return true;
+  return filePath.startsWith('src/') || filePath.startsWith('public/') || ALLOWED_ROOT_FILES.has(filePath);
+}
+
+function createGitHubHeaders(token: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github.v3+json',
+  };
+}
+
+async function fetchSessionMutations(sessionId: string): Promise<string[]> {
+  try {
+    const mutations = await db.mutationHistory.findMany({
+      where: { sessionId, status: 'applied' },
+      orderBy: { createdAt: 'desc' },
+      select: { filePath: true },
+    });
+    return mutations.map((m: { filePath: string }) => m.filePath);
+  } catch {
+    return [];
   }
-  return ALLOWED_ROOT_FILES.has(filePath);
+}
+
+async function fetchRepositoryTreeSources(owner: string, repo: string, branch: string, token: string): Promise<string[]> {
+  const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+  const response = await fetch(treeUrl, { headers: createGitHubHeaders(token) });
+
+  if (!response.ok) return [];
+
+  const data = (await response.json()) as GitHubTreeResponse;
+  const treeItems = data.tree ?? [];
+
+  return treeItems
+    .filter((item) => {
+      if (item.type !== 'blob') return false;
+      if (item.path.includes('node_modules/') || item.path.includes('.next/') || item.path.includes('.git/')) {
+        return false;
+      }
+      const extension = `.${item.path.split('.').pop()?.toLowerCase() ?? ''}`;
+      const isSourceExt = SOURCE_EXTENSIONS.has(extension);
+      const isConfigOrRoot =
+        isSourceExt ||
+        ['next.config', 'package.json', 'tsconfig.json', 'tailwind.config', 'postcss.config', '.eslintrc'].some(
+          (prefix) => item.path === prefix || item.path.startsWith(`${prefix}.`)
+        );
+      return isConfigOrRoot;
+    })
+    .map((item) => item.path);
+}
+
+async function createTimestampedBackupDir(projectRoot: string): Promise<{ backupDir: string; timestamp: string }> {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const backupDir = path.join(projectRoot, '.darleK-backups', `pre-reboot-${timestamp}`);
+  await fs.mkdir(backupDir, { recursive: true });
+  return { backupDir, timestamp };
+}
+
+async function fetchGitHubFileContent(owner: string, repo: string, filePath: string, branch: string, token: string): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(branch)}`;
+    const response = await fetch(fileUrl, {
+      headers: createGitHubHeaders(token),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub API returned ${response.status}`);
+    }
+
+    const fileData = (await response.json()) as GitHubContentResponse;
+    if (fileData.encoding !== 'base64' || !fileData.content) {
+      throw new Error('Binary or empty file');
+    }
+
+    return Buffer.from(fileData.content, 'base64').toString('utf-8');
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -81,59 +154,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Step 1: Find all applied mutations from BRAIN session
-    let mutatedFiles: string[] = [];
+    let mutatedFiles = sessionId ? await fetchSessionMutations(sessionId) : [];
 
-    if (sessionId) {
-      try {
-        const mutations = await db.mutationHistory.findMany({
-          where: {
-            sessionId,
-            status: 'applied',
-          },
-          orderBy: { createdAt: 'desc' },
-          select: { filePath: true },
-        });
-        mutatedFiles = mutations.map((m: { filePath: string }) => m.filePath);
-      } catch {
-        // BRAIN DB may not be available — fall back to scanning the repo
-      }
-    }
-
-    // If no session mutations found, fetch ALL source files from the repo
     if (mutatedFiles.length === 0) {
-      const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
-      const treeRes = await fetch(treeUrl, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-        },
-      });
-
-      if (treeRes.ok) {
-        const treeData = (await treeRes.json()) as GitHubTreeResponse;
-        const sourceFiles = (treeData.tree || [])
-          .filter((item: GitHubTreeItem) => {
-            if (item.type !== 'blob') return false;
-            if (
-              item.path.includes('node_modules/') ||
-              item.path.includes('.next/') ||
-              item.path.includes('.git/')
-            ) {
-              return false;
-            }
-            const ext = '.' + (item.path.split('.').pop()?.toLowerCase() || '');
-            const isSrcExt = SOURCE_EXTENSIONS.has(ext);
-            const isConfigOrRoot =
-              isSrcExt ||
-              ['next.config', 'package.json', 'tsconfig.json', 'tailwind.config', 'postcss.config', '.eslintrc'].some(
-                (k) => item.path === k || item.path.startsWith(k + '.')
-              );
-            return isConfigOrRoot;
-          })
-          .map((item: GitHubTreeItem) => item.path);
-        mutatedFiles = sourceFiles;
-      }
+      mutatedFiles = await fetchRepositoryTreeSources(owner, repo, branch, token);
     }
 
     if (mutatedFiles.length === 0) {
@@ -146,58 +170,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // Step 2: Create backup directory
     const projectRoot = process.cwd();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const backupDir = path.join(projectRoot, '.darleK-backups', `pre-reboot-${timestamp}`);
-    await fs.mkdir(backupDir, { recursive: true });
+    const { backupDir, timestamp } = await createTimestampedBackupDir(projectRoot);
 
-    // Step 3: For each mutated file, download from GitHub and write locally
     const results: RebootFileResult[] = [];
-    let updated = 0;
-    let failed = 0;
-    const rateDelay = 300;
+    let updatedCount = 0;
+    let failedCount = 0;
 
-    for (let i = 0; i < mutatedFiles.length; i++) {
-      const filePath = mutatedFiles[i];
-
+    for (const [index, filePath] of mutatedFiles.entries()) {
       if (!isAllowedFile(filePath)) {
         results.push({ file: filePath, status: 'skipped' });
         continue;
       }
 
       try {
-        if (i > 0) {
-          await new Promise((r) => setTimeout(r, rateDelay));
+        if (index > 0) {
+          await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
         }
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-
-        const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(branch)}`;
-        const fileRes = await fetch(fileUrl, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github.v3+json',
-          },
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeout);
-
-        if (!fileRes.ok) {
-          results.push({ file: filePath, status: 'error', error: `GitHub API returned ${fileRes.status}` });
-          failed++;
-          continue;
-        }
-
-        const fileData = (await fileRes.json()) as GitHubContentResponse;
-        if (fileData.encoding !== 'base64' || !fileData.content) {
-          results.push({ file: filePath, status: 'skipped', error: 'Binary or empty file' });
-          continue;
-        }
-
-        const newContent = Buffer.from(fileData.content, 'base64').toString('utf-8');
+        const newContent = await fetchGitHubFileContent(owner, repo, filePath, branch, token);
         const localPath = path.join(projectRoot, filePath);
 
         let fileExists = false;
@@ -210,8 +201,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         if (fileExists) {
           const backupPath = path.join(backupDir, filePath);
-          const backupSubDir = path.dirname(backupPath);
-          await fs.mkdir(backupSubDir, { recursive: true });
+          await fs.mkdir(path.dirname(backupPath), { recursive: true });
           await fs.copyFile(localPath, backupPath);
 
           const existingContent = await fs.readFile(localPath, 'utf-8');
@@ -221,27 +211,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
         }
 
-        const fileDir = path.dirname(localPath);
-        await fs.mkdir(fileDir, { recursive: true });
+        await fs.mkdir(path.dirname(localPath), { recursive: true });
         await fs.writeFile(localPath, newContent, 'utf-8');
-        updated++;
+        updatedCount++;
 
         results.push({ file: filePath, status: 'updated' });
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : 'Unknown error';
-        results.push({ file: filePath, status: 'error', error: errMsg });
-        failed++;
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        results.push({ file: filePath, status: 'error', error: errorMessage });
+        failedCount++;
       }
     }
 
     const skippedCount = results.filter((r) => r.status === 'skipped').length;
     return NextResponse.json({
       success: true,
-      message: `Reboot complete. ${updated} files updated, ${skippedCount} skipped, ${failed} failed.`,
+      message: `Reboot complete. ${updatedCount} files updated, ${skippedCount} skipped, ${failedCount} failed.`,
       results,
       total: mutatedFiles.length,
-      updated,
-      failed,
+      updated: updatedCount,
+      failed: failedCount,
       backupDir: `.darleK-backups/pre-reboot-${timestamp}`,
     });
   } catch (error: unknown) {
