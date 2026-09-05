@@ -5,14 +5,22 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-const fs = require('fs');
-const file = 'src/app/api/evolution/propose/route.ts';
-let code = fs.readFileSync(file, 'utf8');
+const fs = require('node:fs');
 
-const regexToReplace = /\\`\\`\\`json\{/g;
-code = code.replace(regexToReplace, "\\`\\`\\`json\\n{");
+/**
+ * Normalizes code block formatting within the evolution proposal API route.
+ * @param {string} filePath - Path to the target file.
+ */
+function normalizeCodeBlockFormatting(filePath) {
+    const originalContent = fs.readFileSync(filePath, 'utf8');
 
-const regexToReplace2 = /\}\\`\\`\\`\\`\\`\\`tsx/g;
-code = code.replace(regexToReplace2, "}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n");
+    const normalizedContent = originalContent
+        .replace(/\\`\\`\\`json\{/g, '\\`\\`\\`json\\n{')
+        .replace(/\}\\`\\`\\`\\`\\`\\`tsx/g, '}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n');
 
-fs.writeFileSync(file, code);
+    fs.writeFileSync(filePath, normalizedContent, 'utf8');
+}
+
+const TARGET_FILE_PATH = 'src/app/api/evolution/propose/route.ts';
+
+normalizeCodeBlockFormatting(TARGET_FILE_PATH);
