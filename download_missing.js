@@ -12,10 +12,10 @@ const https = require('node:https');
 const path = require('node:path');
 const { URL } = require('node:url');
 
-const MISSING_FILES_PATH = path.resolve('missing_files.json');
-const BASE_URL = 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/';
+const MISSING_FILE_MANIFEST_PATH = path.resolve('missing_files.json');
+const BASE_REPOSITORY_URL = 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/';
 const REQUEST_TIMEOUT_MS = 30000;
-const USER_AGENT = 'EMG-Neural-Code-Optimizer/4.9';
+const CLIENT_USER_AGENT = 'EMG-Neural-Code-Optimizer/4.9';
 const MAX_MANIFEST_SIZE_BYTES = 1024 * 1024; // 1MB upper bound for memory safety
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB defensive stream bounds checking
 
@@ -25,14 +25,23 @@ const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB defensive stream bounds ch
  */
 
 /**
+ * Extracts and parses the error message safely from an unknown error type.
+ * @param {unknown} error - The caught error object.
+ * @returns {string} The formatted error message.
+ */
+function extractErrorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
  * Validates and reads the missing files manifest securely with strict memory boundaries and path restrictions.
  * @returns {FileManifestEntry[]} Array of missing file objects.
  */
 function loadMissingManifest() {
   try {
-    const resolvedManifestPath = path.resolve(MISSING_FILES_PATH);
+    const resolvedManifestPath = path.resolve(MISSING_FILE_MANIFEST_PATH);
     if (!fs.existsSync(resolvedManifestPath)) {
-      throw new Error(`Manifest not found at ${MISSING_FILES_PATH}`);
+      throw new Error(`Manifest not found at ${MISSING_FILE_MANIFEST_PATH}`);
     }
 
     const manifestStats = fs.statSync(resolvedManifestPath);
@@ -48,8 +57,7 @@ function loadMissingManifest() {
 
     return parsedManifest;
   } catch (manifestError) {
-    const errorMessage = manifestError instanceof Error ? manifestError.message : String(manifestError);
-    console.error(`[CRITICAL] Failed to load missing files manifest: ${errorMessage}`);
+    console.error(`[CRITICAL] Failed to load missing files manifest: ${extractErrorMessage(manifestError)}`);
     process.exit(1);
   }
 }
@@ -86,7 +94,7 @@ function validateAndResolveTargetPath(rawFilePath) {
  */
 function constructTargetUrl(normalizedPath) {
   try {
-    const parsedBaseUrl = new URL(BASE_URL);
+    const parsedBaseUrl = new URL(BASE_REPOSITORY_URL);
     const parsedFullUrl = new URL(normalizedPath, parsedBaseUrl);
     
     if (parsedFullUrl.origin !== parsedBaseUrl.origin) {
@@ -96,8 +104,7 @@ function constructTargetUrl(normalizedPath) {
     
     return parsedFullUrl.href;
   } catch (urlError) {
-    const errorMessage = urlError instanceof Error ? urlError.message : String(urlError);
-    console.error(`[ERROR] Malformed URL construction for ${normalizedPath}: ${errorMessage}`);
+    console.error(`[ERROR] Malformed URL construction for ${normalizedPath}: ${extractErrorMessage(urlError)}`);
     return null;
   }
 }
@@ -115,10 +122,17 @@ function ensureTargetDirectoryExists(targetFilePath) {
     }
     return true;
   } catch (directoryError) {
-    const errorMessage = directoryError instanceof Error ? directoryError.message : String(directoryError);
-    console.error(`[ERROR] Failed to create directory ${parentDirectory}: ${errorMessage}`);
+    console.error(`[ERROR] Failed to create directory ${parentDirectory}: ${extractErrorMessage(directoryError)}`);
     return false;
   }
+}
+
+/**
+ * Safely unlinks a file in the event of an error or aborted download.
+ * @param {string} targetPath - The absolute path of the file to clean up.
+ */
+function cleanupPartialFile(targetPath) {
+  fs.unlink(targetPath, () => {});
 }
 
 /**
@@ -150,7 +164,7 @@ function download(fileObj) {
     }
 
     const requestOptions = {
-      headers: { 'User-Agent': USER_AGENT }
+      headers: { 'User-Agent': CLIENT_USER_AGENT }
     };
 
     const httpRequest = https.get(targetUrl, requestOptions, (responseStream) => {
@@ -182,7 +196,7 @@ function download(fileObj) {
           console.error(`[ERROR] Download exceeded maximum memory bounds during streaming for ${fileObj.path}`);
           responseStream.destroy();
           writeStream.destroy();
-          fs.unlink(resolvedTargetPath, () => {});
+          cleanupPartialFile(resolvedTargetPath);
           resolve(false);
         }
       });
@@ -194,7 +208,7 @@ function download(fileObj) {
         writeStream.close((streamCloseError) => {
           if (streamCloseError) {
             console.error(`[ERROR] Failed to close write stream for ${fileObj.path}: ${streamCloseError.message}`);
-            fs.unlink(resolvedTargetPath, () => {});
+            cleanupPartialFile(resolvedTargetPath);
             return resolve(false);
           }
           console.log(`Successfully downloaded: ${fileObj.path}`);
@@ -206,7 +220,7 @@ function download(fileObj) {
         if (hasAborted) return;
         console.error(`[ERROR] Failed to write file ${fileObj.path}: ${writeError.message}`);
         writeStream.destroy();
-        fs.unlink(resolvedTargetPath, () => {}); // Asynchronously clean up partial file
+        cleanupPartialFile(resolvedTargetPath);
         resolve(false);
       });
 
@@ -214,7 +228,7 @@ function download(fileObj) {
         if (hasAborted) return;
         console.error(`[ERROR] Response stream error downloading ${fileObj.path}: ${responseError.message}`);
         writeStream.destroy();
-        fs.unlink(resolvedTargetPath, () => {});
+        cleanupPartialFile(resolvedTargetPath);
         resolve(false);
       });
     });
@@ -263,8 +277,7 @@ module.exports = {
 // Execute execution cycle
 if (require.main === module) {
   doAll().catch((executionError) => {
-    const errorMessage = executionError instanceof Error ? executionError.message : String(executionError);
-    console.error(`[FATAL] Unhandled execution error in doAll: ${errorMessage}`);
+    console.error(`[FATAL] Unhandled execution error in doAll: ${extractErrorMessage(executionError)}`);
     process.exit(1);
   });
 }
