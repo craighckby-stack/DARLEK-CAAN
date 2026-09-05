@@ -12,28 +12,28 @@ const fs = require('fs');
 const path = require('path');
 
 const COMMIT_SHA = '71f4f383afa014a1255d977791d6531a2033e323';
-const SHA_REGEX = /^[a-fA-F0-9]{40}$/;
+const SHA_HASH_PATTERN = /^[a-fA-F0-9]{40}$/;
 
-if (!SHA_REGEX.test(COMMIT_SHA)) {
+if (!SHA_HASH_PATTERN.test(COMMIT_SHA)) {
   throw new Error('CRITICAL SECURITY: Invalid COMMIT_SHA format detected.');
 }
 
-const CONFIG = {
+const SYSTEM_CONFIG = Object.freeze({
   targetUrl: `https://raw.githubusercontent.com/craighckby-stack/DARLEK_CAAN_ENGINE/${COMMIT_SHA}/src/app/page.tsx`,
   targetPath: path.resolve('src/app/page.tsx'),
   minLineCountThreshold: 1000,
   maxContentLength: 10 * 1024 * 1024 // 10MB defensive upper bound
-};
+});
 
 /**
  * Validates and parses the request URL against allowed security parameters.
- * @param {string} requestUrl - The raw endpoint URL string.
+ * @param {string} rawRequestUrl - The raw endpoint URL string.
  * @returns {URL} The parsed URL object.
  */
-function validateAndParseUrl(requestUrl) {
+function validateAndParseUrl(rawRequestUrl) {
   let parsedUrl;
   try {
-    parsedUrl = new URL(requestUrl);
+    parsedUrl = new URL(rawRequestUrl);
   } catch {
     throw new Error('Invalid URL format supplied to fetchContent.');
   }
@@ -47,64 +47,64 @@ function validateAndParseUrl(requestUrl) {
 
 /**
  * Performs an HTTPS GET request wrapped in a Promise with stream buffering and safety bounds.
- * @param {string} requestUrl - The HTTPS endpoint URL to fetch data from.
+ * @param {string} rawRequestUrl - The HTTPS endpoint URL to fetch data from.
  * @returns {Promise<string>} The retrieved response body as a string.
  */
-function fetchContent(requestUrl) {
+function fetchContent(rawRequestUrl) {
   return new Promise((resolve, reject) => {
     let parsedUrl;
     try {
-      parsedUrl = validateAndParseUrl(requestUrl);
+      parsedUrl = validateAndParseUrl(rawRequestUrl);
     } catch (err) {
       return reject(err);
     }
 
-    const requestOptions = {
+    const requestOptions = Object.freeze({
       hostname: parsedUrl.hostname,
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
-      headers: {
+      headers: Object.freeze({
         'User-Agent': 'DARLEK-CANN-Optimizer/4.9'
-      }
-    };
+      })
+    });
 
-    const req = https.request(requestOptions, (res) => {
-      const { statusCode } = res;
+    const networkRequest = https.request(requestOptions, (responseStream) => {
+      const { statusCode } = responseStream;
 
       if (statusCode !== 200) {
-        res.resume();
+        responseStream.resume();
         return reject(new Error(`Server returned HTTP status ${statusCode}`));
       }
 
-      res.setEncoding('utf8');
-      const chunks = [];
-      let totalLength = 0;
+      responseStream.setEncoding('utf8');
+      const responseChunks = [];
+      let accumulatedLength = 0;
 
-      res.on('data', (chunk) => {
-        totalLength += chunk.length;
-        if (totalLength > CONFIG.maxContentLength) {
-          res.destroy();
+      responseStream.on('data', (chunk) => {
+        accumulatedLength += chunk.length;
+        if (accumulatedLength > SYSTEM_CONFIG.maxContentLength) {
+          responseStream.destroy();
           return reject(new Error('Security limit exceeded: Response payload exceeds maximum safety threshold.'));
         }
-        chunks.push(chunk);
+        responseChunks.push(chunk);
       });
 
-      res.on('end', () => resolve(chunks.join('')));
-      res.on('error', reject);
+      responseStream.on('end', () => resolve(responseChunks.join('')));
+      responseStream.on('error', reject);
     });
 
-    req.on('error', reject);
-    req.end();
+    networkRequest.on('error', reject);
+    networkRequest.end();
   });
 }
 
 /**
  * Ensures the target file path is securely contained within the workspace root directory.
- * @param {string} targetPath - The filesystem path to validate.
+ * @param {string} targetFileSystemPath - The filesystem path to validate.
  */
-function ensureWorkspaceContainment(targetPath) {
-  const baseWorkspace = path.resolve('.');
-  if (!targetPath.startsWith(baseWorkspace)) {
+function ensureWorkspaceContainment(targetFileSystemPath) {
+  const baseWorkspaceDirectory = path.resolve('.');
+  if (!targetFileSystemPath.startsWith(baseWorkspaceDirectory)) {
     throw new Error('Security violation: Target path escapes root workspace directory.');
   }
 }
@@ -116,28 +116,28 @@ function ensureWorkspaceContainment(targetPath) {
 async function executeDownloadPipeline() {
   try {
     console.log(`Downloading page.tsx from commit ${COMMIT_SHA}...`);
-    const fileContent = await fetchContent(CONFIG.targetUrl);
-    const lines = fileContent.split('\n');
+    const fileContent = await fetchContent(SYSTEM_CONFIG.targetUrl);
+    const contentLines = fileContent.split('\n');
 
-    console.log(`Downloaded ${lines.length} lines. First 5 lines:`);
-    console.log(lines.slice(0, 5).join('\n'));
+    console.log(`Downloaded ${contentLines.length} lines. First 5 lines:`);
+    console.log(contentLines.slice(0, 5).join('\n'));
 
-    if (lines.length <= CONFIG.minLineCountThreshold) {
-      console.log(`Warning: Downloaded file has less than ${CONFIG.minLineCountThreshold} lines, did not overwrite local file.`);
+    if (contentLines.length <= SYSTEM_CONFIG.minLineCountThreshold) {
+      console.log(`Warning: Downloaded file has less than ${SYSTEM_CONFIG.minLineCountThreshold} lines, did not overwrite local file.`);
       return;
     }
 
-    ensureWorkspaceContainment(CONFIG.targetPath);
+    ensureWorkspaceContainment(SYSTEM_CONFIG.targetPath);
 
-    const targetDirectory = path.dirname(CONFIG.targetPath);
+    const targetDirectory = path.dirname(SYSTEM_CONFIG.targetPath);
     if (!fs.existsSync(targetDirectory)) {
       fs.mkdirSync(targetDirectory, { recursive: true });
     }
 
-    fs.writeFileSync(CONFIG.targetPath, fileContent, 'utf8');
-    console.log(`Successfully restored ${CONFIG.targetPath} from commit ${COMMIT_SHA.slice(0, 8)}!`);
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
+    fs.writeFileSync(SYSTEM_CONFIG.targetPath, fileContent, 'utf8');
+    console.log(`Successfully restored ${SYSTEM_CONFIG.targetPath} from commit ${COMMIT_SHA.slice(0, 8)}!`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error downloading file:', errorMessage);
   }
 }
