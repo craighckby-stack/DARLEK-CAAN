@@ -1,5 +1,10 @@
 "use client"
 
+/**
+ * @fileoverview Form component system built on top of React Hook Form and Radix UI primitives.
+ * Provides accessible, context-driven form primitives with enhanced readability and modern idioms.
+ */
+
 import * as React from "react"
 import * as LabelPrimitive from "@radix-ui/react-label"
 import { Slot } from "@radix-ui/react-slot"
@@ -16,16 +21,76 @@ import {
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 
-const Form = FormProvider
+// ============================================================================
+// Types & Interfaces
+// ============================================================================
 
-type FormFieldContextValue<
+export type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > = {
   readonly name: TName
 }
 
+export type FormItemContextValue = {
+  readonly id: string
+}
+
+// ============================================================================
+// Contexts
+// ============================================================================
+
 const FormFieldContext = React.createContext<FormFieldContextValue | null>(null)
+const FormItemContext = React.createContext<FormItemContextValue | null>(null)
+
+// ============================================================================
+// Core Form Component & Hooks
+// ============================================================================
+
+const Form = FormProvider
+
+/**
+ * Custom hook to access form field state, IDs, and accessibility metadata.
+ * Must be used within a FormField, FormItem, and FormProvider context hierarchy.
+ */
+const useFormField = () => {
+  const fieldContext = React.useContext(FormFieldContext)
+  const itemContext = React.useContext(FormItemContext)
+  const formContext = useFormContext()
+
+  if (!fieldContext) {
+    throw new Error("useFormField must be used within a <FormField> component.")
+  }
+
+  if (!itemContext) {
+    throw new Error("useFormField must be used within a <FormItem> component.")
+  }
+
+  if (!formContext) {
+    throw new Error("useFormField must be used within a FormProvider/Form component.")
+  }
+
+  const { getFieldState } = formContext
+  const formState = useFormState({ name: fieldContext.name })
+  const fieldState = getFieldState(fieldContext.name, formState)
+  const { id } = itemContext
+
+  return React.useMemo(
+    () => ({
+      id,
+      name: fieldContext.name,
+      formItemId: `${id}-form-item`,
+      formDescriptionId: `${id}-form-item-description`,
+      formMessageId: `${id}-form-item-message`,
+      ...fieldState,
+    }),
+    [id, fieldContext.name, fieldState]
+  )
+}
+
+// ============================================================================
+// Form Sub-Components
+// ============================================================================
 
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
@@ -44,48 +109,6 @@ const FormField = <
     </FormFieldContext.Provider>
   )
 }
-
-const useFormField = () => {
-  const fieldContext = React.useContext(FormFieldContext)
-  const itemContext = React.useContext(FormItemContext)
-  const formContext = useFormContext()
-
-  if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>")
-  }
-
-  if (!itemContext) {
-    throw new Error("useFormField should be used within <FormItem>")
-  }
-
-  if (!formContext) {
-    throw new Error("useFormField should be used within a FormProvider/Form")
-  }
-
-  const { getFieldState } = formContext
-  const formState = useFormState({ name: fieldContext.name })
-  const fieldState = getFieldState(fieldContext.name, formState)
-
-  const { id } = itemContext
-
-  return React.useMemo(
-    () => ({
-      id,
-      name: fieldContext.name,
-      formItemId: `${id}-form-item`,
-      formDescriptionId: `${id}-form-item-description`,
-      formMessageId: `${id}-form-item-message`,
-      ...fieldState,
-    }),
-    [id, fieldContext.name, fieldState]
-  )
-}
-
-type FormItemContextValue = {
-  readonly id: string
-}
-
-const FormItemContext = React.createContext<FormItemContextValue | null>(null)
 
 function FormItem({ className, ...props }: React.ComponentProps<"div">) {
   const id = React.useId()
@@ -153,6 +176,7 @@ function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
 
 function FormMessage({ className, children, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField()
+  
   const body = React.useMemo(
     () => (error ? String(error?.message ?? "") : children),
     [error, children]
@@ -173,6 +197,10 @@ function FormMessage({ className, children, ...props }: React.ComponentProps<"p"
     </p>
   )
 }
+
+// ============================================================================
+// Exports
+// ============================================================================
 
 export {
   useFormField,
