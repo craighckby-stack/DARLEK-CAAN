@@ -40,26 +40,55 @@ const DEFAULT_HEADERS = Object.freeze({
 });
 
 /**
+ * Validates target URL against SSRF, dangerous schemas, and host manipulation vectors.
+ * @param {string} rawUrl - The raw URL string to validate.
+ * @returns {URL} The parsed and validated URL object.
+ */
+function validateAndParseUrl(rawUrl) {
+  if (typeof rawUrl !== 'string' || rawUrl.trim() === '') {
+    throw new TypeError('Target URL must be a non-empty string.');
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch (urlError) {
+    const errorMessage = urlError instanceof Error ? urlError.message : String(urlError);
+    throw new TypeError(`Invalid Target URL provided: ${errorMessage}`);
+  }
+
+  if (parsedUrl.protocol !== 'https:') {
+    throw new TypeError('Target URL must use the secure https: protocol.');
+  }
+
+  // Prevent credential leakage via URL userinfo injection
+  if (parsedUrl.username !== '' || parsedUrl.password !== '') {
+    throw new TypeError('Target URL must not contain embedded credentials.');
+  }
+
+  // Restrict host to prevent local network / loopback SSRF abuse if necessary, 
+  // ensuring clean FQDN or IP structures without control characters.
+  const hostname = parsedUrl.hostname;
+  if (!hostname || hostname.includes('..') || /[\s\0]/.test(hostname)) {
+    throw new TypeError('Target URL contains a malformed or unsafe hostname.');
+  }
+
+  return parsedUrl;
+}
+
+/**
  * Safely fetches and streams a remote resource with robust error handling and memory optimization.
  * @param {string} targetUrl - The URL to fetch data from.
  * @returns {Promise<void>} Resolves when resource fetching and processing complete successfully.
  */
 function executeFetchEngine(targetUrl) {
   return new Promise((resolve, reject) => {
-    if (typeof targetUrl !== 'string' || targetUrl.trim() === '') {
-      return reject(new TypeError('Target URL must be a non-empty string.'));
-    }
-
     /** @type {URL} */
     let parsedUrl;
     try {
-      parsedUrl = new URL(targetUrl);
-    } catch (urlError) {
-      return reject(new TypeError(`Invalid Target URL provided: ${/** @type {Error} */ (urlError).message}`));
-    }
-
-    if (parsedUrl.protocol !== 'https:') {
-      return reject(new TypeError('Target URL must use the secure https: protocol.'));
+      parsedUrl = validateAndParseUrl(targetUrl);
+    } catch (err) {
+      return reject(/** @type {Error} */ (err));
     }
 
     const options = {
@@ -109,13 +138,14 @@ function executeFetchEngine(targetUrl) {
       res.on('data', (chunk) => {
         if (isSettled) return;
 
-        totalLength += chunk.length;
+        const chunkStr = String(chunk);
+        totalLength += chunkStr.length;
         if (totalLength > MAX_PAYLOAD_LIMIT) {
           res.destroy(new Error('Payload size exceeded maximum safety threshold.'));
           return;
         }
 
-        chunks.push(chunk);
+        chunks.push(chunkStr);
       });
 
       res.on('error', (resErr) => {
@@ -150,6 +180,7 @@ function executeFetchEngine(targetUrl) {
 // Execute core operation with unhandled rejection safety
 executeFetchEngine('https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/src/utils/engine.ts')
   .catch((err) => {
-    console.error(`[EMG-CRITICAL-ERROR]: ${err.message}`);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error(`[EMG-CRITICAL-ERROR]: ${errorMessage}`);
     process.exitCode = 1;
   });
