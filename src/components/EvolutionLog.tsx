@@ -6,7 +6,7 @@ import { COLORS, LOG_TYPE_ICONS, LOG_TYPE_COLORS } from '@/lib/constants';
 import { ScrollText } from 'lucide-react';
 
 export interface EvolutionLogProps {
-  entries: ReadonlyArray<EvolutionLogEntry>;
+  readonly entries: ReadonlyArray<EvolutionLogEntry>;
 }
 
 interface LogRowProps {
@@ -14,10 +14,10 @@ interface LogRowProps {
 }
 
 const LogRow = memo(function LogRow({ entry }: LogRowProps) {
-  const color = LOG_TYPE_COLORS[entry.type] ?? COLORS.textDim;
-  const icon = LOG_TYPE_ICONS[entry.type] ?? '●';
+  const accentColor = LOG_TYPE_COLORS[entry.type] ?? COLORS.textDim;
+  const logIcon = LOG_TYPE_ICONS[entry.type] ?? '●';
 
-  const formattedTime = useMemo(() => {
+  const formattedTimestamp = useMemo(() => {
     try {
       return new Date(entry.timestamp).toLocaleTimeString([], {
         hour: '2-digit',
@@ -39,12 +39,12 @@ const LogRow = memo(function LogRow({ entry }: LogRowProps) {
           fontSize: '10px',
           flexShrink: 0,
           lineHeight: 1,
-          color,
+          color: accentColor,
           width: '14px',
           textAlign: 'center',
         }}
       >
-        {icon}
+        {logIcon}
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
@@ -54,7 +54,7 @@ const LogRow = memo(function LogRow({ entry }: LogRowProps) {
               fontWeight: 700,
               letterSpacing: '0.1em',
               fontFamily: 'var(--font-orbitron), sans-serif',
-              color,
+              color: accentColor,
             }}
           >
             {entry.type}
@@ -66,7 +66,7 @@ const LogRow = memo(function LogRow({ entry }: LogRowProps) {
               fontFamily: 'var(--font-share-tech-mono), monospace',
             }}
           >
-            {formattedTime}
+            {formattedTimestamp}
           </span>
         </div>
         <p
@@ -86,7 +86,7 @@ const LogRow = memo(function LogRow({ entry }: LogRowProps) {
 });
 
 export default function EvolutionLog({ entries }: EvolutionLogProps) {
-  const entryCount = entries.length;
+  const totalEntries = entries.length;
 
   return (
     <div
@@ -99,12 +99,12 @@ export default function EvolutionLog({ entries }: EvolutionLogProps) {
           <span style={{ fontSize: '11px' }}>EVOLUTION LOG</span>
         </div>
         <span style={{ fontSize: '9px', color: COLORS.textMuted }}>
-          {entryCount} EVENTS
+          {totalEntries} EVENTS
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto dalek-scrollbar space-y-1 min-h-0">
-        {entryCount === 0 ? (
+        {totalEntries === 0 ? (
           <div className="flex items-center justify-center py-6">
             <span
               style={{
