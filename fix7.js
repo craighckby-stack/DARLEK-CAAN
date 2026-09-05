@@ -5,27 +5,65 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
-const TARGET_FILE_PATH = path.normalize('src/app/api/evolution/propose/route.ts');
-const ALLOWED_BASE_DIR = path.resolve('src');
+const CONFIG = {
+  targetFilePath: path.normalize('src/app/api/evolution/propose/route.ts'),
+  allowedBaseDir: path.resolve('src'),
+  targetToken: '${siphonedCodeContext}',
+  fileEncoding: 'utf8',
+};
 
-const resolvedPath = path.resolve(TARGET_FILE_PATH);
-if (!resolvedPath.startsWith(ALLOWED_BASE_DIR)) {
-  throw new Error('Access denied: Path traversal attempt detected.');
+/**
+ * Validates that the target path resides strictly within the allowed base directory.
+ * Prevents path traversal vulnerabilities.
+ * 
+ * @param {string} targetPath 
+ * @param {string} baseDir 
+ * @returns {string} The fully resolved absolute path
+ */
+function getValidatedResolvedPath(targetPath, baseDir) {
+  const resolvedPath = path.resolve(targetPath);
+  if (!resolvedPath.startsWith(baseDir)) {
+    throw new Error('Access denied: Path traversal attempt detected.');
+  }
+  return resolvedPath;
 }
 
-let code = fs.readFileSync(resolvedPath, 'utf8');
-const targetToken = '${siphonedCodeContext}';
-const idx = code.indexOf(targetToken);
+/**
+ * Sanitizes markdown code blocks following the target token within the source content.
+ * 
+ * @param {string} fileContent 
+ * @param {string} token 
+ * @returns {string} The processed file content
+ */
+function sanitizeCodeContext(fileContent, token) {
+  const tokenIndex = fileContent.indexOf(token);
+  
+  if (tokenIndex === -1) {
+    return fileContent;
+  }
 
-if (idx !== -1) {
-  const tokenLength = targetToken.length;
-  const start = code.substring(0, idx + tokenLength);
-  let rest = code.substring(idx + tokenLength);
-  rest = rest.replace(/```/g, '\\`\\`\\`');
-  code = start + rest;
+  const splitIndex = tokenIndex + token.length;
+  const untouchedPrefix = fileContent.substring(0, splitIndex);
+  const remainderToSanitize = fileContent.substring(splitIndex);
+
+  const sanitizedRemainder = remainderToSanitize.replace(/```/g, '\\`\\`\\`');
+
+  return untouchedPrefix + sanitizedRemainder;
 }
 
-fs.writeFileSync(resolvedPath, code, 'utf8');
+/**
+ * Executes the file transformation operation safely.
+ */
+function executeCodeSanitization() {
+  const validatedPath = getValidatedResolvedPath(CONFIG.targetFilePath, CONFIG.allowedBaseDir);
+  const originalSourceCode = fs.readFileSync(validatedPath, CONFIG.fileEncoding);
+  
+  const optimizedSourceCode = sanitizeCodeContext(originalSourceCode, CONFIG.targetToken);
+  
+  fs.writeFileSync(validatedPath, optimizedSourceCode, CONFIG.fileEncoding);
+}
+
+executeCodeSanitization();
