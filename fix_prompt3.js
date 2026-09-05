@@ -5,16 +5,62 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'const'; // Enforce strict mode implicitly/explicitly via parser guidelines
+'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 /**
  * Maximum allowed file size to mitigate memory exhaustion / buffer overflow vectors (10MB).
- * @const {number}
+ * @type {number}
  */
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Validates the security boundaries of a target file path relative to the current working directory.
+ * 
+ * @param {string} relativeTargetPath - The relative path to validate.
+ * @returns {string} The fully resolved, validated absolute file path.
+ * @throws {Error} If path traversal, absolute path injection, or boundary escape is detected.
+ */
+function resolveAndValidatePath(relativeTargetPath) {
+    const normalizedPath = path.normalize(relativeTargetPath);
+    
+    if (normalizedPath.includes('..') || path.isAbsolute(normalizedPath)) {
+        throw new Error('[EMG Core v49] Security Violation: Path traversal or absolute path detected.');
+    }
+
+    const baseDirectory = process.cwd();
+    const resolvedFilePath = path.resolve(baseDirectory, normalizedPath);
+
+    if (!resolvedFilePath.startsWith(baseDirectory)) {
+        throw new Error('[EMG Core v49] Security Violation: Resolved path escapes root boundary.');
+    }
+
+    return resolvedFilePath;
+}
+
+/**
+ * Validates the existence, type, and size constraints of a target file before memory operations.
+ * 
+ * @param {string} filePath - The absolute path to the target file.
+ * @throws {Error} If the file does not exist, is not a regular file, or exceeds size limits.
+ */
+function validateFileConstraints(filePath) {
+    if (!fs.existsSync(filePath)) {
+        throw new Error(`[EMG Core v49] Target file not found: ${filePath}`);
+    }
+
+    const fileStats = fs.statSync(filePath);
+    
+    if (!fileStats.isFile()) {
+        throw new Error(`[EMG Core v49] Target path is not a valid regular file: ${filePath}`);
+    }
+
+    if (fileStats.size > MAX_FILE_SIZE_BYTES) {
+        throw new Error(`[EMG Core v49] File size exceeds maximum safety bounds (${MAX_FILE_SIZE_BYTES} bytes): ${fileStats.size} bytes`);
+    }
+}
 
 /**
  * Executes a robust string replacement within the specified target file
@@ -23,59 +69,31 @@ const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
  * @throws {Error} If file reading, replacement, or writing fails, or if path/size constraints are violated.
  */
 function optimizeRoutePrompt() {
-    // Defensive Input Validation & Path Traversal Prevention
-    const relativeTarget = path.normalize('src/app/api/evolution/propose/route.ts');
-    if (relativeTarget.includes('..') || path.isAbsolute(relativeTarget)) {
-        throw new Error('[EMG Core v49] Security Violation: Path traversal or absolute path detected.');
-    }
-
-    const baseDir = process.cwd();
-    const targetFilePath = path.resolve(baseDir, relativeTarget);
-
-    // Verify resolved path remains strictly inside base directory boundary
-    if (!targetFilePath.startsWith(baseDir)) {
-        throw new Error('[EMG Core v49] Security Violation: Resolved path escapes root boundary.');
-    }
-
     try {
-        // Strict file existence and stats validation before volatile memory allocation
-        if (!fs.existsSync(targetFilePath)) {
-            throw new Error(`[EMG Core v49] Target file not found: ${targetFilePath}`);
-        }
+        const targetFilePath = resolveAndValidatePath('src/app/api/evolution/propose/route.ts');
+        validateFileConstraints(targetFilePath);
 
-        const stats = fs.statSync(targetFilePath);
-        if (!stats.isFile()) {
-            throw new Error(`[EMG Core v49] Target path is not a valid regular file: ${targetFilePath}`);
-        }
+        const fileContent = fs.readFileSync(targetFilePath, 'utf8');
 
-        if (stats.size > MAX_FILE_SIZE_BYTES) {
-            throw new Error(`[EMG Core v49] File size exceeds maximum safety bounds (${MAX_FILE_SIZE_BYTES} bytes): ${stats.size} bytes`);
-        }
-
-        // Read file with explicit UTF-8 encoding for memory efficiency and safety
-        const code = fs.readFileSync(targetFilePath, 'utf8');
-
-        // Additional memory safety validation post-read
-        if (typeof code !== 'string') {
+        if (typeof fileContent !== 'string') {
             throw new Error('[EMG Core v49] Memory safety error: Read content did not resolve to a valid string.');
         }
 
-        const targetStr = "\\`\\`\\`json\\n{\\n  \\\"analysis\\\": \\\"Specific analysis of what dead-weight or bugs were fixed...\\\",\\n  \\\"riskScore\\\": 1,\\n  \\\"affectedFiles\\\": [\\\"list of other files\\\"],\\n  \\\"newFiles\\\": [\\n    {\\n      \\\"path\\\": \\\"relative/path/to/new-file.ts\\\",\\n      \\\"content\\\": \\\"Full source code content of the new file to create\\\"\\n    }\\n  ]\\n}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n// Complete proposed code for the active file goes here.\\n// MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`}``````tsx// Complete proposed code for the active file goes here.// MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS```";
-        const replacementStr = "\\`\\`\\`json\\n{\\n  \\\"analysis\\\": \\\"Specific analysis of what dead-weight or bugs were fixed...\\\",\\n  \\\"riskScore\\\": 1,\\n  \\\"affectedFiles\\\": [\\\"list of other files\\\"],\\n  \\\"newFiles\\\": [\\n    {\\n      \\\"path\\\": \\\"relative/path/to/new-file.ts\\\",\\n      \\\"content\\\": \\\"Full source code content of the new file to create\\\"\\n    }\\n  ]\\n}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n// Complete proposed code for the active file goes here.\\n// MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`\\n`";
+        const targetSubstring = "\\`\\`\\`json\\n{\\n  \\\"analysis\\\": \\\"Specific analysis of what dead-weight or bugs were fixed...\\\",\\n  \\\"riskScore\\\": 1,\\n  \\\"affectedFiles\\\": [\\\"list of other files\\\"],\\n  \\\"newFiles\\\": [\\n    {\\n      \\\"path\\\": \\\"relative/path/to/new-file.ts\\\",\\n      \\\"content\\\": \\\"Full source code content of the new file to create\\\"\\n    }\\n  ]\\n}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n// Complete proposed code for the active file goes here.\\n// MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`}``````tsx// Complete proposed code for the active file goes here.// MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS```";
+        const replacementSubstring = "\\`\\`\\`json\\n{\\n  \\\"analysis\\\": \\\"Specific analysis of what dead-weight or bugs were fixed...\\\",\\n  \\\"riskScore\\\": 1,\\n  \\\"affectedFiles\\\": [\\\"list of other files\\\"],\\n  \\\"newFiles\\\": [\\n    {\\n      \\\"path\\\": \\\"relative/path/to/new-file.ts\\\",\\n      \\\"content\\\": \\\"Full source code content of the new file to create\\\"\\n    }\\n  ]\\n}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n// Complete proposed code for the active file goes here.\\n// MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`\\n`";
 
-        if (!code.includes(targetStr)) {
+        if (!fileContent.includes(targetSubstring)) {
             console.warn('[EMG Core v49] Warning: Target string for replacement not found in file. No changes made.');
             return;
         }
 
-        // Perform safe replacement (using non-regex string replacement to prevent injection vectors)
-        const updatedCode = code.split(targetStr).join(replacementStr);
+        const updatedCode = fileContent.split(targetSubstring).join(replacementSubstring);
 
-        // Atomic/safe write operation with explicit UTF-8 encoding
         fs.writeFileSync(targetFilePath, updatedCode, { encoding: 'utf8', mode: 0o600 });
-        console.log('[EMG Core v49] Successfully updated with validated bounds: ' + targetFilePath);
+        console.log(`[EMG Core v49] Successfully updated with validated bounds: ${targetFilePath}`);
     } catch (error) {
-        console.error('[EMG Core v49] Critical Error during file transformation:', error instanceof Error ? error.message : error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[EMG Core v49] Critical Error during file transformation: ${errorMessage}`);
         process.exit(1);
     }
 }
