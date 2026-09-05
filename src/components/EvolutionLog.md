@@ -1,11 +1,13 @@
 # EvolutionLog Component Documentation
 
 ## Overview
-The `EvolutionLog` component serves as the primary telemetry interface for the DARLEK CANN v3.0 architecture. Precision-engineered for high-throughput operational environments, it renders real-time visualizations of chronological system mutations, agent state transitions, and critical system error logs.
+
+The `EvolutionLog` component functions as the primary telemetry interface for the DARLEK CANN v3.0 architecture. Precision-engineered for high-throughput operational environments, it renders real-time visualizations of chronological system mutations, agent state transitions, and critical error logs.
 
 ---
 
 ## Architectural Integration
+
 - **Data Source**: Consumes immutable streams of `EvolutionLogEntry[]` data structures dispatched directly from the central state management store.
 - **Performance Optimization**: Implements React's `useMemo` hook for optimized log sorting alongside `useRef` and programmatic viewport scrolling to sustain locked 60 FPS rendering during high-frequency log ingestion cycles.
 - **Styling Architecture**: Leverages atomic Tailwind CSS utility classes synchronized with custom CSS design tokens defined within the global system theme.
