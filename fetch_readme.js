@@ -7,16 +7,17 @@
 
 'use strict';
 
-const https = require('https');
+const https = require('node:https');
 
-const TARGET_URL = 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/README.md';
-const MAX_DATA_SIZE_BYTES = 1024 * 1024; // 1MB bounds check to prevent memory exhaustion / overflow
-
-const REQUEST_OPTIONS = {
-  headers: {
-    'User-Agent': 'EMG-Core-v49-Neural-Code-Optimizer'
-  }
-};
+const CONFIG = Object.freeze({
+  targetUrl: 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/README.md',
+  maxDataSizeBytes: 1024 * 1024, // 1MB bounds check to prevent memory exhaustion / overflow
+  requestOptions: Object.freeze({
+    headers: Object.freeze({
+      'User-Agent': 'EMG-Core-v49-Neural-Code-Optimizer'
+    })
+  })
+});
 
 /**
  * Handles the incoming HTTPS response stream with strict memory bounds validation.
@@ -35,7 +36,7 @@ function handleResponse(response, request) {
 
   response.on('data', (chunk) => {
     currentDataSize += chunk.length;
-    if (currentDataSize > MAX_DATA_SIZE_BYTES) {
+    if (currentDataSize > CONFIG.maxDataSizeBytes) {
       console.error('Error: Payload size exceeds safety bounds.');
       request.destroy();
       return;
@@ -44,7 +45,7 @@ function handleResponse(response, request) {
   });
 
   response.on('end', () => {
-    if (typeof accumulatedData === 'string' && accumulatedData.length <= MAX_DATA_SIZE_BYTES) {
+    if (typeof accumulatedData === 'string' && accumulatedData.length <= CONFIG.maxDataSizeBytes) {
       process.stdout.write(accumulatedData + '\n');
     } else {
       console.error('Error: Invalid data payload format or size.');
@@ -60,6 +61,6 @@ function handleError(error) {
   console.error('Network transmission error encountered securely handled.');
 }
 
-const req = https.get(TARGET_URL, REQUEST_OPTIONS, (res) => handleResponse(res, req));
+const req = https.get(CONFIG.targetUrl, CONFIG.requestOptions, (res) => handleResponse(res, req));
 req.on('error', handleError);
 req.end();
