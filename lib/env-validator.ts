@@ -25,9 +25,9 @@ export interface SystemEnvironmentConfig {
   readonly PORT: number;
 }
 
-const ALLOWED_NODE_ENVS: readonly EnvironmentType[] = ['development', 'production', 'test'];
-const ALLOWED_SANDBOX_LEVELS: readonly SandboxIsolationLevel[] = ['strict', 'permissive', 'zero-leak'];
-const ALLOWED_LOG_LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error'];
+const ALLOWED_NODE_ENVS = ['development', 'production', 'test'] as const;
+const ALLOWED_SANDBOX_LEVELS = ['strict', 'permissive', 'zero-leak'] as const;
+const ALLOWED_LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 
 export class EnvironmentValidator {
   private static instance: EnvironmentValidator;
@@ -38,9 +38,7 @@ export class EnvironmentValidator {
   }
 
   public static getInstance(): EnvironmentValidator {
-    if (!EnvironmentValidator.instance) {
-      EnvironmentValidator.instance = new EnvironmentValidator();
-    }
+    EnvironmentValidator.instance ??= new EnvironmentValidator();
     return EnvironmentValidator.instance;
   }
 
@@ -52,28 +50,51 @@ export class EnvironmentValidator {
     return this.config;
   }
 
+  private validateEnum<T extends string>(
+    value: string | undefined,
+    fallback: T,
+    allowedValues: readonly T[],
+    configName: string
+  ): T {
+    const resolvedValue = (value ?? fallback) as T;
+    if (!allowedValues.includes(resolvedValue)) {
+      throw new Error(
+        `Invalid ${configName} configuration: "${resolvedValue}". Allowed values: ${allowedValues.join(', ')}.`
+      );
+    }
+    return resolvedValue;
+  }
+
   private validate(): SystemEnvironmentConfig {
-    const nodeEnv = (process.env.NODE_ENV ?? 'development') as EnvironmentType;
-    if (!ALLOWED_NODE_ENVS.includes(nodeEnv)) {
-      throw new Error(`Invalid NODE_ENV configuration: "${nodeEnv}". Allowed values: ${ALLOWED_NODE_ENVS.join(', ')}.`);
-    }
+    const nodeEnv = this.validateEnum(
+      process.env.NODE_ENV,
+      'development',
+      ALLOWED_NODE_ENVS,
+      'NODE_ENV'
+    );
 
-    const sandboxIsolation = (process.env.SANDBOX_ISOLATION_LEVEL ?? 'zero-leak') as SandboxIsolationLevel;
-    if (!ALLOWED_SANDBOX_LEVELS.includes(sandboxIsolation)) {
-      throw new Error(`Invalid SANDBOX_ISOLATION_LEVEL configuration: "${sandboxIsolation}". Allowed values: ${ALLOWED_SANDBOX_LEVELS.join(', ')}.`);
-    }
+    const sandboxIsolation = this.validateEnum(
+      process.env.SANDBOX_ISOLATION_LEVEL,
+      'zero-leak',
+      ALLOWED_SANDBOX_LEVELS,
+      'SANDBOX_ISOLATION_LEVEL'
+    );
 
-    const logLevel = (process.env.LOG_LEVEL ?? 'info') as LogLevel;
-    if (!ALLOWED_LOG_LEVELS.includes(logLevel)) {
-      throw new Error(`Invalid LOG_LEVEL configuration: "${logLevel}". Allowed values: ${ALLOWED_LOG_LEVELS.join(', ')}.`);
-    }
+    const logLevel = this.validateEnum(
+      process.env.LOG_LEVEL,
+      'info',
+      ALLOWED_LOG_LEVELS,
+      'LOG_LEVEL'
+    );
 
-    const rawConsensus = process.env.CONSENSUS_WEIGHT_THRESHOLD;
-    const parsedConsensus = rawConsensus !== undefined ? Number(rawConsensus) : 0.75;
+    const parsedConsensus = process.env.CONSENSUS_WEIGHT_THRESHOLD !== undefined
+      ? Number(process.env.CONSENSUS_WEIGHT_THRESHOLD)
+      : NaN;
     const consensusWeight = Number.isNaN(parsedConsensus) ? 0.75 : parsedConsensus;
 
-    const rawPort = process.env.PORT;
-    const parsedPort = rawPort !== undefined ? Number.parseInt(rawPort, 10) : 3000;
+    const parsedPort = process.env.PORT !== undefined
+      ? Number.parseInt(process.env.PORT, 10)
+      : NaN;
     const port = Number.isNaN(parsedPort) ? 3000 : parsedPort;
 
     return {
