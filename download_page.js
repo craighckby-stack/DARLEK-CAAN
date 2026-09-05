@@ -12,39 +12,54 @@ const fs = require('fs');
 const path = require('path');
 
 const COMMIT_SHA = '71f4f383afa014a1255d977791d6531a2033e323';
+const SHA_REGEX = /^[a-fA-F0-9]{40}$/;
 
-// Strict validation regex for cryptographic SHA-1/SHA-256 hex strings to prevent injection/path traversal
-if (!/^[a-fA-F0-9]{40}$/.test(COMMIT_SHA)) {
+if (!SHA_REGEX.test(COMMIT_SHA)) {
   throw new Error('CRITICAL SECURITY: Invalid COMMIT_SHA format detected.');
 }
 
-const TARGET_URL = `https://raw.githubusercontent.com/craighckby-stack/DARLEK_CAAN_ENGINE/${COMMIT_SHA}/src/app/page.tsx`;
-const TARGET_PATH = path.resolve('src/app/page.tsx');
-const MIN_LINE_COUNT_THRESHOLD = 1000;
-const MAX_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB defensive upper bound to prevent resource exhaustion / DoS
-
-console.log(`Downloading page.tsx from commit ${COMMIT_SHA}...`);
+const CONFIG = {
+  targetUrl: `https://raw.githubusercontent.com/craighckby-stack/DARLEK_CAAN_ENGINE/${COMMIT_SHA}/src/app/page.tsx`,
+  targetPath: path.resolve('src/app/page.tsx'),
+  minLineCountThreshold: 1000,
+  maxContentLength: 10 * 1024 * 1024 // 10MB defensive upper bound
+};
 
 /**
- * Performs an HTTPS GET request wrapped in a Promise interface with memory-efficient chunk buffering, status checks, and bounds enforcement.
+ * Validates and parses the request URL against allowed security parameters.
+ * @param {string} requestUrl - The raw endpoint URL string.
+ * @returns {URL} The parsed URL object.
+ */
+function validateAndParseUrl(requestUrl) {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(requestUrl);
+  } catch {
+    throw new Error('Invalid URL format supplied to fetchContent.');
+  }
+
+  if (parsedUrl.protocol !== 'https:' || parsedUrl.hostname !== 'raw.githubusercontent.com') {
+    throw new Error('Security violation: Untrusted domain or protocol in request URL.');
+  }
+
+  return parsedUrl;
+}
+
+/**
+ * Performs an HTTPS GET request wrapped in a Promise with stream buffering and safety bounds.
  * @param {string} requestUrl - The HTTPS endpoint URL to fetch data from.
  * @returns {Promise<string>} The retrieved response body as a string.
  */
 function fetchContent(requestUrl) {
   return new Promise((resolve, reject) => {
-    // Strict URL validation against expected domain structure
     let parsedUrl;
     try {
-      parsedUrl = new URL(requestUrl);
+      parsedUrl = validateAndParseUrl(requestUrl);
     } catch (err) {
-      return reject(new Error('Invalid URL format supplied to fetchContent.'));
+      return reject(err);
     }
 
-    if (parsedUrl.protocol !== 'https:' || parsedUrl.hostname !== 'raw.githubusercontent.com') {
-      return reject(new Error('Security violation: Untrusted domain or protocol in request URL.'));
-    }
-
-    const options = {
+    const requestOptions = {
       hostname: parsedUrl.hostname,
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
@@ -53,11 +68,11 @@ function fetchContent(requestUrl) {
       }
     };
 
-    const req = https.request(options, (res) => {
+    const req = https.request(requestOptions, (res) => {
       const { statusCode } = res;
 
       if (statusCode !== 200) {
-        res.resume(); // Consume response stream to prevent memory leakage
+        res.resume();
         return reject(new Error(`Server returned HTTP status ${statusCode}`));
       }
 
@@ -67,63 +82,63 @@ function fetchContent(requestUrl) {
 
       res.on('data', (chunk) => {
         totalLength += chunk.length;
-        if (totalLength > MAX_CONTENT_LENGTH) {
+        if (totalLength > CONFIG.maxContentLength) {
           res.destroy();
           return reject(new Error('Security limit exceeded: Response payload exceeds maximum safety threshold.'));
         }
         chunks.push(chunk);
       });
 
-      res.on('end', () => {
-        resolve(chunks.join(''));
-      });
-
-      res.on('error', (err) => {
-        reject(err);
-      });
+      res.on('end', () => resolve(chunks.join('')));
+      res.on('error', reject);
     });
 
-    req.on('error', (err) => {
-      reject(err);
-    });
-
+    req.on('error', reject);
     req.end();
   });
 }
 
 /**
- * Main execution routine handling file download, verification, and filesystem operations with strict path normalization.
+ * Ensures the target file path is securely contained within the workspace root directory.
+ * @param {string} targetPath - The filesystem path to validate.
+ */
+function ensureWorkspaceContainment(targetPath) {
+  const baseWorkspace = path.resolve('.');
+  if (!targetPath.startsWith(baseWorkspace)) {
+    throw new Error('Security violation: Target path escapes root workspace directory.');
+  }
+}
+
+/**
+ * Main execution routine handling file download, verification, and filesystem operations.
  * @returns {Promise<void>}
  */
 async function executeDownloadPipeline() {
   try {
-    const data = await fetchContent(TARGET_URL);
-    const lines = data.split('\n');
+    console.log(`Downloading page.tsx from commit ${COMMIT_SHA}...`);
+    const fileContent = await fetchContent(CONFIG.targetUrl);
+    const lines = fileContent.split('\n');
 
     console.log(`Downloaded ${lines.length} lines. First 5 lines:`);
     console.log(lines.slice(0, 5).join('\n'));
 
-    if (lines.length > MIN_LINE_COUNT_THRESHOLD) {
-      const targetDirectory = path.dirname(TARGET_PATH);
-      
-      // Ensure target path is safely contained within intended workspace boundary
-      const baseWorkspace = path.resolve('.');
-      if (!TARGET_PATH.startsWith(baseWorkspace)) {
-        throw new Error('Security violation: Target path escapes root workspace directory.');
-      }
-
-      if (!fs.existsSync(targetDirectory)) {
-        fs.mkdirSync(targetDirectory, { recursive: true });
-      }
-
-      fs.writeFileSync(TARGET_PATH, data, 'utf8');
-      console.log(`Successfully restored ${TARGET_PATH} from commit ${COMMIT_SHA.slice(0, 8)}!`);
-    } else {
-      console.log(`Warning: Downloaded file has less than ${MIN_LINE_COUNT_THRESHOLD} lines, did not overwrite local file.`);
+    if (lines.length <= CONFIG.minLineCountThreshold) {
+      console.log(`Warning: Downloaded file has less than ${CONFIG.minLineCountThreshold} lines, did not overwrite local file.`);
+      return;
     }
+
+    ensureWorkspaceContainment(CONFIG.targetPath);
+
+    const targetDirectory = path.dirname(CONFIG.targetPath);
+    if (!fs.existsSync(targetDirectory)) {
+      fs.mkdirSync(targetDirectory, { recursive: true });
+    }
+
+    fs.writeFileSync(CONFIG.targetPath, fileContent, 'utf8');
+    console.log(`Successfully restored ${CONFIG.targetPath} from commit ${COMMIT_SHA.slice(0, 8)}!`);
   } catch (err) {
-    const errorMessage = err && typeof err === 'object' && 'message' in err ? err.message : String(err);
-    console.error("Error downloading file:", errorMessage);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error('Error downloading file:', errorMessage);
   }
 }
 
