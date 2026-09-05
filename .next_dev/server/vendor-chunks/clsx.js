@@ -16,6 +16,67 @@ exports.modules = {
 
     const MAX_RECURSION_DEPTH = 32;
     const hasOwn = Object.prototype.hasOwnProperty;
+    const FORBIDDEN_OBJECT_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+
+    /**
+     * Appends a class string to an accumulator with a space separator if needed.
+     *
+     * @param {string} accumulator - The current accumulated class string
+     * @param {string} nextValue - The class string to append
+     * @returns {string} The updated accumulator string
+     */
+    function appendClass(accumulator, nextValue) {
+      if (!nextValue) return accumulator;
+      return accumulator ? `${accumulator} ${nextValue}` : nextValue;
+    }
+
+    /**
+     * Parses array-type class values recursively.
+     *
+     * @param {Array<unknown>} array - The array of class tokens
+     * @param {number} depth - Current recursion depth
+     * @param {Set<object>} visited - Tracked reference set for cycle detection
+     * @returns {string} Sanitized and joined class string
+     */
+    function parseArrayValue(array, depth, visited) {
+      let result = "";
+      const len = array.length;
+      
+      for (let i = 0; i < len; i++) {
+        const item = array[i];
+        if (item) {
+          const parsed = parseClassValue(item, depth + 1, visited);
+          result = appendClass(result, parsed);
+        }
+      }
+      
+      return result;
+    }
+
+    /**
+     * Parses object-type class values with safety guards against prototype pollution.
+     *
+     * @param {Record<string, unknown>} obj - The dictionary of class toggles
+     * @returns {string} Sanitized and joined class string
+     */
+    function parseObjectValue(obj) {
+      let result = "";
+      const keys = Object.keys(obj);
+      const len = keys.length;
+
+      for (let i = 0; i < len; i++) {
+        const key = keys[i];
+        if (
+          !FORBIDDEN_OBJECT_KEYS.has(key) &&
+          hasOwn.call(obj, key) &&
+          Boolean(obj[key])
+        ) {
+          result = appendClass(result, key);
+        }
+      }
+
+      return result;
+    }
 
     /**
      * Defensively processes nested class values with depth boundaries, cyclic reference guards,
@@ -49,69 +110,38 @@ exports.modules = {
         return "";
       }
 
-      if (!visited) {
-        visited = new Set();
-      } else if (visited.has(value)) {
+      const activeVisited = visited ?? new Set();
+      if (activeVisited.has(value)) {
         return "";
       }
 
-      visited.add(value);
-      let result = "";
+      activeVisited.add(value);
 
       try {
         if (Array.isArray(value)) {
-          const len = value.length;
-          for (let i = 0; i < len; i++) {
-            const item = value[i];
-            if (item) {
-              const str = parseClassValue(item, depth + 1, visited);
-              if (str) {
-                if (result) result += " ";
-                result += str;
-              }
-            }
-          }
-        } else {
-          const keys = Object.keys(value);
-          const len = keys.length;
-          for (let i = 0; i < len; i++) {
-            const key = keys[i];
-            if (
-              key !== "__proto__" &&
-              key !== "prototype" &&
-              key !== "constructor" &&
-              hasOwn.call(value, key) &&
-              Boolean(value[key])
-            ) {
-              if (result) result += " ";
-              result += key;
-            }
-          }
+          return parseArrayValue(value, depth, activeVisited);
         }
+        return parseObjectValue(/** @type {Record<string, unknown>} */ (value));
       } finally {
-        visited.delete(value);
+        activeVisited.delete(value);
       }
-
-      return result;
     }
 
     /**
      * Constructs concatenated class names with defensive input validation.
      *
+     * @params {...unknown} args - Candidate class tokens, arrays, or objects
      * @returns {string} Joined class name string
      */
-    function clsx() {
+    function clsx(...args) {
       let result = "";
-      const len = arguments.length;
+      const len = args.length;
 
       for (let i = 0; i < len; i++) {
-        const arg = arguments[i];
+        const arg = args[i];
         if (arg) {
-          const str = parseClassValue(arg, 0);
-          if (str) {
-            if (result) result += " ";
-            result += str;
-          }
+          const parsed = parseClassValue(arg, 0);
+          result = appendClass(result, parsed);
         }
       }
 
