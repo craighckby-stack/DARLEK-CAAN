@@ -7,9 +7,9 @@
 
 'use strict';
 
-const fs = require('fs');
-const https = require('https');
-const path = require('path');
+const fs = require('node:fs');
+const https = require('node:https');
+const path = require('node:path');
 
 // Security configuration limits
 const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB memory protection limit
