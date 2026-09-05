@@ -5,17 +5,17 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // Security hardening: Enforce explicit absolute path resolution to prevent directory traversal
 const TARGET_FILE_PATH = path.resolve(__dirname, 'src/utils/agi-engine.ts');
 const MAX_PAYLOAD_SIZE_BYTES = 131072; // 128KB Wasm Sandbox limit
 
 /**
- * Safely reads the target source file with error handling.
- * @param {string} filePath - Absolute path to target file.
- * @returns {string} File content.
+ * Safely reads the target source file with robust error handling.
+ * @param {string} filePath - Absolute path to the target file.
+ * @returns {string} The contents of the file.
  */
 function readTargetSource(filePath) {
   try {
@@ -28,8 +28,8 @@ function readTargetSource(filePath) {
 
 /**
  * Safely writes updated content back to the target source file.
- * @param {string} filePath - Absolute path to target file.
- * @param {string} content - Updated file content.
+ * @param {string} filePath - Absolute path to the target file.
+ * @param {string} content - Updated file contents to write.
  */
 function writeTargetSource(filePath, content) {
   try {
@@ -50,6 +50,7 @@ export class EdgeGovernanceGatekeeper {
     if (typeof payload !== 'string' || payload.length > ${MAX_PAYLOAD_SIZE_BYTES}) {
       return false;
     }
+    
     const isObfuscated = 
       payload.includes('constructor') || 
       payload.includes('__proto__') || 
@@ -58,6 +59,7 @@ export class EdgeGovernanceGatekeeper {
       payload.includes('exec(') ||
       payload.includes('setTimeout(') ||
       payload.includes('setInterval(');
+      
     return !isObfuscated;
   }
 
@@ -79,17 +81,18 @@ export class EdgeGovernanceGatekeeper {
 }
 `;
 
+/**
+ * Injects the EdgeGovernanceGatekeeper module into the target source file.
+ */
 function injectGovernanceModule() {
-  let sourceCode = readTargetSource(TARGET_FILE_PATH);
+  const sourceCode = readTargetSource(TARGET_FILE_PATH);
   const targetAnchor = "// ---------------------------------------------------------------------------";
 
-  if (sourceCode.includes(targetAnchor)) {
-    sourceCode = sourceCode.replace(targetAnchor, GOVERNANCE_CLASS_MODULE + "\n" + targetAnchor);
-  } else {
-    sourceCode += "\n" + GOVERNANCE_CLASS_MODULE;
-  }
+  const updatedSourceCode = sourceCode.includes(targetAnchor)
+    ? sourceCode.replace(targetAnchor, `${GOVERNANCE_CLASS_MODULE}\n${targetAnchor}`)
+    : `${sourceCode}\n${GOVERNANCE_CLASS_MODULE}`;
 
-  writeTargetSource(TARGET_FILE_PATH, sourceCode);
+  writeTargetSource(TARGET_FILE_PATH, updatedSourceCode);
 }
 
 injectGovernanceModule();
