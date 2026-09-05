@@ -40,24 +40,58 @@ function validateAndParseUrl(inputUrl) {
     throw new Error('Target URL must be a non-empty string.');
   }
 
-  let parsed;
+  let parsedUrl;
   try {
-    parsed = new URL(inputUrl);
+    parsedUrl = new URL(inputUrl);
   } catch (err) {
-    throw new Error(`Invalid URL format: ${err instanceof Error ? err.message : String(err)}`);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    throw new Error(`Invalid URL format: ${errorMessage}`);
   }
 
-  if (parsed.protocol !== 'https:') {
+  if (parsedUrl.protocol !== 'https:') {
     throw new Error('Security policy violation: Only HTTPS protocol is allowed.');
   }
 
-  // Enforce host validation bounds to prevent unauthorized endpoints
   const allowedHostname = 'api.github.com';
-  if (parsed.hostname !== allowedHostname && !parsed.hostname.endsWith('.' + allowedHostname)) {
-    throw new Error(`Security policy violation: Hostname '${parsed.hostname}' is not permitted.`);
+  if (parsedUrl.hostname !== allowedHostname && !parsedUrl.hostname.endsWith(`.${allowedHostname}`)) {
+    throw new Error(`Security policy violation: Hostname '${parsedUrl.hostname}' is not permitted.`);
   }
 
-  return parsed;
+  return parsedUrl;
+}
+
+/**
+ * Consumes the response stream safely with bounds checking.
+ * @param {import('http').IncomingMessage} response - The HTTP response stream.
+ * @returns {Promise<string>} The concatenated response body as a UTF-8 string.
+ */
+function consumeResponseStream(response) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let totalBytesReceived = 0;
+
+    response.on('data', (chunk) => {
+      totalBytesReceived += chunk.length;
+      if (totalBytesReceived > MAX_RESPONSE_SIZE) {
+        response.destroy(new Error('Response payload exceeded maximum allowable size bounds (Overflow Protection).'));
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    response.on('end', () => {
+      try {
+        const rawData = Buffer.concat(chunks).toString('utf8');
+        resolve(rawData);
+      } catch (parseError) {
+        reject(parseError);
+      }
+    });
+
+    response.on('error', (streamErr) => {
+      reject(streamErr);
+    });
+  });
 }
 
 /**
@@ -83,7 +117,7 @@ function fetchRepositoryData(targetUrl = DEFAULT_CONFIG.url) {
       headers: DEFAULT_CONFIG.headers
     };
 
-    const req = https.request(requestOptions, (res) => {
+    const req = https.request(requestOptions, async (res) => {
       const statusCode = res.statusCode || 0;
 
       if (statusCode < 200 || statusCode >= 300) {
@@ -92,31 +126,12 @@ function fetchRepositoryData(targetUrl = DEFAULT_CONFIG.url) {
         return;
       }
 
-      /** @type {Buffer[]} */
-      const chunks = [];
-      let totalBytesReceived = 0;
-
-      res.on('data', (chunk) => {
-        totalBytesReceived += chunk.length;
-        if (totalBytesReceived > MAX_RESPONSE_SIZE) {
-          res.destroy(new Error('Response payload exceeded maximum allowable size bounds (Overflow Protection).'));
-          return;
-        }
-        chunks.push(chunk);
-      });
-
-      res.on('end', () => {
-        try {
-          const rawData = Buffer.concat(chunks).toString('utf8');
-          resolve(rawData);
-        } catch (parseError) {
-          reject(parseError);
-        }
-      });
-
-      res.on('error', (streamErr) => {
-        reject(streamErr);
-      });
+      try {
+        const rawData = await consumeResponseStream(res);
+        resolve(rawData);
+      } catch (err) {
+        reject(err);
+      }
     });
 
     req.on('error', (netErr) => {
