@@ -5,8 +5,12 @@
  * Siphoned from: craighckby-stack/DARLEK-CAAN-Cognitive-Engine (Tessera Enterprise)
  */
 
+export type EnvironmentType = 'development' | 'production' | 'test';
+export type SandboxIsolationLevel = 'strict' | 'permissive' | 'zero-leak';
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
 export interface SystemEnvironmentConfig {
-  readonly NODE_ENV: 'development' | 'production' | 'test';
+  readonly NODE_ENV: EnvironmentType;
   readonly DATABASE_URL: string;
   readonly GEMINI_API_KEY: string;
   readonly OPENAI_API_KEY?: string;
@@ -15,11 +19,15 @@ export interface SystemEnvironmentConfig {
   readonly OLLAMA_BASE_URL: string;
   readonly MEMORY_DIR: string;
   readonly CONSENSUS_WEIGHT_THRESHOLD: number;
-  readonly SANDBOX_ISOLATION_LEVEL: 'strict' | 'permissive' | 'zero-leak';
+  readonly SANDBOX_ISOLATION_LEVEL: SandboxIsolationLevel;
   readonly DIAGNOSTICS_ENABLED: boolean;
-  readonly LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error';
+  readonly LOG_LEVEL: LogLevel;
   readonly PORT: number;
 }
+
+const ALLOWED_NODE_ENVS: readonly EnvironmentType[] = ['development', 'production', 'test'];
+const ALLOWED_SANDBOX_LEVELS: readonly SandboxIsolationLevel[] = ['strict', 'permissive', 'zero-leak'];
+const ALLOWED_LOG_LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error'];
 
 export class EnvironmentValidator {
   private static instance: EnvironmentValidator;
@@ -45,53 +53,43 @@ export class EnvironmentValidator {
   }
 
   private validate(): SystemEnvironmentConfig {
-    const nodeEnv = (process.env.NODE_ENV ?? 'development') as SystemEnvironmentConfig['NODE_ENV'];
-    if (nodeEnv !== 'development' && nodeEnv !== 'production' && nodeEnv !== 'test') {
-      throw new Error(`Invalid NODE_ENV configuration: "${nodeEnv}". Allowed values: development, production, test.`);
+    const nodeEnv = (process.env.NODE_ENV ?? 'development') as EnvironmentType;
+    if (!ALLOWED_NODE_ENVS.includes(nodeEnv)) {
+      throw new Error(`Invalid NODE_ENV configuration: "${nodeEnv}". Allowed values: ${ALLOWED_NODE_ENVS.join(', ')}.`);
     }
 
-    const databaseUrl = process.env.DATABASE_URL ?? 'file:./dev.db';
-    const geminiApiKey = process.env.GEMINI_API_KEY ?? '';
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-    const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
-    const ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
-    const memoryDir = process.env.MEMORY_DIR ?? './memory';
+    const sandboxIsolation = (process.env.SANDBOX_ISOLATION_LEVEL ?? 'zero-leak') as SandboxIsolationLevel;
+    if (!ALLOWED_SANDBOX_LEVELS.includes(sandboxIsolation)) {
+      throw new Error(`Invalid SANDBOX_ISOLATION_LEVEL configuration: "${sandboxIsolation}". Allowed values: ${ALLOWED_SANDBOX_LEVELS.join(', ')}.`);
+    }
+
+    const logLevel = (process.env.LOG_LEVEL ?? 'info') as LogLevel;
+    if (!ALLOWED_LOG_LEVELS.includes(logLevel)) {
+      throw new Error(`Invalid LOG_LEVEL configuration: "${logLevel}". Allowed values: ${ALLOWED_LOG_LEVELS.join(', ')}.`);
+    }
 
     const rawConsensus = process.env.CONSENSUS_WEIGHT_THRESHOLD;
-    const consensusWeight = rawConsensus !== undefined ? Number(rawConsensus) : 0.75;
-    const validConsensus = Number.isNaN(consensusWeight) ? 0.75 : consensusWeight;
-
-    const sandboxIsolation = (process.env.SANDBOX_ISOLATION_LEVEL ?? 'zero-leak') as SystemEnvironmentConfig['SANDBOX_ISOLATION_LEVEL'];
-    if (sandboxIsolation !== 'strict' && sandboxIsolation !== 'permissive' && sandboxIsolation !== 'zero-leak') {
-      throw new Error(`Invalid SANDBOX_ISOLATION_LEVEL configuration: "${sandboxIsolation}". Allowed values: strict, permissive, zero-leak.`);
-    }
-
-    const diagnosticsEnabled = process.env.DIAGNOSTICS_ENABLED !== 'false';
-
-    const logLevel = (process.env.LOG_LEVEL ?? 'info') as SystemEnvironmentConfig['LOG_LEVEL'];
-    if (logLevel !== 'debug' && logLevel !== 'info' && logLevel !== 'warn' && logLevel !== 'error') {
-      throw new Error(`Invalid LOG_LEVEL configuration: "${logLevel}". Allowed values: debug, info, warn, error.`);
-    }
+    const parsedConsensus = rawConsensus !== undefined ? Number(rawConsensus) : 0.75;
+    const consensusWeight = Number.isNaN(parsedConsensus) ? 0.75 : parsedConsensus;
 
     const rawPort = process.env.PORT;
-    const port = rawPort !== undefined ? Number.parseInt(rawPort, 10) : 3000;
-    const validPort = Number.isNaN(port) ? 3000 : port;
+    const parsedPort = rawPort !== undefined ? Number.parseInt(rawPort, 10) : 3000;
+    const port = Number.isNaN(parsedPort) ? 3000 : parsedPort;
 
     return {
       NODE_ENV: nodeEnv,
-      DATABASE_URL: databaseUrl,
-      GEMINI_API_KEY: geminiApiKey,
-      OPENAI_API_KEY: openaiApiKey,
-      ANTHROPIC_API_KEY: anthropicApiKey,
-      DEEPSEEK_API_KEY: deepseekApiKey,
-      OLLAMA_BASE_URL: ollamaBaseUrl,
-      MEMORY_DIR: memoryDir,
-      CONSENSUS_WEIGHT_THRESHOLD: validConsensus,
+      DATABASE_URL: process.env.DATABASE_URL ?? 'file:./dev.db',
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+      DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+      OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
+      MEMORY_DIR: process.env.MEMORY_DIR ?? './memory',
+      CONSENSUS_WEIGHT_THRESHOLD: consensusWeight,
       SANDBOX_ISOLATION_LEVEL: sandboxIsolation,
-      DIAGNOSTICS_ENABLED: diagnosticsEnabled,
+      DIAGNOSTICS_ENABLED: process.env.DIAGNOSTICS_ENABLED !== 'false',
       LOG_LEVEL: logLevel,
-      PORT: validPort,
+      PORT: port,
     };
   }
 }
