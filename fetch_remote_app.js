@@ -9,7 +9,7 @@
 'use strict';
 
 const { createWriteStream } = require('node:fs');
-const { resolve, normalize, isAbsolute } = require('node:path');
+const { resolve, normalize } = require('node:path');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 
@@ -22,26 +22,23 @@ const { pipeline } = require('node:stream/promises');
 /**
  * Validates and normalizes a destination path to prevent directory traversal attacks.
  * 
- * @param {string} destPath - The raw destination path.
- * @returns {string} The safely resolved absolute or relative path within bounds.
+ * @param {string} destinationPath - The raw destination path.
+ * @returns {string} The safely resolved path within bounds.
  * @throws {TypeError} If path is invalid or attempts traversal.
  */
-function validateAndSanitizePath(destPath) {
-  if (typeof destPath !== 'string' || !destPath.trim()) {
+function validateAndSanitizePath(destinationPath) {
+  if (typeof destinationPath !== 'string' || !destinationPath.trim()) {
     throw new TypeError('[EMG Core v49] Parameter "destPath" must be a non-empty string.');
   }
 
-  // Prevent null bytes or control characters injection
-  if (/[\0-\x1f\x7f-\x9f]/.test(destPath)) {
+  if (/[\0-\x1f\x7f-\x9f]/.test(destinationPath)) {
     throw new TypeError('[EMG Core v49] Parameter "destPath" contains invalid control characters.');
   }
 
-  // Resolve and normalize to catch path traversal attempts (e.g., '../../')
-  const baseDir = process.cwd();
-  const resolvedPath = resolve(baseDir, destPath);
-  const normalizedBase = normalize(baseDir);
+  const baseDirectory = process.cwd();
+  const resolvedPath = resolve(baseDirectory, destinationPath);
+  const normalizedBase = normalize(baseDirectory);
 
-  // Ensure the resolved path strictly starts within the base directory to prevent escaping
   if (!resolvedPath.startsWith(normalizedBase)) {
     throw new Error('[EMG Core v49] Security violation: Path traversal detected outside base directory.');
   }
@@ -50,11 +47,11 @@ function validateAndSanitizePath(destPath) {
 }
 
 /**
- * Validates the target URL to ensure it uses the secure HTTPS protocol and a safe domain format.
+ * Validates the target URL to ensure it uses the secure HTTPS protocol.
  * 
  * @param {string} urlString - The target URL to validate.
  * @returns {URL} The parsed and validated URL object.
- * @throws {TypeError} If the URL is malformed or uses an unauthorized protocol.
+ * @throws {TypeError} If the URL is malformed or insecure.
  */
 function validateAndSanitizeUrl(urlString) {
   if (typeof urlString !== 'string' || !urlString.trim()) {
@@ -68,7 +65,6 @@ function validateAndSanitizeUrl(urlString) {
     throw new TypeError(`[EMG Core v49] Invalid URL format provided: ${urlString}`);
   }
 
-  // Enforce strict transport layer security bounds
   if (parsedUrl.protocol !== 'https:') {
     throw new Error(`[EMG Core v49] Security violation: Insecure protocol "${parsedUrl.protocol}" detected. Only HTTPS is permitted.`);
   }
@@ -106,7 +102,6 @@ async function fetchAndSave(url, destPath) {
   const writeStream = createWriteStream(sanitizedDestPath, { flags: 'w', mode: 0o600 });
 
   try {
-    // Stream response body to file with low memory overhead and strict bounds checking
     // @ts-ignore - Readable.fromWeb handles Web ReadableStream in Node.js environments
     await pipeline(Readable.fromWeb(response.body), writeStream);
   } catch (err) {
@@ -124,7 +119,7 @@ async function fetchAndSave(url, destPath) {
  */
 async function executeSynchronization() {
   /** @type {readonly DownloadTarget[]} */
-  const targets = Object.freeze([
+  const synchronizationTargets = Object.freeze([
     {
       url: 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/src/App.tsx',
       dest: 'remote_App.tsx',
@@ -136,10 +131,10 @@ async function executeSynchronization() {
   ]);
 
   try {
-    await Promise.all(targets.map((target) => fetchAndSave(target.url, target.dest)));
+    await Promise.all(synchronizationTargets.map((target) => fetchAndSave(target.url, target.dest)));
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[EMG Core v49] Critical synchronization failure:', message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[EMG Core v49] Critical synchronization failure:', errorMessage);
     process.exitCode = 1;
   }
 }
