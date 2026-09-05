@@ -11,15 +11,13 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Executes a robust, atomic file string replacement patch.
+ * Validates the parameters for the file patching operation.
  * 
  * @param {string} targetPath - The relative or absolute path to the target file.
- * @param {ReadonlyArray<{readonly searchValue: string | RegExp, readonly replaceValue: string}>} patches - Collection of transformations.
+ * @param {Array} patches - Collection of transformations.
  * @throws {TypeError} If parameters are invalid types.
- * @throws {Error} If file I/O operations fail.
- * @returns {void}
  */
-function applySovereignPatch(targetPath, patches) {
+function validatePatchParameters(targetPath, patches) {
   if (typeof targetPath !== 'string' || targetPath.trim() === '') {
     throw new TypeError('EMG_CORE_ERR: targetPath must be a non-empty string.');
   }
@@ -27,39 +25,68 @@ function applySovereignPatch(targetPath, patches) {
   if (!Array.isArray(patches)) {
     throw new TypeError('EMG_CORE_ERR: patches must be an array of transformation objects.');
   }
+}
+
+/**
+ * Validates an individual patch object's structure and contents.
+ * 
+ * @param {Object} patch - The patch object to validate.
+ * @param {number} index - The index of the patch in the collection.
+ * @throws {Error} If the patch object is malformed.
+ */
+function validatePatchObject(patch, index) {
+  if (!patch || typeof patch !== 'object' || patch.searchValue === undefined || patch.replaceValue === undefined) {
+    throw new Error(`EMG_CORE_ERR: Malformed patch object at index ${index}.`);
+  }
+}
+
+/**
+ * Applies a sequence of text transformations to a target file's content.
+ * 
+ * @param {string} code - The original source code content.
+ * @ReadonlyArray<{readonly searchValue: string | RegExp, readonly replaceValue: string}> patches - Collection of transformations.
+ * @returns {string} The transformed source code content.
+ */
+function executeTransformations(code, patches) {
+  return patches.reduce((currentCode, patch, index) => {
+    validatePatchObject(patch, index);
+
+    const { searchValue, replaceValue } = patch;
+    const updatedCode = currentCode.replace(searchValue, replaceValue);
+
+    if (updatedCode === currentCode && !(searchValue instanceof RegExp)) {
+      process.stderr.write(`EMG_CORE_WARN: Patch string at index ${index} resulted in zero mutations.\n`);
+    }
+
+    return updatedCode;
+  }, code);
+}
+
+/**
+ * Executes a robust, atomic file string replacement patch.
+ * 
+ * @param {string} targetPath - The relative or absolute path to the target file.
+ * @ReadonlyArray<{readonly searchValue: string | RegExp, readonly replaceValue: string}> patches - Collection of transformations.
+ * @throws {TypeError} If parameters are invalid types.
+ * @throws {Error} If file I/O operations fail.
+ * @returns {void}
+ */
+function applySovereignPatch(targetPath, patches) {
+  validatePatchParameters(targetPath, patches);
 
   const absolutePath = path.resolve(process.cwd(), targetPath);
 
-  let code;
+  let originalCode;
   try {
-    code = fs.readFileSync(absolutePath, 'utf8');
+    originalCode = fs.readFileSync(absolutePath, 'utf8');
   } catch (readError) {
     throw new Error(`EMG_CORE_ERR: Failed to read target file at "${absolutePath}": ${readError.message}`);
   }
 
-  // Iterate and apply patches sequentially with optimized safety validations
-  const patchLen = patches.length;
-  for (let i = 0; i < patchLen; i++) {
-    const patch = patches[i];
-    
-    if (!patch || typeof patch !== 'object' || patch.searchValue === undefined || patch.replaceValue === undefined) {
-      throw new Error(`EMG_CORE_ERR: Malformed patch object at index ${i}.`);
-    }
-
-    const { searchValue, replaceValue } = patch;
-
-    // Perform replacement
-    const updatedCode = code.replace(searchValue, replaceValue);
-    
-    if (updatedCode === code && !(searchValue instanceof RegExp)) {
-      process.stderr.write(`EMG_CORE_WARN: Patch string at index ${i} resulted in zero mutations.\n`);
-    }
-
-    code = updatedCode;
-  }
+  const updatedCode = executeTransformations(originalCode, patches);
 
   try {
-    fs.writeFileSync(absolutePath, code, 'utf8');
+    fs.writeFileSync(absolutePath, updatedCode, 'utf8');
   } catch (writeError) {
     throw new Error(`EMG_CORE_ERR: Failed to write updated file at "${absolutePath}": ${writeError.message}`);
   }
