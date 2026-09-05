@@ -4,15 +4,15 @@
  * patterns in the AGI engine with predictable, deterministic values for testing and auditing.
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 const TARGET_FILE_PATH = path.join('src', 'utils', 'agi-engine.ts');
 
 /**
  * Configuration mapping of regex patterns to their deterministic replacements.
  */
-const REPLACEMENTS = [
+const RANDOMNESS_REPLACEMENTS = Object.freeze([
   {
     name: 'Random ID Generation',
     pattern: /Math\.random\(\)\.toString\(36\)\.substring\([^)]*\)/g,
@@ -33,20 +33,31 @@ const REPLACEMENTS = [
     pattern: /'0x' \+ Math\.random\(\)\.toString\(16\)\.substring\([^)]*\)\.toUpperCase\(\)/g,
     replacement: "'0x' + Date.now().toString(16).toUpperCase()",
   },
-];
+]);
+
+/**
+ * Applies a sequence of pattern replacements to a source code string.
+ * 
+ * @param {string} sourceCode - The raw source code to transform.
+ * @param {Array<{pattern: RegExp, replacement: string}>} replacements - The mapping of patterns.
+ * @returns {string} The updated, deterministic source code.
+ */
+function applyReplacements(sourceCode, replacements) {
+  return replacements.reduce(
+    (currentCode, { pattern, replacement }) => currentCode.replace(pattern, replacement),
+    sourceCode
+  );
+}
 
 /**
  * Reads the target source file, applies all deterministic replacements, and writes the result back.
  */
 function makeEngineDeterministic() {
   try {
-    let sourceCode = fs.readFileSync(TARGET_FILE_PATH, 'utf8');
+    const originalSource = fs.readFileSync(TARGET_FILE_PATH, 'utf8');
+    const sanitizedSource = applyReplacements(originalSource, RANDOMNESS_REPLACEMENTS);
 
-    for (const { pattern, replacement } of REPLACEMENTS) {
-      sourceCode = sourceCode.replace(pattern, replacement);
-    }
-
-    fs.writeFileSync(TARGET_FILE_PATH, sourceCode, 'utf8');
+    fs.writeFileSync(TARGET_FILE_PATH, sanitizedSource, 'utf8');
     console.info(`[EMG Engine] Successfully sanitized randomness in: ${TARGET_FILE_PATH}`);
   } catch (error) {
     console.error(`[EMG Engine] Failed to process file ${TARGET_FILE_PATH}:`, error.message);
