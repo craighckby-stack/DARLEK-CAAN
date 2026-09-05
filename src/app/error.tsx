@@ -1,20 +1,20 @@
 'use client';
 
-import { useEffect, type FC, type MouseEventHandler } from 'react';
+import { useEffect, type JSX, type MouseEvent } from 'react';
 
 /**
- * Extended error interface containing an optional runtime digest.
+ * Extended error interface incorporating an optional Next.js runtime digest.
  */
 interface ApplicationError extends Error {
-  digest?: string;
+  readonly digest?: string;
 }
 
 /**
  * Properties contract for the Global Error boundary component.
  */
 interface ErrorBoundaryProps {
-  error: ApplicationError;
-  reset: () => void;
+  readonly error: ApplicationError;
+  readonly reset: () => void;
 }
 
 const FALLBACK_ERROR_MESSAGE = 'An unexpected error occurred.';
@@ -24,16 +24,16 @@ const FALLBACK_ERROR_MESSAGE = 'An unexpected error occurred.';
  * Catches runtime exceptions and presents an isolated recovery terminal UI.
  */
 export default function ErrorBoundary({ error, reset }: ErrorBoundaryProps): JSX.Element {
-  useEffect(() => {
-    // Log fatal errors to internal monitoring infrastructures if needed
+  useEffect((): void => {
     console.error('Captured Runtime Exception:', error);
   }, [error]);
 
-  const handleResetClick: MouseEventHandler<HTMLButtonElement> = () => {
+  const handleResetClick = (event: MouseEvent<HTMLButtonElement>): void => {
+    event.preventDefault();
     reset();
   };
 
-  const errorMessage = error?.message || FALLBACK_ERROR_MESSAGE;
+  const errorMessage = error.message || FALLBACK_ERROR_MESSAGE;
 
   return (
     <main 
