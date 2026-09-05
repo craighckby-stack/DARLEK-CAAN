@@ -4,7 +4,7 @@ The `public/` directory is designated for storing public-facing static assets—
 
 ---
 
-## Guidelines for Usage
+## Usage Guidelines
 
 - **File Organization**: Keep assets properly categorized in descriptive subdirectories (e.g., `images/`, `icons/`, `fonts/`) as the project scales to maintain a clean and navigable workspace.
 - **Naming Conventions**: Use lowercase letters, kebab-case (hyphens instead of spaces), and descriptive identifiers for all asset files (e.g., `company-logo.svg`, `hero-background.webp`).
@@ -12,7 +12,7 @@ The `public/` directory is designated for storing public-facing static assets—
 
 ---
 
-## Code Example: Referencing Public Assets
+## Referencing Public Assets
 
 When referencing assets stored in the `public/` directory within your components or templates, reference them directly from the root URL (`/`):
 
