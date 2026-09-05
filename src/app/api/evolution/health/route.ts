@@ -21,114 +21,147 @@ interface ErrorResponse {
   readonly error: string;
 }
 
-const ROUND_TWO = 2;
-const ROUND_THREE = 3;
+interface AggregateMutationStats {
+  readonly pendingMutations: number;
+  readonly appliedMutations: number;
+  readonly rejectedMutations: number;
+  readonly totalAffectedFiles: number;
+}
 
-export async function POST(req: NextRequest): Promise<NextResponse<HealthCheckResult | ErrorResponse>> {
-  let body: RequestBody = {};
+interface ThresholdCounts {
+  readonly warningCount: number;
+  readonly criticalCount: number;
+}
+
+const DECIMAL_PRECISION_STANDARD = 2;
+const DECIMAL_PRECISION_HIGH = 3;
+
+/**
+ * Safely parses the incoming HTTP request body, returning an empty request object on failure.
+ */
+async function parseRequestBody(req: NextRequest): Promise<RequestBody | ErrorResponse> {
   try {
-    const text = await req.text();
-    if (text) {
-      body = JSON.parse(text) as RequestBody;
+    const rawText = await req.text();
+    if (!rawText) {
+      return {};
     }
+    return JSON.parse(rawText) as RequestBody;
   } catch {
-    return NextResponse.json(
-      {
-        metrics: null,
-        overallHealth: 'critical',
-        error: 'Invalid JSON payload format.',
-      } satisfies ErrorResponse,
-      { status: 400 }
-    );
+    return {
+      metrics: null,
+      overallHealth: 'critical',
+      error: 'Invalid JSON payload format.',
+    };
   }
+}
 
-  const mutations = Array.isArray(body?.mutations) ? body.mutations : [];
-  const mutationCount = mutations.length;
+/**
+ * Aggregates statistics across all provided mutation payloads.
+ */
+function aggregateMutations(mutations: readonly MutationInput[] = []): AggregateMutationStats {
+  return mutations.reduce<AggregateMutationStats>(
+    (acc, mutation) => {
+      const isPending = mutation.status === 'pending';
+      const isApplied = mutation.status === 'applied';
+      const isRejected = mutation.status === 'rejected';
 
-  let pendingMutations = 0;
-  let appliedMutations = 0;
-  let rejectedMutations = 0;
-  let totalAffectedFiles = 0;
+      const fileCount = Array.isArray(mutation.affectedFiles) ? mutation.affectedFiles.length : 0;
 
-  for (let i = 0; i < mutationCount; i++) {
-    const m = mutations[i];
-    const status = m?.status;
-    if (status === 'pending') {
-      pendingMutations++;
-    } else if (status === 'applied') {
-      appliedMutations++;
-    } else if (status === 'rejected') {
-      rejectedMutations++;
-    }
+      return {
+        pendingMutations: acc.pendingMutations + (isPending ? 1 : 0),
+        appliedMutations: acc.appliedMutations + (isApplied ? 1 : 0),
+        rejectedMutations: acc.rejectedMutations + (isRejected ? 1 : 0),
+        totalAffectedFiles: acc.totalAffectedFiles + fileCount,
+      };
+    },
+    { pendingMutations: 0, appliedMutations: 0, rejectedMutations: 0, totalAffectedFiles: 0 }
+  );
+}
 
-    if (Array.isArray(m?.affectedFiles)) {
-      totalAffectedFiles += m.affectedFiles.length;
-    }
-  }
+/**
+ * Computes saturation metrics based on aggregate mutation statistics.
+ */
+function calculateMetrics(stats: AggregateMutationStats, totalMutationsCount: number): SaturationMetrics {
+  const { appliedMutations, pendingMutations, rejectedMutations, totalAffectedFiles } = stats;
 
   const structuralChange = Math.min(5, 0.5 + appliedMutations * 0.4);
-  const semanticSaturation = Math.min(1.0, 0.05 + mutationCount * 0.02 + pendingMutations * 0.05);
+  const semanticSaturation = Math.min(1.0, 0.05 + totalMutationsCount * 0.02 + pendingMutations * 0.05);
   const velocity = Math.min(5, 1.0 + appliedMutations * 0.3 + rejectedMutations * 0.1);
   const identityPreservation = Math.max(0.1, 1.0 - appliedMutations * 0.05);
   const capabilityAlignment = Math.min(5, 1.5 + appliedMutations * 0.5);
   const crossFileImpact = Math.min(5, 0.3 + totalAffectedFiles * 0.2);
 
-  const metrics: SaturationMetrics = {
-    structuralChange: Number(structuralChange.toFixed(ROUND_TWO)),
-    semanticSaturation: Number(semanticSaturation.toFixed(ROUND_THREE)),
-    velocity: Number(velocity.toFixed(ROUND_TWO)),
-    identityPreservation: Number(identityPreservation.toFixed(ROUND_TWO)),
-    capabilityAlignment: Number(capabilityAlignment.toFixed(ROUND_TWO)),
-    crossFileImpact: Number(crossFileImpact.toFixed(ROUND_TWO)),
+  return {
+    structuralChange: Number(structuralChange.toFixed(DECIMAL_PRECISION_STANDARD)),
+    semanticSaturation: Number(semanticSaturation.toFixed(DECIMAL_PRECISION_HIGH)),
+    velocity: Number(velocity.toFixed(DECIMAL_PRECISION_STANDARD)),
+    identityPreservation: Number(identityPreservation.toFixed(DECIMAL_PRECISION_STANDARD)),
+    capabilityAlignment: Number(capabilityAlignment.toFixed(DECIMAL_PRECISION_STANDARD)),
+    crossFileImpact: Number(crossFileImpact.toFixed(DECIMAL_PRECISION_STANDARD)),
   };
+}
 
+/**
+ * Evaluates individual metric thresholds to tally warning and critical alerts.
+ */
+function evaluateThresholds(metrics: SaturationMetrics): ThresholdCounts {
   let warningCount = 0;
   let criticalCount = 0;
 
-  if (metrics.structuralChange > 4) {
-    criticalCount++;
-  } else if (metrics.structuralChange > 3) {
-    warningCount++;
-  }
+  // Structural Change
+  if (metrics.structuralChange > 4) criticalCount++;
+  else if (metrics.structuralChange > 3) warningCount++;
 
-  if (metrics.semanticSaturation > 0.28) {
-    criticalCount++;
-  } else if (metrics.semanticSaturation > 0.21) {
-    warningCount++;
-  }
+  // Semantic Saturation
+  if (metrics.semanticSaturation > 0.28) criticalCount++;
+  else if (metrics.semanticSaturation > 0.21) warningCount++;
 
-  if (metrics.velocity > 4) {
-    criticalCount++;
-  } else if (metrics.velocity > 3) {
-    warningCount++;
-  }
+  // Velocity
+  if (metrics.velocity > 4) criticalCount++;
+  else if (metrics.velocity > 3) warningCount++;
 
-  if (metrics.identityPreservation < 0.2) {
-    criticalCount++;
-  } else if (metrics.identityPreservation < 0.4) {
-    warningCount++;
-  }
+  // Identity Preservation
+  if (metrics.identityPreservation < 0.2) criticalCount++;
+  else if (metrics.identityPreservation < 0.4) warningCount++;
 
-  if (metrics.capabilityAlignment > 4) {
-    criticalCount++;
-  } else if (metrics.capabilityAlignment > 3) {
-    warningCount++;
-  }
+  // Capability Alignment
+  if (metrics.capabilityAlignment > 4) criticalCount++;
+  else if (metrics.capabilityAlignment > 3) warningCount++;
 
-  if (metrics.crossFileImpact > 2.4) {
-    criticalCount++;
-  } else if (metrics.crossFileImpact > 1.8) {
-    warningCount++;
-  }
+  // Cross File Impact
+  if (metrics.crossFileImpact > 2.4) criticalCount++;
+  else if (metrics.crossFileImpact > 1.8) warningCount++;
 
-  let overallHealth: 'healthy' | 'warning' | 'critical';
+  return { warningCount, criticalCount };
+}
+
+/**
+ * Determines overall health state from warning and critical counts.
+ */
+function deriveOverallHealth(counts: ThresholdCounts): 'healthy' | 'warning' | 'critical' {
+  const { warningCount, criticalCount } = counts;
+
   if (criticalCount >= 2) {
-    overallHealth = 'critical';
-  } else if (warningCount >= 2 || criticalCount >= 1) {
-    overallHealth = 'warning';
-  } else {
-    overallHealth = 'healthy';
+    return 'critical';
   }
+  if (warningCount >= 2 || criticalCount >= 1) {
+    return 'warning';
+  }
+  return 'healthy';
+}
+
+export async function POST(req: NextRequest): Promise<NextResponse<HealthCheckResult | ErrorResponse>> {
+  const parsedBody = await parseRequestBody(req);
+
+  if ('error' in parsedBody) {
+    return NextResponse.json(parsedBody, { status: 400 });
+  }
+
+  const mutations = Array.isArray(parsedBody?.mutations) ? parsedBody.mutations : [];
+  const mutationStats = aggregateMutations(mutations);
+  const metrics = calculateMetrics(mutationStats, mutations.length);
+  const thresholds = evaluateThresholds(metrics);
+  const overallHealth = deriveOverallHealth(thresholds);
 
   const result: HealthCheckResult = {
     metrics,
