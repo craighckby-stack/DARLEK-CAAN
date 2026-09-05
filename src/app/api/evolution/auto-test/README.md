@@ -1,13 +1,13 @@
 # Auto-Test Runner Architecture
 
 ## Overview
-The Auto-Test Runner acts as the 'Coherence Gate' for the DARLEK CANN v3.0 system. It ensures that any automated code mutation adheres to strict syntax, security, and architectural standards before integration.
+The Auto-Test Runner serves as the **Coherence Gate** for the DARLEK CANN v3.0 system. It validates all automated code mutations against rigorous syntax, security, and architectural standards prior to system integration.
 
-## Workflow
-1. **Ingestion**: Receives `proposedCode` and `originalCode`.
-2. **Diagnostic Suite**: Runs regex-based static analysis.
-3. **Gatekeeping**: If any `high` severity `fail` status is returned, the mutation is rejected.
-4. **Telemetry**: Results are logged to the evolution dashboard.
+## Execution Workflow
+1. **Ingestion**: Accepts `proposedCode` and `originalCode` payloads for evaluation.
+2. **Diagnostic Suite**: Executes comprehensive regex-based static analysis checks.
+3. **Gatekeeping**: Evaluates diagnostic outcomes; any `high`-severity failure immediately rejects the mutation.
+4. **Telemetry**: Records execution results and metrics to the central evolution dashboard.
 
-## Integration
-This module is called by the `MutationEngine` after every generation cycle.
+## Module Integration
+This component is invoked directly by the `MutationEngine` upon the completion of every generation cycle.
