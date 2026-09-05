@@ -1,12 +1,32 @@
+/**
+ * Represents the operational lifecycle phases of a quantum node.
+ */
 export type QuantumNodeState = 'STABLE' | 'MUTATING' | 'CRITICAL';
 
+/**
+ * Defines the foundational contract for an executable quantum processing node.
+ * 
+ * @template TInput - The expected input payload type for execution.
+ * @template TOutput - The resulting output payload type from execution.
+ */
 export interface QuantumNode<TInput = unknown, TOutput = unknown> {
   readonly id: string;
   readonly state: QuantumNodeState;
+  
+  /**
+  * Executes the node's core operational logic asynchronously.
+  */
   execute(input: TInput): Promise<TOutput>;
+  
+  /**
+  * Safely deconstructs and releases system resources allocated by the node.
+  */
   teardown(): void;
 }
 
+/**
+ * Encapsulates the metrics and execution telemetry resulting from an evolution cycle.
+ */
 export interface EvolutionResult {
   readonly success: boolean;
   readonly logs: readonly string[];
