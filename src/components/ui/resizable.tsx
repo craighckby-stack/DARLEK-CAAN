@@ -20,6 +20,9 @@ export type ResizableHandleProps = React.ComponentProps<
   readonly withHandle?: boolean
 }
 
+/**
+ * Container component for organizing resizable panels into rows or columns.
+ */
 const ResizablePanelGroup = React.memo(function ResizablePanelGroup({
   className,
   ...props
@@ -38,6 +41,9 @@ const ResizablePanelGroup = React.memo(function ResizablePanelGroup({
 
 ResizablePanelGroup.displayName = "ResizablePanelGroup"
 
+/**
+ * Individual layout panel contained within a ResizablePanelGroup.
+ */
 const ResizablePanel = React.memo(function ResizablePanel({
   ...props
 }: ResizablePanelProps) {
@@ -46,6 +52,9 @@ const ResizablePanel = React.memo(function ResizablePanel({
 
 ResizablePanel.displayName = "ResizablePanel"
 
+/**
+ * Interactive divider handle placed between resizable panels.
+ */
 const ResizableHandle = React.memo(function ResizableHandle({
   withHandle,
   className,
