@@ -9,6 +9,49 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const TARGET_FILE_PATH = path.normalize('src/app/api/evolution/propose/route.ts');
+
+const PATCH_CONFIGS = [
+    {
+        name: 'Target Signature 1',
+        search: 'let proposedCode = parsed?.proposedCode;',
+        replacement: "if (!parsed) console.log('[Propose] JSON parse failed. rawText length:', rawText.length, 'preview:', rawText.slice(0, 200));\n    let proposedCode = parsed?.proposedCode;"
+    },
+    {
+        name: 'Target Signature 2',
+        search: 'proposedCode = fileContent;',
+        replacement: "console.log('[Propose] Fallback matched no code fences. Using fileContent.');\n        proposedCode = fileContent;"
+    }
+];
+
+/**
+ * Validates that all required target strings exist within the source code content.
+ * 
+ * @param {string} sourceContent - The original file content to inspect.
+ * @param {string} filePath - The path of the target file for logging context.
+ * @returns {void}
+ */
+function validateTargetSignatures(sourceContent, filePath) {
+    for (const patch of PATCH_CONFIGS) {
+        if (!sourceContent.includes(patch.search)) {
+            console.warn(`[EMG-v49] Warning: ${patch.name} not found in ${filePath}`);
+        }
+    }
+}
+
+/**
+ * Applies configured string replacement patches sequentially to the source code.
+ * 
+ * @param {string} sourceContent - The original file content.
+ * @returns {string} The updated file content.
+ */
+function applyPatches(sourceContent) {
+    return PATCH_CONFIGS.reduce(
+        (content, patch) => content.replace(patch.search, patch.replacement),
+        sourceContent
+    );
+}
+
 /**
  * Executes a targeted string replacement patch on a specific target file.
  * 
@@ -17,36 +60,18 @@ const path = require('node:path');
  * @returns {void}
  */
 function patchLogging() {
-    const targetFile = path.normalize('src/app/api/evolution/propose/route.ts');
-
     try {
-        // Read file with explicit UTF-8 encoding
-        const originalCode = fs.readFileSync(targetFile, 'utf8');
+        const originalCode = fs.readFileSync(TARGET_FILE_PATH, 'utf8');
 
-        const targetSearch1 = 'let proposedCode = parsed?.proposedCode;';
-        const targetReplacement1 = "if (!parsed) console.log('[Propose] JSON parse failed. rawText length:', rawText.length, 'preview:', rawText.slice(0, 200));\n    let proposedCode = parsed?.proposedCode;";
+        validateTargetSignatures(originalCode, TARGET_FILE_PATH);
 
-        const targetSearch2 = 'proposedCode = fileContent;';
-        const targetReplacement2 = "console.log('[Propose] Fallback matched no code fences. Using fileContent.');\n        proposedCode = fileContent;";
+        const updatedCode = applyPatches(originalCode);
 
-        // Validate existence of targets before replacing to prevent silent failures
-        if (!originalCode.includes(targetSearch1)) {
-            console.warn(`[EMG-v49] Warning: Target signature 1 not found in ${targetFile}`);
-        }
-        if (!originalCode.includes(targetSearch2)) {
-            console.warn(`[EMG-v49] Warning: Target signature 2 not found in ${targetFile}`);
-        }
-
-        const updatedCode = originalCode
-            .replace(targetSearch1, targetReplacement1)
-            .replace(targetSearch2, targetReplacement2);
-
-        // Atomic-like write operation
-        fs.writeFileSync(targetFile, updatedCode, 'utf8');
-        console.log(`[EMG-v49] Successfully patched target file: ${targetFile}`);
+        fs.writeFileSync(TARGET_FILE_PATH, updatedCode, 'utf8');
+        console.log(`[EMG-v49] Successfully patched target file: ${TARGET_FILE_PATH}`);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[EMG-v49] Critical execution failure during patching of ${targetFile}:`, errorMessage);
+        console.error(`[EMG-v49] Critical execution failure during patching of ${TARGET_FILE_PATH}:`, errorMessage);
         process.exitCode = 1;
         throw error;
     }
