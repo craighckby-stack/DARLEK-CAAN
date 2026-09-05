@@ -53,18 +53,22 @@ module.exports = { injectAtomicModule };
 
 ---
 
-## Security Guidelines & Vulnerability Reporting
+## Security Guidelines and Vulnerability Reporting
 
 ### Security Best Practices
-- **Input Validation**: All target paths and payloads passed into injection routines must undergo strict sanitization and path traversal checks to prevent arbitrary file write vulnerabilities.
+
+- **Input Validation**: All target paths and payloads passed into injection routines must undergo strict sanitization and path-traversal checks to prevent arbitrary file write vulnerabilities.
 - **Access Control**: Ensure that `.evolve_backups/` directories and backup snapshots are restricted with strict file permissions (`chmod 600` or equivalent) to prevent unauthorized read access to sensitive state history.
-- **Idempotency & Integrity**: Maintain rigorous regex boundary validations to ensure automated updates cannot be exploited via malformed or malicious marker injection.
+- **Idempotency and Integrity**: Maintain rigorous regex boundary validations to ensure automated updates cannot be exploited via malformed or malicious marker injection.
 
 ### Responsible Disclosure Policy
+
 We take the security of the DARLEK CANN ecosystem seriously. If you discover a security vulnerability within this blueprint, codebase, or associated integration modules, please do not disclose it publicly until our engineering team has addressed it.
 
 ### Vulnerability Reporting Instructions
+
 To report a security issue, please adhere to the following protocol:
+
 1. **Do Not Open Public Issues**: Avoid submitting public GitHub issues or pull requests detailing active vulnerabilities.
 2. **Direct Reporting**: Send a detailed report via secure channels or email to our core security operations team at `security@darlek-cann.internal` (or your designated security contact).
 3. **Required Information**: Include a clear description of the vulnerability, steps to reproduce, potential impact assessment, and any proposed remediation strategies.
