@@ -33,7 +33,7 @@ function validateAndResolvePath(userPath) {
   }
 
   // Prevent null byte injections
-  if (userPath.indexOf('\0') !== -1) {
+  if (userPath.includes('\0')) {
     throw new Error('Security violation: Null byte detected in path.');
   }
 
@@ -59,7 +59,7 @@ function validateAndParseUrl(targetUrl) {
   let parsed;
   try {
     parsed = new URL(targetUrl);
-  } catch (err) {
+  } catch {
     throw new Error(`Invalid URL format: ${targetUrl}`);
   }
 
@@ -122,10 +122,7 @@ function fetchRemoteContent(url) {
       });
     });
 
-    req.on('error', (err) => {
-      reject(err);
-    });
-
+    req.on('error', reject);
     req.end();
   });
 }
@@ -152,21 +149,21 @@ async function main() {
 
   const changed = [];
 
-  const candidateFiles = [];
-  for (const f of remoteBlobs) {
-    if (f && typeof f.path === 'string' && f.path.startsWith('src/')) {
+  const candidateFiles = remoteBlobs.reduce((accumulator, fileEntry) => {
+    if (fileEntry && typeof fileEntry.path === 'string' && fileEntry.path.startsWith('src/')) {
       try {
-        const safePath = validateAndResolvePath(f.path);
+        const safePath = validateAndResolvePath(fileEntry.path);
         if (fs.existsSync(safePath)) {
-          candidateFiles.push({ ...f, safePath });
+          accumulator.push({ ...fileEntry, safePath });
         }
-      } catch (err) {
+      } catch {
         // Skip invalid candidate paths securely
       }
     }
-  }
+    return accumulator;
+  }, []);
 
-  const promises = candidateFiles.map(async (fileObj) => {
+  const syncPromises = candidateFiles.map(async (fileObj) => {
     try {
       const localContent = fs.readFileSync(fileObj.safePath, 'utf8');
       const remoteUrl = GITHUB_RAW_BASE + fileObj.path;
@@ -177,12 +174,12 @@ async function main() {
         changed.push(fileObj);
         fs.writeFileSync(fileObj.safePath, remoteContent, 'utf8');
       }
-    } catch (err) {
+    } catch {
       // Gracefully handle network or file system anomalies per original contract
     }
   });
 
-  await Promise.all(promises);
+  await Promise.all(syncPromises);
   console.log(`Found and updated ${changed.length} changed files.`);
 }
 
