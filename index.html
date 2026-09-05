@@ -10,17 +10,20 @@
     <meta name="theme-color" content="#090a0f" />
     <title>Git Secret & PII Sanitizer</title>
     
-    <!-- High-priority performance optimizations: DNS prefetch and preconnect -->
+    <!-- Performance Optimizations: DNS Resolution and Preconnection -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     
-    <!-- Critical rendering path preloads -->
+    <!-- Critical Rendering Path Preload -->
     <link rel="modulepreload" href="/src/main.tsx" />
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-red-500 selection:text-white">
+    <!-- Application Mount Point -->
     <div id="root" role="application" aria-label="Git Secret and PII Sanitizer Interface" class="min-h-screen flex flex-col"></div>
+    
+    <!-- Core Application Entrypoint -->
     <script type="module" src="/src/main.tsx" defer></script>
   </body>
 </html>
