@@ -7,8 +7,8 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 /**
  * Pattern configuration interface for code transformations.
@@ -25,6 +25,33 @@ const CONFIG = Object.freeze({
   replacement: 'siphonedCodeContext}\n\\`\\`\\`\n${fileContent',
 });
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB limit
+
+/**
+ * Validates that the target path securely resides within the base directory.
+ * 
+ * @param {string} baseDir - The trusted root directory.
+ * @param {string} targetPath - The resolved absolute path to check.
+ * @returns {boolean} True if the path is secure, false otherwise.
+ */
+function isPathSecure(baseDir, targetPath) {
+  return targetPath.startsWith(baseDir + path.sep) || targetPath === baseDir;
+}
+
+/**
+ * Safely retrieves file statistics, handling non-existent paths gracefully.
+ * 
+ * @param {string} filePath - Absolute path to the file.
+ * @returns {import('fs').Stats | null} The file stats or null if unavailable.
+ */
+function getFileStatsOrNull(filePath) {
+  try {
+    return fs.lstatSync(filePath);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Executes an idempotent, resilient code patch operation on the target route file.
  * Performs strict path validation, traversal protection, zero-write bypass, and comprehensive error containment.
@@ -32,43 +59,35 @@ const CONFIG = Object.freeze({
  * @returns {boolean} True if the file was modified, false otherwise.
  */
 function applyEvolutionPatch() {
-  // Defensive Input Validation & Path Traversal Prevention
   const baseDir = path.resolve(process.cwd());
   const resolvedPath = path.resolve(baseDir, CONFIG.relativePath);
 
-  // Strict boundary enforcement to ensure path stays within base directory
-  if (!resolvedPath.startsWith(baseDir + path.sep) && resolvedPath !== baseDir) {
+  if (!isPathSecure(baseDir, resolvedPath)) {
     console.error(`[EMG Core] Security Violation: Path traversal attempt detected for "${CONFIG.relativePath}".`);
     process.exitCode = 1;
     return false;
   }
 
+  const stats = getFileStatsOrNull(resolvedPath);
+  if (!stats) {
+    console.warn(`[EMG Core] Target file omitted - non-existent path: "${resolvedPath}"`);
+    return false;
+  }
+
+  if (!stats.isFile()) {
+    console.warn(`[EMG Core] Security Warning: Target path is not a standard file: "${resolvedPath}"`);
+    return false;
+  }
+
+  if (stats.size > MAX_FILE_SIZE_BYTES) {
+    console.error(`[EMG Core] Security Warning: File exceeds maximum permissible size bounds (${MAX_FILE_SIZE_BYTES} bytes).`);
+    process.exitCode = 1;
+    return false;
+  }
+
   try {
-    // Stat check to ensure target is a regular file and avoid race conditions / symlink exploits
-    let stats;
-    try {
-      stats = fs.lstatSync(resolvedPath);
-    } catch {
-      console.warn(`[EMG Core] Target file omitted - non-existent path: "${resolvedPath}"`);
-      return false;
-    }
-
-    if (!stats.isFile()) {
-      console.warn(`[EMG Core] Security Warning: Target path is not a standard file: "${resolvedPath}"`);
-      return false;
-    }
-
-    // Enforce strict file size limits to prevent memory exhaustion / overflow (e.g., max 10MB)
-    const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-    if (stats.size > MAX_FILE_SIZE_BYTES) {
-      console.error(`[EMG Core] Security Warning: File exceeds maximum permissible size bounds (${MAX_FILE_SIZE_BYTES} bytes).`);
-      process.exitCode = 1;
-      return false;
-    }
-
     const sourceContent = fs.readFileSync(resolvedPath, 'utf8');
 
-    // Reset regex index state prior to testing and replacement
     CONFIG.pattern.lastIndex = 0;
     if (!CONFIG.pattern.test(sourceContent)) {
       console.log(`[EMG Core] Target pattern not detected in "${CONFIG.relativePath}". Operations skipped.`);
@@ -78,13 +97,13 @@ function applyEvolutionPatch() {
     CONFIG.pattern.lastIndex = 0;
     const transformedContent = sourceContent.replace(CONFIG.pattern, CONFIG.replacement);
 
-    if (transformedContent !== sourceContent) {
-      fs.writeFileSync(resolvedPath, transformedContent, 'utf8');
-      console.log(`[EMG Core] Sovereign transformation applied successfully to "${CONFIG.relativePath}".`);
-      return true;
+    if (transformedContent === sourceContent) {
+      return false;
     }
 
-    return false;
+    fs.writeFileSync(resolvedPath, transformedContent, 'utf8');
+    console.log(`[EMG Core] Sovereign transformation applied successfully to "${CONFIG.relativePath}".`);
+    return true;
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
     console.error(`[EMG Core] Critical failure during file transformation execution: ${err.message}`);
