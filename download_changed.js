@@ -43,8 +43,8 @@ function loadRemoteBlobs() {
       (item) => item !== null && typeof item === 'object' && typeof item.path === 'string'
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('CRITICAL: Failed to read or parse remote_blobs.json:', message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('CRITICAL: Failed to read or parse remote_blobs.json:', errorMessage);
     return [];
   }
 }
@@ -56,7 +56,6 @@ function loadRemoteBlobs() {
  */
 function fetchRemoteContent(url) {
   return new Promise((resolve, reject) => {
-    // Strict URL validation against SSRF and injection
     let parsedUrl;
     try {
       parsedUrl = new URL(url);
@@ -68,58 +67,58 @@ function fetchRemoteContent(url) {
       return reject(new Error('Insecure protocol blocked; HTTPS required.'));
     }
 
-    const req = https.get(
+    const request = https.get(
       parsedUrl,
       {
         headers: { 'User-Agent': USER_AGENT },
         timeout: HTTP_TIMEOUT_MS,
       },
-      (res) => {
-        if (res.statusCode !== 200) {
-          res.resume();
-          return reject(new Error(`HTTP Status Code: ${res.statusCode}`));
+      (response) => {
+        if (response.statusCode !== 200) {
+          response.resume();
+          return reject(new Error(`HTTP Status Code: ${response.statusCode}`));
         }
 
-        const contentLengthHeader = res.headers['content-length'];
+        const contentLengthHeader = response.headers['content-length'];
         if (contentLengthHeader) {
           const contentLength = parseInt(contentLengthHeader, 10);
-          if (!isNaN(contentLength) && contentLength > MAX_CONTENT_LENGTH) {
-            res.resume();
+          if (!Number.isNaN(contentLength) && contentLength > MAX_CONTENT_LENGTH) {
+            response.resume();
             return reject(new Error(`Response exceeds maximum allowed size bounds: ${contentLength} bytes`));
           }
         }
 
         /** @type {Buffer[]} */
-        const chunks = [];
-        let totalBytes = 0;
+        const dataChunks = [];
+        let accumulatedBytes = 0;
 
-        res.on('data', (chunk) => {
-          totalBytes += chunk.length;
-          if (totalBytes > MAX_CONTENT_LENGTH) {
-            res.destroy(new Error('Response body exceeded maximum allowed memory buffer size bounds.'));
+        response.on('data', (chunk) => {
+          accumulatedBytes += chunk.length;
+          if (accumulatedBytes > MAX_CONTENT_LENGTH) {
+            response.destroy(new Error('Response body exceeded maximum allowed memory buffer size bounds.'));
             return;
           }
-          chunks.push(chunk);
+          dataChunks.push(chunk);
         });
 
-        res.on('end', () => {
+        response.on('end', () => {
           try {
-            resolve(Buffer.concat(chunks).toString('utf8'));
+            resolve(Buffer.concat(dataChunks).toString('utf8'));
           } catch (err) {
             reject(err);
           }
         });
 
-        res.on('error', (err) => reject(err));
+        response.on('error', (err) => reject(err));
       }
     );
 
-    req.on('timeout', () => {
-      req.destroy(new Error(`Request timed out after ${HTTP_TIMEOUT_MS}ms`));
+    request.on('timeout', () => {
+      request.destroy(new Error(`Request timed out after ${HTTP_TIMEOUT_MS}ms`));
     });
 
-    req.on('error', (err) => reject(err));
-    req.end();
+    request.on('error', (err) => reject(err));
+    request.end();
   });
 }
 
@@ -130,14 +129,13 @@ function fetchRemoteContent(url) {
 async function processBlobsSequentially() {
   const remoteBlobs = loadRemoteBlobs();
   /** @type {RemoteBlob[]} */
-  const changed = [];
+  const changedFilesList = [];
 
   for (const fileObj of remoteBlobs) {
     if (!fileObj || typeof fileObj.path !== 'string') {
       continue;
     }
 
-    // Strict path normalization and traversal protection
     const sanitizedPath = path.normalize(fileObj.path).replace(/^(\.\.(\/|\\))+/, '');
     if (path.isAbsolute(sanitizedPath) || sanitizedPath.startsWith('..') || sanitizedPath.includes('\0')) {
       console.warn(`Warning: Skipped unsafe or malformed file path detected: "${fileObj.path}"`);
@@ -160,36 +158,35 @@ async function processBlobsSequentially() {
       if (fileExists) {
         const localContent = await fsPromises.readFile(sanitizedPath, 'utf8');
         
-        // Construct and validate absolute repository target URL cleanly
-        const base = new URL(REPOSITORY_BASE_URL);
-        const remoteUrl = new URL(sanitizedPath, base).toString();
+        const repositoryBaseUrl = new URL(REPOSITORY_BASE_URL);
+        const remoteUrl = new URL(sanitizedPath, repositoryBaseUrl).toString();
 
         const remoteContent = await fetchRemoteContent(remoteUrl);
 
         if (remoteContent !== localContent) {
           console.log(`Changed: ${sanitizedPath}`);
-          changed.push(fileObj);
+          changedFilesList.push(fileObj);
           await fsPromises.writeFile(sanitizedPath, remoteContent, 'utf8');
         }
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`Warning: Failed to process path "${fileObj.path}":`, message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn(`Warning: Failed to process path "${fileObj.path}":`, errorMessage);
     }
   }
 
   try {
-    await fsPromises.writeFile('changed_files.json', JSON.stringify(changed, null, 2), 'utf8');
-    console.log(`Found ${changed.length} changed files.`);
+    await fsPromises.writeFile('changed_files.json', JSON.stringify(changedFilesList, null, 2), 'utf8');
+    console.log(`Found ${changedFilesList.length} changed files.`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('CRITICAL: Failed to write changed_files.json:', message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('CRITICAL: Failed to write changed_files.json:', errorMessage);
   }
 }
 
 if (require.main === module) {
-  processBlobsSequentially().catch((err) => {
-    console.error('Unhandled fatal error in processBlobsSequentially:', err);
+  processBlobsSequentially().catch((error) => {
+    console.error('Unhandled fatal error in processBlobsSequentially:', error);
   });
 }
 
