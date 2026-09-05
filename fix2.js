@@ -33,7 +33,6 @@ function sanitizeFences(content) {
     throw new TypeError('Expected content to be a string.');
   }
 
-  // Bounds checking to prevent memory exhaustion and buffer overflows from massive strings
   if (content.length > MAX_FILE_SIZE_BYTES) {
     throw new RangeError(`Content size exceeds maximum allowable limit of ${MAX_FILE_SIZE_BYTES} bytes.`);
   }
@@ -43,6 +42,22 @@ function sanitizeFences(content) {
     .replaceAll('```tsx', '\\`\\`\\`tsx')
     .replaceAll('}\n```', '}\n\\`\\`\\`')
     .replaceAll('TRUNCATIONS\n```', 'TRUNCATIONS\n\\`\\`\\`');
+}
+
+/**
+ * Validates and resolves the absolute path of a relative path safely within the working directory jail.
+ * @param {string} relativePath - The target relative path.
+ * @returns {string} The resolved absolute path.
+ */
+function resolveSecurePath(relativePath) {
+  const cwd = process.cwd();
+  const absolutePath = path.resolve(cwd, relativePath);
+
+  if (!absolutePath.startsWith(cwd)) {
+    throw new Error(`Security Violation: Path traversal attempt detected outside working directory: ${relativePath}`);
+  }
+
+  return absolutePath;
 }
 
 /**
@@ -56,20 +71,13 @@ function processRouteFile(relativePath) {
     throw new TypeError('Expected a valid relative path string.');
   }
 
-  // Enforce absolute path sanitization and strict traversal jail
-  const cwd = process.cwd();
-  const absolutePath = path.resolve(cwd, relativePath);
-
-  if (!absolutePath.startsWith(cwd)) {
-    throw new Error(`Security Violation: Path traversal attempt detected outside working directory: ${relativePath}`);
-  }
+  const absolutePath = resolveSecurePath(relativePath);
 
   try {
     if (!fs.existsSync(absolutePath)) {
       throw new Error(`Target file not found at path: ${absolutePath}`);
     }
 
-    // Defensive file stats verification to guard against race conditions and size overruns
     const stats = fs.statSync(absolutePath);
     if (!stats.isFile()) {
       throw new Error(`Target path is not a valid regular file: ${absolutePath}`);
@@ -81,7 +89,6 @@ function processRouteFile(relativePath) {
     const originalCode = fs.readFileSync(absolutePath, 'utf8');
     const sanitizedCode = sanitizeFences(originalCode);
 
-    // Skip unnecessary disk I/O operations if code is unchanged
     if (sanitizedCode === originalCode) {
       return false;
     }
