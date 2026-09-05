@@ -58,7 +58,9 @@ export default function TemporalParadoxLog({ logEntries, rejectionMemory }: Temp
   const updateRealParadoxes = useCallback(() => {
     const collectedParadoxes: ParadoxEntry[] = [];
 
-    const activeRejections = (rejectionMemory?.length ? rejectionMemory : fetchStoredData<RejectionItem>(STORAGE_KEYS.REJECTION_MEMORY));
+    const activeRejections = rejectionMemory?.length 
+      ? rejectionMemory 
+      : fetchStoredData<RejectionItem>(STORAGE_KEYS.REJECTION_MEMORY);
     
     activeRejections.forEach((rejection, index) => {
       if (!rejection) return;
@@ -70,7 +72,9 @@ export default function TemporalParadoxLog({ logEntries, rejectionMemory }: Temp
       });
     });
 
-    const activeLogs = (logEntries?.length ? logEntries : fetchStoredData<EvolutionLogEntry>(STORAGE_KEYS.LOG_ENTRIES));
+    const activeLogs = logEntries?.length 
+      ? logEntries 
+      : fetchStoredData<EvolutionLogEntry>(STORAGE_KEYS.LOG_ENTRIES);
 
     activeLogs.forEach((entry) => {
       if (!entry) return;
@@ -103,7 +107,7 @@ export default function TemporalParadoxLog({ logEntries, rejectionMemory }: Temp
   }, [updateRealParadoxes]);
 
   const toggleExpanded = useCallback(() => {
-    setIsExpanded((prev) => !prev);
+    setIsExpanded((previousState) => !previousState);
   }, []);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
