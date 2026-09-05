@@ -13,10 +13,16 @@ const path = require('node:path');
 
 /**
  * Safely executes the prompt string replacement on the target route file
- * with robust error handling and explicit encoding management.
+ * with robust error handling, strict path resolution bounds-checking, and defensive validation.
  */
 function executePromptFix() {
+  const allowedBasePath = path.resolve('src/app/api/evolution/propose');
   const targetFile = path.resolve('src/app/api/evolution/propose/route.ts');
+
+  // Strict boundary verification to prevent directory traversal and injection attacks
+  if (!targetFile.startsWith(allowedBasePath)) {
+    throw new Error('[EMG Security] Access denied: Target path resolves outside the allowed base directory.');
+  }
 
   try {
     if (!fs.existsSync(targetFile)) {
@@ -24,6 +30,11 @@ function executePromptFix() {
     }
 
     let code = fs.readFileSync(targetFile, 'utf8');
+
+    // Defensive input check against unexpected file size extremes
+    if (typeof code !== 'string' || code.length > 5_000_000) {
+      throw new Error('[EMG Security] File content exceeds safety limit or is improperly formatted.');
+    }
 
     const primaryRegex = /Your response MUST contain two parts:[\s\S]*?NO PLACEHOLDERS OR TRUNCATIONS"/;
     const replacementText = `Your response MUST contain two parts:
@@ -59,7 +70,7 @@ Format your response exactly like this:
     }
 
     const secondaryRegex = /,[\s]*"riskScore": 1-10,[\s]*"affectedFiles": \["list of other files that might be affected by this change"\],[\s]*"newFiles": \[[\s\S]*?\][\s]*\}/;
-    if (secondaryRegex.test(code)) {
+    if (secondaryRegex.test(secondaryRegex, code) && secondaryRegex.test(code)) {
       code = code.replace(secondaryRegex, '');
     }
 
