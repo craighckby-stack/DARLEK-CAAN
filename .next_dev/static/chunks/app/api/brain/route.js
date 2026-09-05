@@ -1,56 +1,63 @@
 "use strict";
 
-(function (globalScope) {
-  if (typeof globalScope !== "object" || globalScope === null) {
+/**
+ * Initializes and registers the Next.js Flight client-side entry chunk 
+ * for the API brain route within the global Webpack chunk registry.
+ */
+(function initializeWebpackChunk(globalScope) {
+  if (!globalScope || typeof globalScope !== "object") {
     return;
   }
 
-  const chunkKey = "webpackChunk_N_E";
-  const chunkRegistry = Array.isArray(globalScope[chunkKey])
-    ? globalScope[chunkKey]
-    : (globalScope[chunkKey] = []);
+  const WEBPACK_CHUNK_KEY = "webpackChunk_N_E";
+  const chunkRegistry = (globalScope[WEBPACK_CHUNK_KEY] ??= []);
 
-  const clientLoaderModuleId =
+  const CLIENT_LOADER_MODULE_ID =
     "(app-pages-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-client-entry-loader.js?server=false!";
 
-  const moduleMap = Object.create(null);
-  moduleMap[clientLoaderModuleId] = Object.freeze(function (
-    __unused_webpack_module,
-    __unused_webpack_exports,
-    __webpack_require__
-  ) {
-    "use strict";
-    // Client-side flight entry point stub - secured execution boundary
-  });
+  const moduleRegistry = Object.freeze(
+    Object.assign(Object.create(null), {
+      [CLIENT_LOADER_MODULE_ID]: Object.freeze(function clientEntryStub(
+        _unusedModule,
+        _unusedExports,
+        _webpackRequire
+      ) {
+        "use strict";
+        // Client-side flight entry point stub - secured execution boundary
+      }),
+    })
+  );
 
-  const runtimeBootstrap = function (__webpack_require__) {
-    "use strict";
-    if (typeof __webpack_require__ !== "function") {
+  const runtimeBootstrap = function bootstrapWebpackRuntime(webpackRequire) {
+    if (typeof webpackRequire !== "function") {
       return undefined;
     }
 
-    const __webpack_exec__ = function (targetId) {
+    const executeModule = function executeModuleById(targetId) {
       if (typeof targetId !== "string" || targetId.length === 0) {
         return undefined;
       }
-      return __webpack_require__((__webpack_require__.s = targetId));
+      return webpackRequire((webpackRequire.s = targetId));
     };
 
-    if (typeof __webpack_require__.O === "function") {
-      __webpack_require__.O(0, Object.freeze(["main-app"]), function () {
-        return __webpack_exec__(clientLoaderModuleId);
-      });
-      const __webpack_exports__ = __webpack_require__.O();
-      globalScope._N_E = __webpack_exports__;
-      return __webpack_exports__;
+    if (typeof webpackRequire.O === "function") {
+      webpackRequire.O(0, Object.freeze(["main-app"]), () =>
+        executeModule(CLIENT_LOADER_MODULE_ID)
+      );
+      
+      const chunkExports = webpackRequire.O();
+      globalScope._N_E = chunkExports;
+      return chunkExports;
     }
 
     return undefined;
   };
 
-  chunkRegistry.push([
-    Object.freeze(["app/api/brain/route"]),
-    Object.freeze(moduleMap),
-    runtimeBootstrap
-  ]);
+  chunkRegistry.push(
+    Object.freeze([
+      Object.freeze(["app/api/brain/route"]),
+      moduleRegistry,
+      runtimeBootstrap,
+    ])
+  );
 })(typeof self !== "undefined" ? self : typeof globalThis !== "undefined" ? globalThis : this);
