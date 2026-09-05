@@ -1,5 +1,5 @@
 {
-  "name": "nextjs_tailwind_shadcn_ts",
+  "name": "git-secret-pii-sanitizer",
   "version": "0.2.0",
   "private": true,
   "description": "Git Secret & PII Sanitizer - Full Stack Security Scanner & Auto-Fix Tool",
