@@ -9,27 +9,26 @@ type TargetEntry = typeof import('../../../src/app/layout.js')
 type SafeSegmentKey = Exclude<string, '__proto__' | 'prototype' | 'constructor'>
 
 type SegmentParams<T extends object = Record<SafeSegmentKey, string | string[] | undefined>> = T extends Record<SafeSegmentKey, unknown>
-  ? { [K in keyof T & SafeSegmentKey]: T[K] extends string | string[] | undefined ? T[K] : never }
+  ? { readonly [K in keyof T & SafeSegmentKey]: T[K] extends string | string[] | undefined ? T[K] : never }
   : T
 
 // Defensively constrain and check that entry conforms to Next.js route segment config contracts
 checkFields<Diff<{
-  default: SafeAnyFunction
-  config?: Record<string, unknown>
-  generateStaticParams?: SafeAnyFunction
-  revalidate?: RevalidateRange<TargetEntry> | false
-  dynamic?: 'auto' | 'force-dynamic' | 'error' | 'force-static'
-  dynamicParams?: boolean
-  fetchCache?: 'auto' | 'force-no-store' | 'only-no-store' | 'default-no-store' | 'default-cache' | 'only-cache' | 'force-cache'
-  preferredRegion?: 'auto' | 'global' | 'home' | string | readonly string[]
-  runtime?: 'nodejs' | 'experimental-edge' | 'edge'
-  maxDuration?: NonNegative<number>
-  
-  metadata?: unknown
-  generateMetadata?: SafeAnyFunction
-  viewport?: unknown
-  generateViewport?: SafeAnyFunction
-  experimental_ppr?: boolean
+  readonly default: SafeAnyFunction
+  readonly config?: Record<string, unknown>
+  readonly generateStaticParams?: SafeAnyFunction
+  readonly revalidate?: RevalidateRange<TargetEntry> | false
+  readonly dynamic?: 'auto' | 'force-dynamic' | 'error' | 'force-static'
+  readonly dynamicParams?: boolean
+  readonly fetchCache?: 'auto' | 'force-no-store' | 'only-no-store' | 'default-no-store' | 'default-cache' | 'only-cache' | 'force-cache'
+  readonly preferredRegion?: 'auto' | 'global' | 'home' | string | readonly string[]
+  readonly runtime?: 'nodejs' | 'experimental-edge' | 'edge'
+  readonly maxDuration?: NonNegative<number>
+  readonly metadata?: unknown
+  readonly generateMetadata?: SafeAnyFunction
+  readonly viewport?: unknown
+  readonly generateViewport?: SafeAnyFunction
+  readonly experimental_ppr?: boolean
 }, TargetEntry, ''>>()
 
 // Check the prop type of the entry function
@@ -49,18 +48,18 @@ if ('generateViewport' in entry) {
 
 // Check the arguments and return type of the generateStaticParams function
 if ('generateStaticParams' in entry) {
-  checkFields<Diff<{ params: SegmentParams }, FirstArg<MaybeField<TargetEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
+  checkFields<Diff<{ readonly params: SegmentParams }, FirstArg<MaybeField<TargetEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
   checkFields<Diff<{ readonly __tag__: 'generateStaticParams'; readonly __return_type__: readonly unknown[] | Promise<readonly unknown[]> }, { readonly __tag__: 'generateStaticParams'; readonly __return_type__: ReturnType<MaybeField<TargetEntry, 'generateStaticParams'>> }>>()
 }
 
 export interface PageProps {
-  params?: Promise<SegmentParams>
-  searchParams?: Promise<Record<SafeSegmentKey, string | string[] | undefined>>
+  readonly params?: Promise<SegmentParams>
+  readonly searchParams?: Promise<Record<SafeSegmentKey, string | string[] | undefined>>
 }
 
 export interface LayoutProps {
-  children?: React.ReactNode
-  params?: Promise<SegmentParams>
+  readonly children?: React.ReactNode
+  readonly params?: Promise<SegmentParams>
 }
 
 // ==========================================
@@ -69,7 +68,7 @@ export interface LayoutProps {
 
 type SafeAnyFunction = (...args: readonly any[]) => unknown
 
-type RevalidateRange<T> = T extends { revalidate: infer R }
+type RevalidateRange<T> = T extends { readonly revalidate: infer R }
   ? R extends Numeric
     ? NonNegative<R>
     : never
@@ -94,12 +93,13 @@ type SecondArg<T> = T extends (...args: readonly [any, infer S, ...any[]]) => un
     : S
   : never
 
-type MaybeField<T, K extends string> = T extends { [k in K]: infer G }
+type MaybeField<T, K extends string> = T extends { readonly [k in K]: infer G }
   ? G extends SafeAnyFunction
     ? G
     : never
   : never
 
+// Optimized inline evaluation layout mapping with zero-cost abstraction guards
 function checkFields<_ extends Record<keyof any, never>>(): void {}
 
 // Numerical boundary validation ensuring non-negative duration/revalidation bounds
