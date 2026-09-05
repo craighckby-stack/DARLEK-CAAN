@@ -3,7 +3,7 @@ import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 import type React from 'react'
 
-type TEntry = typeof import('../../../src/app/layout.js')
+type TargetEntry = typeof import('../../../src/app/layout.js')
 
 // Defensively restrict segment parameter keys to prevent prototype pollution at compile time
 type SafeSegmentKey = Exclude<string, '__proto__' | 'prototype' | 'constructor'>
@@ -17,7 +17,7 @@ checkFields<Diff<{
   default: SafeAnyFunction
   config?: Record<string, unknown>
   generateStaticParams?: SafeAnyFunction
-  revalidate?: RevalidateRange<TEntry> | false
+  revalidate?: RevalidateRange<TargetEntry> | false
   dynamic?: 'auto' | 'force-dynamic' | 'error' | 'force-static'
   dynamicParams?: boolean
   fetchCache?: 'auto' | 'force-no-store' | 'only-no-store' | 'default-no-store' | 'default-cache' | 'only-cache' | 'force-cache'
@@ -30,27 +30,27 @@ checkFields<Diff<{
   viewport?: unknown
   generateViewport?: SafeAnyFunction
   experimental_ppr?: boolean
-}, TEntry, ''>>()
+}, TargetEntry, ''>>()
 
 // Check the prop type of the entry function
-checkFields<Diff<LayoutProps, FirstArg<TEntry['default']>, 'default'>>()
+checkFields<Diff<LayoutProps, FirstArg<TargetEntry['default']>, 'default'>>()
 
 // Check the arguments and return type of the generateMetadata function
 if ('generateMetadata' in entry) {
-  checkFields<Diff<LayoutProps, FirstArg<MaybeField<TEntry, 'generateMetadata'>>, 'generateMetadata'>>()
-  checkFields<Diff<ResolvingMetadata, SecondArg<MaybeField<TEntry, 'generateMetadata'>>, 'generateMetadata'>>()
+  checkFields<Diff<LayoutProps, FirstArg<MaybeField<TargetEntry, 'generateMetadata'>>, 'generateMetadata'>>()
+  checkFields<Diff<ResolvingMetadata, SecondArg<MaybeField<TargetEntry, 'generateMetadata'>>, 'generateMetadata'>>()
 }
 
 // Check the arguments and return type of the generateViewport function
 if ('generateViewport' in entry) {
-  checkFields<Diff<LayoutProps, FirstArg<MaybeField<TEntry, 'generateViewport'>>, 'generateViewport'>>()
-  checkFields<Diff<ResolvingViewport, SecondArg<MaybeField<TEntry, 'generateViewport'>>, 'generateViewport'>>()
+  checkFields<Diff<LayoutProps, FirstArg<MaybeField<TargetEntry, 'generateViewport'>>, 'generateViewport'>>()
+  checkFields<Diff<ResolvingViewport, SecondArg<MaybeField<TargetEntry, 'generateViewport'>>, 'generateViewport'>>()
 }
 
 // Check the arguments and return type of the generateStaticParams function
 if ('generateStaticParams' in entry) {
-  checkFields<Diff<{ params: SegmentParams }, FirstArg<MaybeField<TEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
-  checkFields<Diff<{ readonly __tag__: 'generateStaticParams'; readonly __return_type__: readonly unknown[] | Promise<readonly unknown[]> }, { readonly __tag__: 'generateStaticParams'; readonly __return_type__: ReturnType<MaybeField<TEntry, 'generateStaticParams'>> }>>()
+  checkFields<Diff<{ params: SegmentParams }, FirstArg<MaybeField<TargetEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
+  checkFields<Diff<{ readonly __tag__: 'generateStaticParams'; readonly __return_type__: readonly unknown[] | Promise<readonly unknown[]> }, { readonly __tag__: 'generateStaticParams'; readonly __return_type__: ReturnType<MaybeField<TargetEntry, 'generateStaticParams'>> }>>()
 }
 
 export interface PageProps {
@@ -63,8 +63,10 @@ export interface LayoutProps {
   params?: Promise<SegmentParams>
 }
 
-// =============
-// Security Hardened Utility Types
+// ==========================================
+// Security-Hardened Utility Types & Helpers
+// ==========================================
+
 type SafeAnyFunction = (...args: readonly any[]) => unknown
 
 type RevalidateRange<T> = T extends { revalidate: infer R }
