@@ -63,18 +63,18 @@ function createGitHubHeaders(token: string, acceptType: 'json' | 'raw'): Record<
  * Fetches raw file content text with dedicated timeout and error handling.
  */
 async function fetchRawFileContent(url: string, token: string): Promise<string> {
-  const rawRes = await fetchWithTimeout(
+  const rawResponse = await fetchWithTimeout(
     url,
     { headers: createGitHubHeaders(token, 'raw') },
     TIMEOUT_CONFIG.RAW
   );
 
-  if (!rawRes.ok) {
-    const errorText = await rawRes.text();
-    throw new Error(`Raw content read failed (${rawRes.status}): ${errorText}`);
+  if (!rawResponse.ok) {
+    const errorText = await rawResponse.text();
+    throw new Error(`Raw content read failed (${rawResponse.status}): ${errorText}`);
   }
 
-  return rawRes.text();
+  return rawResponse.text();
 }
 
 /**
@@ -154,26 +154,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const standardHeaders = createGitHubHeaders(token, 'json');
 
     // 1. Initial metadata fetch
-    let metaRes: Response;
+    let metadataResponse: Response;
     try {
-      metaRes = await fetchWithTimeout(fileUrl, { headers: standardHeaders }, TIMEOUT_CONFIG.DEFAULT);
+      metadataResponse = await fetchWithTimeout(fileUrl, { headers: standardHeaders }, TIMEOUT_CONFIG.DEFAULT);
     } catch (fetchError: unknown) {
       const errorMsg = fetchError instanceof Error ? fetchError.message : 'Network timeout or failure';
       return NextResponse.json({ error: `GitHub API connection failed: ${errorMsg}` }, { status: 504 });
     }
 
     // 2. Handle HTTP 403 (Rate limiting or large file restrictions requiring HEAD/RAW fallback)
-    if (metaRes.status === 403) {
-      let headRes: Response | null = null;
+    if (metadataResponse.status === 403) {
+      let headResponse: Response | null = null;
       try {
-        headRes = await fetchWithTimeout(fileUrl, { method: 'HEAD', headers: standardHeaders }, TIMEOUT_CONFIG.HEAD);
+        headResponse = await fetchWithTimeout(fileUrl, { method: 'HEAD', headers: standardHeaders }, TIMEOUT_CONFIG.HEAD);
       } catch {
         // Fallback gracefully if HEAD request fails
       }
 
-      const etag = headRes?.headers.get('etag');
+      const etag = headResponse?.headers.get('etag');
       const sha = etag ? etag.replace(/W\//, '').replace(/"/g, '') : '';
-      const size = parseInt(headRes?.headers.get('content-length') || '0', 10);
+      const size = parseInt(headResponse?.headers.get('content-length') || '0', 10);
 
       try {
         const textContent = await fetchRawFileContent(fileUrl, token);
@@ -190,12 +190,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    if (!metaRes.ok) {
-      const errorText = await metaRes.text();
-      return NextResponse.json({ error: `GitHub API error: ${errorText}` }, { status: metaRes.status });
+    if (!metadataResponse.ok) {
+      const errorText = await metadataResponse.text();
+      return NextResponse.json({ error: `GitHub API error: ${errorText}` }, { status: metadataResponse.status });
     }
 
-    const data: GitHubContentResponse | GitHubContentResponse[] = await metaRes.json();
+    const data: GitHubContentResponse | GitHubContentResponse[] = await metadataResponse.json();
 
     if (Array.isArray(data)) {
       return NextResponse.json(
