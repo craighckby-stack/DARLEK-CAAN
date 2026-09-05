@@ -30,9 +30,9 @@ function resolveGlobalScope() {
       configurable: true
     });
 
-    const cb = globalScope.__SSG_MANIFEST_CB;
-    if (typeof cb === 'function') {
-      cb.call(globalScope);
+    const manifestCallback = globalScope.__SSG_MANIFEST_CB;
+    if (typeof manifestCallback === 'function') {
+      manifestCallback.call(globalScope);
     }
   } catch {}
 })();
