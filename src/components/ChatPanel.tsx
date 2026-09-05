@@ -45,8 +45,8 @@ export default function ChatPanel({
     }
   }, [messages, isLoading]);
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     setIsExtracting(true);
@@ -54,39 +54,39 @@ export default function ChatPanel({
       const formData = new FormData();
       formData.append('file', file);
       
-      const res = await fetch('/api/extract-text', {
+      const response = await fetch('/api/extract-text', {
         method: 'POST',
         body: formData,
       });
       
-      let data: { success?: boolean; text?: string } | null = null;
-      const contentType = res.headers.get('content-type') || '';
-      if (res.ok && contentType.includes('application/json')) {
-        data = await res.json();
+      let extractedData: { success?: boolean; text?: string } | null = null;
+      const contentType = response.headers.get('content-type') || '';
+      if (response.ok && contentType.includes('application/json')) {
+        extractedData = await response.json();
       }
       
-      if (data && data.success && data.text) {
+      if (extractedData?.success && extractedData.text) {
         setAttachedFile({
           name: file.name,
-          content: data.text,
+          content: extractedData.text,
         });
       } else {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = (e) => {
           setAttachedFile({
             name: file.name,
-            content: (event.target?.result as string) || '',
+            content: (e.target?.result as string) || '',
           });
         };
         reader.readAsText(file);
       }
-    } catch (err) {
-      console.error('File extraction failed:', err);
+    } catch (error) {
+      console.error('File extraction failed:', error);
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = (e) => {
         setAttachedFile({
           name: file.name,
-          content: (event.target?.result as string) || '',
+          content: (e.target?.result as string) || '',
         });
       };
       reader.readAsText(file);
@@ -107,9 +107,9 @@ export default function ChatPanel({
     }
   }, [input, attachedFile, isLoading, onSendMessage]);
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
       handleSend();
     }
   };
