@@ -13,7 +13,7 @@ This directory serves as the control plane for the DARLEK CANN v3.0 evolution en
 ---
 
 ## Workflow
-1. **Initialization**: Ensure `.env.example` is populated with required schema.
+1. **Initialization**: Ensure `.env.example` is populated with the required schema.
 2. **Execution**: Run agent simulations using the local `assets/.aistudio` context.
 3. **Cleanup**: Use `npm run clean:artifacts` to purge ephemeral simulation buffers.
 
