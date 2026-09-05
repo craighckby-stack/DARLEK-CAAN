@@ -2,42 +2,54 @@
 
 import * as React from "react"
 import { useTheme } from "next-themes"
-import { Toaster as Sonner, ToasterProps } from "sonner"
+import { Toaster as SonnerPrimitive, ToasterProps } from "sonner"
+
+const TOASTER_DEFAULT_THEME = "system" as const
 
 /**
- * Enhanced Toaster component leveraging next-themes and Sonner.
- * Optimized with memoization, strict type safety, and robust runtime fallbacks.
+ * Resolves the active theme for the Sonner toaster component,
+ * prioritizing explicit component props over context-driven theme values.
  */
-const Toaster = React.memo(({ theme: propTheme, ...props }: ToasterProps): React.JSX.Element => {
-  const { theme = "system" } = useTheme()
+function useResolvedTheme(propTheme?: ToasterProps["theme"]): ToasterProps["theme"] {
+  const { theme = TOASTER_DEFAULT_THEME } = useTheme()
 
-  const resolvedTheme = React.useMemo(() => {
-    if (propTheme) return propTheme
-    if (theme === "light" || theme === "dark" || theme === "system") {
-      return theme as ToasterProps["theme"]
+  return React.useMemo(() => {
+    if (propTheme) {
+      return propTheme
     }
-    return "system"
+
+    if (theme === "light" || theme === "dark" || theme === "system") {
+      return theme
+    }
+
+    return TOASTER_DEFAULT_THEME
   }, [propTheme, theme])
+}
 
-  const toasterStyles = React.useMemo(
-    () =>
-      ({
-        "--normal-bg": "var(--popover)",
-        "--normal-text": "var(--popover-foreground)",
-        "--normal-border": "var(--border)",
-      } as React.CSSProperties),
-    []
-  )
+const TOASTER_CSS_VARIABLES = {
+  "--normal-bg": "var(--popover)",
+  "--normal-text": "var(--popover-foreground)",
+  "--normal-border": "var(--border)",
+} as const satisfies React.CSSProperties
 
-  return (
-    <Sonner
-      theme={resolvedTheme}
-      className="toaster group"
-      style={toasterStyles}
-      {...props}
-    />
-  )
-})
+/**
+ * Enhanced Toaster component integrating next-themes with Sonner.
+ * Features optimized memoization, strict type safety, and clean architectural separation.
+ */
+const Toaster: React.NamedExoticComponent<ToasterProps> = React.memo(
+  ({ theme: propTheme, ...props }: ToasterProps): React.JSX.Element => {
+    const resolvedTheme = useResolvedTheme(propTheme)
+
+    return (
+      <SonnerPrimitive
+        theme={resolvedTheme}
+        className="toaster group"
+        style={TOASTER_CSS_VARIABLES}
+        {...props}
+      />
+    )
+  }
+)
 
 Toaster.displayName = "Toaster"
 
