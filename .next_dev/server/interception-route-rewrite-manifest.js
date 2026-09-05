@@ -1,30 +1,20 @@
 (function initializeInterceptionRouteRewriteManifest() {
   "use strict";
 
-  const GLOBAL_SCOPE = globalThis ?? self ?? this;
+  const GLOBAL_SCOPE = globalThis;
   const MANIFEST_PROPERTY_KEY = "__INTERCEPTION_ROUTE_REWRITE_MANIFEST";
   const MANIFEST_INITIAL_PAYLOAD = "[]";
-  const MAXIMUM_PAYLOAD_LENGTH = 1048576;
 
-  function validateManifestPayload(payload) {
-    if (typeof payload !== "string" || payload.length > MAXIMUM_PAYLOAD_LENGTH) {
-      throw new TypeError("Security Violation: Interception route rewrite manifest failed integrity validation.");
-    }
-  }
-
-  function registerManifestGlobally(scope, key, payload) {
+  if (!GLOBAL_SCOPE[MANIFEST_PROPERTY_KEY]) {
     try {
-      Object.defineProperty(scope, key, {
-        value: payload,
+      Object.defineProperty(GLOBAL_SCOPE, MANIFEST_PROPERTY_KEY, {
+        value: MANIFEST_INITIAL_PAYLOAD,
         writable: false,
         configurable: false,
         enumerable: true
       });
     } catch {
-      scope[key] = payload;
+      GLOBAL_SCOPE[MANIFEST_PROPERTY_KEY] = MANIFEST_INITIAL_PAYLOAD;
     }
   }
-
-  validateManifestPayload(MANIFEST_INITIAL_PAYLOAD);
-  registerManifestGlobally(GLOBAL_SCOPE, MANIFEST_PROPERTY_KEY, MANIFEST_INITIAL_PAYLOAD);
 })();
