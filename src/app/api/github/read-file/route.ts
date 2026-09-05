@@ -4,10 +4,13 @@ import { safeReqJson } from '@/lib/safe-json';
 
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_TIMEOUT = 15000;
-const HEAD_TIMEOUT = 10000;
-const RAW_TIMEOUT = 20000;
-const LARGE_FILE_THRESHOLD = 1000000;
+const TIMEOUT_CONFIG = {
+  DEFAULT: 15000,
+  HEAD: 10000,
+  RAW: 20000,
+} as const;
+
+const LARGE_FILE_THRESHOLD_BYTES = 1_000_000;
 
 interface GitHubContentResponse {
   sha: string;
@@ -18,21 +21,114 @@ interface GitHubContentResponse {
   type?: string;
 }
 
+interface ParsedFileResult {
+  content: string;
+  sha: string;
+  name: string;
+  size: number;
+}
+
+/**
+ * Executes a network fetch request with an enforced timeout via AbortController.
+ */
 async function fetchWithTimeout(
   url: string,
   options: Omit<RequestInit, 'signal'>,
   timeoutMs: number
 ): Promise<Response> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
   try {
     return await fetch(url, {
       ...options,
       signal: controller.signal,
     });
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(timeoutId);
   }
+}
+
+/**
+ * Generates standardized authorization and media type headers for GitHub API requests.
+ */
+function createGitHubHeaders(token: string, acceptType: 'json' | 'raw'): Record<string, string> {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: acceptType === 'json' ? 'application/vnd.github.v3+json' : 'application/vnd.github.v3.raw',
+  };
+}
+
+/**
+ * Fetches raw file content text with dedicated timeout and error handling.
+ */
+async function fetchRawFileContent(url: string, token: string): Promise<string> {
+  const rawRes = await fetchWithTimeout(
+    url,
+    { headers: createGitHubHeaders(token, 'raw') },
+    TIMEOUT_CONFIG.RAW
+  );
+
+  if (!rawRes.ok) {
+    const errorText = await rawRes.text();
+    throw new Error(`Raw content read failed (${rawRes.status}): ${errorText}`);
+  }
+
+  return rawRes.text();
+}
+
+/**
+ * Attempts to parse specialized document formats (PDF, DOCX) using optional buffers.
+ */
+async function parseSpecializedDocument(
+  buffer: Buffer,
+  filePath: string,
+  baseMetadata: Omit<ParsedFileResult, 'content'>
+): Promise<ParsedFileResult> {
+  const lowerPath = filePath.toLowerCase();
+
+  try {
+    if (lowerPath.endsWith('.pdf')) {
+      const pdfParseModule = await import('pdf-parse');
+      const pdfParse = (pdfParseModule as { default?: (buf: Buffer) => Promise<{ text: string }> }).default || pdfParseModule;
+      const pdfData = await pdfParse(buffer);
+      
+      return {
+        ...baseMetadata,
+        content: `[PDF CONTENT EXTRACTED]\n\n${pdfData.text}`,
+      };
+    }
+
+    if (lowerPath.endsWith('.docx')) {
+      const mammothModule = await import('mammoth');
+      const mammoth = mammothModule.default;
+      const docxData = await mammoth.extractRawText({ buffer });
+
+      return {
+        ...baseMetadata,
+        content: `[DOCX CONTENT EXTRACTED]\n\n${docxData.value}`,
+      };
+    }
+
+    if (lowerPath.endsWith('.zip')) {
+      return {
+        ...baseMetadata,
+        content: '[ZIP FILE - CANNOT EXTRACT TEXT DIRECTLY]',
+      };
+    }
+  } catch (parseError: unknown) {
+    const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+    console.error('Failed to parse binary document:', parseError);
+    return {
+      ...baseMetadata,
+      content: `[ERROR PARSING DOCUMENT: ${errorMsg}]`,
+    };
+  }
+
+  return {
+    ...baseMetadata,
+    content: buffer.toString('utf-8'),
+  };
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -53,69 +149,50 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const cleanPath = filePath.replace(/^\/+|\/+$/g, '');
     const encodedPath = cleanPath.split('/').map(encodeURIComponent).join('/');
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`;
+    const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`;
 
-    const standardHeaders = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-    };
+    const standardHeaders = createGitHubHeaders(token, 'json');
 
-    const rawHeaders = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3.raw',
-    };
-
+    // 1. Initial metadata fetch
     let metaRes: Response;
     try {
-      metaRes = await fetchWithTimeout(url, { headers: standardHeaders }, DEFAULT_TIMEOUT);
+      metaRes = await fetchWithTimeout(fileUrl, { headers: standardHeaders }, TIMEOUT_CONFIG.DEFAULT);
     } catch (fetchError: unknown) {
       const errorMsg = fetchError instanceof Error ? fetchError.message : 'Network timeout or failure';
       return NextResponse.json({ error: `GitHub API connection failed: ${errorMsg}` }, { status: 504 });
     }
 
-    if (!metaRes.ok) {
-      if (metaRes.status === 403) {
-        let headRes: Response | null = null;
-        try {
-          headRes = await fetchWithTimeout(url, { method: 'HEAD', headers: standardHeaders }, HEAD_TIMEOUT);
-        } catch {
-          // Fallback if HEAD request fails
-        }
+    // 2. Handle HTTP 403 (Rate limiting or large file restrictions requiring HEAD/RAW fallback)
+    if (metaRes.status === 403) {
+      let headRes: Response | null = null;
+      try {
+        headRes = await fetchWithTimeout(fileUrl, { method: 'HEAD', headers: standardHeaders }, TIMEOUT_CONFIG.HEAD);
+      } catch {
+        // Fallback gracefully if HEAD request fails
+      }
 
-        const etag = headRes?.headers.get('etag');
-        const sha = etag ? etag.replace(/W\//, '').replace(/"/g, '') : '';
-        const size = parseInt(headRes?.headers.get('content-length') || '0', 10);
+      const etag = headRes?.headers.get('etag');
+      const sha = etag ? etag.replace(/W\//, '').replace(/"/g, '') : '';
+      const size = parseInt(headRes?.headers.get('content-length') || '0', 10);
 
-        let rawRes: Response;
-        try {
-          rawRes = await fetchWithTimeout(url, { headers: rawHeaders }, RAW_TIMEOUT);
-        } catch (rawError: unknown) {
-          const errorMsg = rawError instanceof Error ? rawError.message : 'Timeout reading raw content';
-          return NextResponse.json({ error: `Large file read timeout: ${errorMsg}` }, { status: 504 });
-        }
-
-        if (!rawRes.ok) {
-          const rawErr = await rawRes.text();
-          return NextResponse.json(
-            { error: `Large file read failed: ${rawErr}` },
-            { status: rawRes.status }
-          );
-        }
-
-        const textContent = await rawRes.text();
+      try {
+        const textContent = await fetchRawFileContent(fileUrl, token);
         return NextResponse.json({
           content: textContent,
           sha,
           name: cleanPath.split('/').pop() || '',
           size,
         });
+      } catch (rawError: unknown) {
+        const errorMsg = rawError instanceof Error ? rawError.message : 'Timeout reading raw content';
+        const isTimeout = errorMsg.includes('timed out') || errorMsg.includes('aborted');
+        return NextResponse.json({ error: `Large file read failed: ${errorMsg}` }, { status: isTimeout ? 504 : 400 });
       }
+    }
 
-      const err = await metaRes.text();
-      return NextResponse.json(
-        { error: `GitHub API error: ${err}` },
-        { status: metaRes.status }
-      );
+    if (!metaRes.ok) {
+      const errorText = await metaRes.text();
+      return NextResponse.json({ error: `GitHub API error: ${errorText}` }, { status: metaRes.status });
     }
 
     const data: GitHubContentResponse | GitHubContentResponse[] = await metaRes.json();
@@ -127,113 +204,42 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    if (data.size && data.size >= LARGE_FILE_THRESHOLD) {
-      let rawRes: Response;
+    const baseMetadata = {
+      sha: data.sha,
+      name: data.name,
+      size: data.size,
+    };
+
+    // 3. Handle large files directly via raw endpoint
+    if (data.size && data.size >= LARGE_FILE_THRESHOLD_BYTES) {
       try {
-        rawRes = await fetchWithTimeout(url, { headers: rawHeaders }, RAW_TIMEOUT);
+        const textContent = await fetchRawFileContent(fileUrl, token);
+        return NextResponse.json({ content: textContent, ...baseMetadata });
       } catch (rawError: unknown) {
         const errorMsg = rawError instanceof Error ? rawError.message : 'Timeout reading raw content';
-        return NextResponse.json({ error: `Large file content read timeout: ${errorMsg}` }, { status: 504 });
+        return NextResponse.json({ error: `Large file content read failure: ${errorMsg}` }, { status: 504 });
       }
-
-      if (!rawRes.ok) {
-        const rawErr = await rawRes.text();
-        return NextResponse.json(
-          { error: `Large file content read failed: ${rawErr}` },
-          { status: rawRes.status }
-        );
-      }
-
-      const textContent = await rawRes.text();
-      return NextResponse.json({
-        content: textContent,
-        sha: data.sha,
-        name: data.name,
-        size: data.size,
-      });
     }
 
+    // 4. Handle base64 encoded payloads with document parser support
     if (data.encoding === 'base64' && data.content) {
       const buffer = Buffer.from(data.content, 'base64');
-      const lowerPath = filePath.toLowerCase();
-      
-      try {
-        if (lowerPath.endsWith('.pdf')) {
-          const pdfParseModule = await import('pdf-parse');
-          const pdfParse = (pdfParseModule as { default?: (buf: Buffer) => Promise<{ text: string }> }).default || pdfParseModule;
-          const pdfData = await (pdfParse as (buf: Buffer) => Promise<{ text: string }>)(buffer);
-          return NextResponse.json({
-            content: `[PDF CONTENT EXTRACTED]\n\n${pdfData.text}`,
-            sha: data.sha,
-            name: data.name,
-            size: data.size,
-          });
-        }
-        
-        if (lowerPath.endsWith('.docx')) {
-          const mammothModule = await import('mammoth');
-          const mammoth = mammothModule.default;
-          const docxData = await mammoth.extractRawText({ buffer });
-          return NextResponse.json({
-            content: `[DOCX CONTENT EXTRACTED]\n\n${docxData.value}`,
-            sha: data.sha,
-            name: data.name,
-            size: data.size,
-          });
-        }
-        
-        if (lowerPath.endsWith('.zip')) {
-          return NextResponse.json({
-            content: '[ZIP FILE - CANNOT EXTRACT TEXT DIRECTLY]',
-            sha: data.sha,
-            name: data.name,
-            size: data.size,
-          });
-        }
-      } catch (parseError: unknown) {
-         const parseErrorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
-         console.error('Failed to parse docx/pdf:', parseError);
-         return NextResponse.json({
-           content: `[ERROR PARSING DOCUMENT: ${parseErrorMsg}]`,
-           sha: data.sha,
-           name: data.name,
-           size: data.size,
-         });
-      }
-
-      const content = buffer.toString('utf-8');
-      return NextResponse.json({
-        content,
-        sha: data.sha,
-        name: data.name,
-        size: data.size,
-      });
+      const parsedResult = await parseSpecializedDocument(buffer, filePath, baseMetadata);
+      return NextResponse.json(parsedResult);
     }
 
-    let rawRes: Response;
+    // 5. Fallback raw content read
     try {
-      rawRes = await fetchWithTimeout(url, { headers: rawHeaders }, RAW_TIMEOUT);
-    } catch (rawError: unknown) {
-      const errorMsg = rawError instanceof Error ? rawError.message : 'Timeout reading raw content fallback';
-      return NextResponse.json({ error: `Raw content fetch timeout: ${errorMsg}` }, { status: 504 });
+      const textContent = await fetchRawFileContent(fileUrl, token);
+      return NextResponse.json({ content: textContent, ...baseMetadata });
+    } catch {
+      return NextResponse.json(
+        { error: 'Unable to decode file content. File may be binary.' },
+        { status: 400 }
+      );
     }
-
-    if (rawRes.ok) {
-      const textContent = await rawRes.text();
-      return NextResponse.json({
-        content: textContent,
-        sha: data.sha,
-        name: data.name,
-        size: data.size,
-      });
-    }
-
-    return NextResponse.json(
-      { error: 'Unable to decode file content. File may be binary.' },
-      { status: 400 }
-    );
   } catch (error: unknown) {
-    console.error('Read file error:', error);
+    console.error('Read file unexpected error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
