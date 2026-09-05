@@ -1,33 +1,33 @@
-(function () {
+(function initializeNextFontManifest() {
   "use strict";
-  
-  var globalScope = typeof globalThis !== "undefined"
-    ? globalThis
-    : typeof self !== "undefined"
-      ? self
-      : typeof window !== "undefined"
-        ? window
-        : typeof global !== "undefined"
-          ? global
-          : {};
 
-  var manifestPayload = JSON.stringify(
-    Object.freeze({
-      pages: Object.freeze({}),
-      app: Object.freeze({}),
-      appUsingSizeAdjust: false,
-      pagesUsingSizeAdjust: false
-    })
-  );
+  const getGlobalScope = () => {
+    if (typeof globalThis !== "undefined") return globalThis;
+    if (typeof self !== "undefined") return self;
+    if (typeof window !== "undefined") return window;
+    if (typeof global !== "undefined") return global;
+    return {};
+  };
+
+  const fontManifest = Object.freeze({
+    pages: Object.freeze({}),
+    app: Object.freeze({}),
+    appUsingSizeAdjust: false,
+    pagesUsingSizeAdjust: false,
+  });
+
+  const serializedManifest = JSON.stringify(fontManifest);
+  const globalScope = getGlobalScope();
+  const manifestSymbol = "__NEXT_FONT_MANIFEST";
 
   try {
-    Object.defineProperty(globalScope, "__NEXT_FONT_MANIFEST", {
-      value: manifestPayload,
+    Object.defineProperty(globalScope, manifestSymbol, {
+      value: serializedManifest,
       writable: true,
       enumerable: true,
-      configurable: true
+      configurable: true,
     });
-  } catch (e) {
-    globalScope.__NEXT_FONT_MANIFEST = manifestPayload;
+  } catch {
+    globalScope[manifestSymbol] = serializedManifest;
   }
 })();
