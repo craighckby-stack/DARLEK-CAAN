@@ -62,10 +62,14 @@ function buildGitHubHeaders(token: string): Record<string, string> {
 }
 
 function extractAuthToken(req: NextRequest, searchParams: URLSearchParams, bodyToken?: string): string {
-  if (bodyToken) return bodyToken;
+  if (bodyToken) {
+    return bodyToken;
+  }
   
   const queryToken = searchParams.get('token');
-  if (queryToken) return queryToken;
+  if (queryToken) {
+    return queryToken;
+  }
 
   const authHeader = req.headers.get('authorization') ?? '';
   return authHeader.replace(/^Bearer\s+/i, '').trim();
@@ -86,7 +90,7 @@ function createFallbackRepoStatus(owner: string, repo: string, branch: string): 
   };
 }
 
-async function handleRepoStatus(
+async function fetchGitHubCommitData(
   owner: string, 
   repo: string, 
   branch: string, 
@@ -137,7 +141,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<RepoStatusResu
     const branch = searchParams.get('branch') ?? DEFAULT_BRANCH;
     const token = extractAuthToken(req, searchParams);
 
-    const result = await handleRepoStatus(owner, repo, branch, token);
+    const result = await fetchGitHubCommitData(owner, repo, branch, token);
     return NextResponse.json(result);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -155,7 +159,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<RepoStatusRes
     const branch = body?.branch ?? searchParams.get('branch') ?? DEFAULT_BRANCH;
     const token = extractAuthToken(req, searchParams, body?.token);
 
-    const result = await handleRepoStatus(owner, repo, branch, token);
+    const result = await fetchGitHubCommitData(owner, repo, branch, token);
     return NextResponse.json(result);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
