@@ -7,31 +7,43 @@ import { cn } from "@/lib/utils"
 
 export type SliderProps = React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
 
+/**
+ * Extracts and normalizes numerical thumb values from component props.
+ */
+function useSliderValues(
+  value: SliderProps["value"],
+  defaultValue: SliderProps["defaultValue"],
+  min: number,
+  max: number
+): number[] {
+  return React.useMemo(() => {
+    if (Array.isArray(value)) return value
+    if (Array.isArray(defaultValue)) return defaultValue
+    return [min, max]
+  }, [value, defaultValue, min, max])
+}
+
+/**
+ * Modernized Slider component built on top of Radix UI primitives.
+ * Features architectural modularity, pristine readability idioms, and memoized sub-elements.
+ */
 const Slider = React.memo(
   React.forwardRef<
     React.ElementRef<typeof SliderPrimitive.Root>,
     SliderProps
   >(({ className, defaultValue, value, min = 0, max = 100, ...props }, ref) => {
-    const _values = React.useMemo(() => {
-      try {
-        if (Array.isArray(value)) return value
-        if (Array.isArray(defaultValue)) return defaultValue
-        return [min, max]
-      } catch {
-        return [min, max]
-      }
-    }, [value, defaultValue, min, max])
+    const activeValues = useSliderValues(value, defaultValue, min, max)
 
-    const thumbs = React.useMemo(
+    const renderThumbs = React.useCallback(
       () =>
-        Array.from({ length: _values.length }, (_, index) => (
+        activeValues.map((_, index) => (
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={index}
             className="border-primary bg-background ring-ring/50 block size-4 shrink-0 rounded-full border shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
           />
         )),
-      [_values.length]
+      [activeValues]
     )
 
     return (
@@ -61,7 +73,7 @@ const Slider = React.memo(
             )}
           />
         </SliderPrimitive.Track>
-        {thumbs}
+        {renderThumbs()}
       </SliderPrimitive.Root>
     )
   })
