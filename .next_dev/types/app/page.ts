@@ -4,14 +4,12 @@ import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadat
 
 type TEntry = typeof import('../../../src/app/page.js')
 
-// Defensively sanitize object key lookups against prototype pollution vectors
 type SafeKey<K> = K extends '__proto__' | 'prototype' | 'constructor' ? never : K
 
 type SegmentParams<T extends object = Record<string, string | string[] | undefined>> = T extends Record<string, any>
   ? { [K in keyof T as SafeKey<K>]: T[K] extends string ? string | string[] | undefined : T[K] extends string[] ? string[] | undefined : never }
   : T
 
-// Check that the entry is a valid entry with strictly bounded property definitions
 checkFields<Diff<{
   default: (...args: any[]) => any
   config?: Record<string, unknown>
@@ -23,31 +21,25 @@ checkFields<Diff<{
   preferredRegion?: 'auto' | 'global' | 'home' | string | string[]
   runtime?: 'nodejs' | 'experimental-edge' | 'edge'
   maxDuration?: number
-  
   metadata?: any
   generateMetadata?: (...args: any[]) => any
   viewport?: any
   generateViewport?: (...args: any[]) => any
   experimental_ppr?: boolean
-  
 }, TEntry, ''>>()
 
-// Check the prop type of the entry function with strict arg inspection
 checkFields<Diff<PageProps, FirstArg<TEntry['default']>, 'default'>>()
 
-// Check the arguments and return type of the generateMetadata function
 if ('generateMetadata' in entry) {
   checkFields<Diff<PageProps, FirstArg<MaybeField<TEntry, 'generateMetadata'>>, 'generateMetadata'>>()
   checkFields<Diff<ResolvingMetadata, SecondArg<MaybeField<TEntry, 'generateMetadata'>>, 'generateMetadata'>>()
 }
 
-// Check the arguments and return type of the generateViewport function
 if ('generateViewport' in entry) {
   checkFields<Diff<PageProps, FirstArg<MaybeField<TEntry, 'generateViewport'>>, 'generateViewport'>>()
   checkFields<Diff<ResolvingViewport, SecondArg<MaybeField<TEntry, 'generateViewport'>>, 'generateViewport'>>()
 }
 
-// Check the arguments and return type of the generateStaticParams function
 if ('generateStaticParams' in entry) {
   checkFields<Diff<{ params: SegmentParams }, FirstArg<MaybeField<TEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
   checkFields<Diff<{ __tag__: 'generateStaticParams', __return_type__: any[] | Promise<any[]> }, { __tag__: 'generateStaticParams', __return_type__: ReturnType<MaybeField<TEntry, 'generateStaticParams'>> }>>()
@@ -63,12 +55,8 @@ export interface LayoutProps {
   params?: Promise<SegmentParams>
 }
 
-// =============
-// Defensive Utility Types & Bounds Checking
-
 type RevalidateRange<T> = T extends { revalidate: any } ? NonNegative<T['revalidate']> : never
 
-// If T is unknown or any, fallback to empty record; strictly omit defined base keys without prototype pollution
 type OmitWithTag<T, K extends keyof any, _M> = Omit<T, K & keyof T>
 type Diff<Base, T extends Base, Message extends string = ''> = 0 extends (1 & T) ? {} : OmitWithTag<T, keyof Base, Message>
 
@@ -86,12 +74,8 @@ type MaybeField<T, K extends string> = T extends { [P in K]?: infer G }
     : never
   : never
 
-// Strict compile-time invariant validator with volatile execution defense
-function checkFields<_ extends { [K in keyof any]: never }>(..._args: unknown[]): void {
-  // Static invariant enforcement; runtime-safe no-op
-}
+const checkFields = <_ extends { [K in keyof any]: never }>(..._args: unknown[]): void => {}
 
-// Numeric Bounds Checking & Sanitization against out-of-range/overflow values
 type Numeric = number | bigint
 type Zero = 0 | 0n
 type Negative<T extends Numeric> = T extends Zero ? never : `${T}` extends `-${string}` ? T : never
