@@ -1,28 +1,56 @@
-/*
- * ATTENTION: An "eval-source-map" devtool has been used.
- * This devtool is neither made for production nor for readable output files.
- * It uses "eval()" calls to create a separate source file with attached SourceMaps in the browser devtools.
- * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
- * or disable the default devtool with "devtool: false".
- * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
- */
-(self["webpackChunk_N_E"] = self["webpackChunk_N_E"] || []).push([["app/api/brain/route"],{
+"use strict";
 
-/***/ "(app-pages-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-client-entry-loader.js?server=false!":
-/*!*******************************************************************************************************!*\
-  !*** ./node_modules/next/dist/build/webpack/loaders/next-flight-client-entry-loader.js?server=false! ***!
-  \*******************************************************************************************************/
-/***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
+(function (globalScope) {
+  if (typeof globalScope !== "object" || globalScope === null) {
+    return;
+  }
 
+  const chunkKey = "webpackChunk_N_E";
+  const chunkRegistry = Array.isArray(globalScope[chunkKey])
+    ? globalScope[chunkKey]
+    : (globalScope[chunkKey] = []);
 
+  const clientLoaderModuleId =
+    "(app-pages-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-client-entry-loader.js?server=false!";
 
-/***/ })
+  const moduleMap = Object.create(null);
+  moduleMap[clientLoaderModuleId] = Object.freeze(function (
+    __unused_webpack_module,
+    __unused_webpack_exports,
+    __webpack_require__
+  ) {
+    "use strict";
+    // Client-side flight entry point stub - secured execution boundary
+  });
 
-},
-/******/ __webpack_require__ => { // webpackRuntimeModules
-/******/ var __webpack_exec__ = (moduleId) => (__webpack_require__(__webpack_require__.s = moduleId))
-/******/ __webpack_require__.O(0, ["main-app"], () => (__webpack_exec__("(app-pages-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-client-entry-loader.js?server=false!")));
-/******/ var __webpack_exports__ = __webpack_require__.O();
-/******/ _N_E = __webpack_exports__;
-/******/ }
-]);
+  const runtimeBootstrap = function (__webpack_require__) {
+    "use strict";
+    if (typeof __webpack_require__ !== "function") {
+      return undefined;
+    }
+
+    const __webpack_exec__ = function (targetId) {
+      if (typeof targetId !== "string" || targetId.length === 0) {
+        return undefined;
+      }
+      return __webpack_require__((__webpack_require__.s = targetId));
+    };
+
+    if (typeof __webpack_require__.O === "function") {
+      __webpack_require__.O(0, Object.freeze(["main-app"]), function () {
+        return __webpack_exec__(clientLoaderModuleId);
+      });
+      const __webpack_exports__ = __webpack_require__.O();
+      globalScope._N_E = __webpack_exports__;
+      return __webpack_exports__;
+    }
+
+    return undefined;
+  };
+
+  chunkRegistry.push([
+    Object.freeze(["app/api/brain/route"]),
+    Object.freeze(moduleMap),
+    runtimeBootstrap
+  ]);
+})(typeof self !== "undefined" ? self : typeof globalThis !== "undefined" ? globalThis : this);
