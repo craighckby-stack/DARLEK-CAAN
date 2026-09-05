@@ -1,4 +1,4 @@
-not working one day project. split the system into two diff systems works better.  emg and the html that creates 
+ 
 
 
 
