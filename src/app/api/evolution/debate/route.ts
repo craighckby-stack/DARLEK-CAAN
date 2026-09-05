@@ -6,7 +6,10 @@ import { safeReqJson } from '@/lib/safe-json';
 
 export const dynamic = 'force-dynamic';
 
-// Type Definitions
+// ============================================================================
+// Types & Interfaces
+// ============================================================================
+
 interface AgentPersona {
   readonly id: string;
   readonly name: string;
@@ -48,49 +51,14 @@ interface DebateBody {
   readonly hallucinationLevel?: number;
 }
 
-// GitHub Tree Fetcher with Robust Error Suppression and Timeout Control
-async function getFileTree(token: string, owner: string, repo: string, branch: string): Promise<string[]> {
-  if (!token || !owner || !repo || !branch) return [];
-  try {
-    const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
-    const res = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'EMG-Neural-Engine'
-      },
-      signal: AbortSignal.timeout(8000)
-    });
-    if (res.ok) {
-      const data = await res.json() as { tree?: readonly { path: string }[] };
-      return Array.isArray(data?.tree) ? data.tree.map((file) => file.path) : [];
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
+// ============================================================================
+// Constants
+// ============================================================================
 
-async function fetchGithubFile(token: string, owner: string, repo: string, branch: string, path: string): Promise<string | null> {
-  if (!token || !owner || !repo || !branch || !path) return null;
-  try {
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`;
-    const res = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3.raw',
-        'User-Agent': 'EMG-Neural-Engine'
-      },
-      signal: AbortSignal.timeout(6000)
-    });
-    if (!res.ok) return null;
-    return await res.text();
-  } catch {
-    return null;
-  }
-}
+const MAX_CODE_LENGTH = 35000;
+const TREE_FETCH_TIMEOUT_MS = 8000;
+const FILE_FETCH_TIMEOUT_MS = 6000;
 
-// Agent Personas Matrix (Immutable)
 const AGENT_PERSONAS: readonly AgentPersona[] = [
   {
     id: 'archivist',
@@ -109,8 +77,78 @@ const AGENT_PERSONAS: readonly AgentPersona[] = [
     name: 'PRAGMATIST',
     role: 'Evaluate against the Stasis Trap. Reject bloated, over-engineered, or duplicated logic that fails to provide a concrete behavioral update.',
     bias: 'favors highly functional and concrete updates over theoretical bloat',
-  }
+  },
 ] as const;
+
+// ============================================================================
+// GitHub Utility Services
+// ============================================================================
+
+async function fetchFileTree(token: string, owner: string, repo: string, branch: string): Promise<string[]> {
+  if (!token || !owner || !repo || !branch) return [];
+  
+  try {
+    const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'EMG-Neural-Engine',
+      },
+      signal: AbortSignal.timeout(TREE_FETCH_TIMEOUT_MS),
+    });
+
+    if (!response.ok) return [];
+
+    const data = (await response.json()) as { tree?: readonly { path: string }[] };
+    return Array.isArray(data?.tree) ? data.tree.map((file) => file.path) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function fetchGitHubFile(token: string, owner: string, repo: string, branch: string, path: string): Promise<string | null> {
+  if (!token || !owner || !repo || !branch || !path) return null;
+
+  try {
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`;
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github.v3.raw',
+        'User-Agent': 'EMG-Neural-Engine',
+      },
+      signal: AbortSignal.timeout(FILE_FETCH_TIMEOUT_MS),
+    });
+
+    if (!response.ok) return null;
+    return await response.text();
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// Parsing & Formatting Helpers
+// ============================================================================
+
+function truncateCode(code: string): string {
+  if (code.length <= MAX_CODE_LENGTH) return code;
+  return `${code.slice(0, MAX_CODE_LENGTH)}\n// ... [truncated]`;
+}
+
+function parseJsonPayload(rawText: string): Record<string, unknown> | null {
+  try {
+    const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// Route Handlers
+// ============================================================================
 
 export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ status: 'online', service: 'EVOLUTION_DEBATE_API' });
@@ -134,72 +172,99 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'filePath, originalCode, and proposedCode required.' }, { status: 400 });
     }
 
-    const maxCodeLen = 35000;
-    const truncatedOriginal = originalCode.length > maxCodeLen
-      ? originalCode.slice(0, maxCodeLen) + '\n// ... [truncated]'
-      : originalCode;
-
+    const truncatedOriginal = truncateCode(originalCode);
     const originalLines = originalCode.split('\n').length;
     const proposedLines = proposedCode.split('\n').length;
-    const diffSummary = `File: ${filePath}\nRisk Score: ${riskScore}/10\nAnalysis: ${analysis}\Affected Files: ${affectedFiles.join(', ') || 'None'}\nOriginal: ${originalLines} lines\nProposed: ${proposedLines} lines\nLine change: ${proposedLines - originalLines >= 0 ? '+' : ''}${proposedLines - originalLines} lines`;
+    const lineDelta = proposedLines - originalLines;
+    
+    const diffSummary = [
+      `File: ${filePath}`,
+      `Risk Score: ${riskScore}/10`,
+      `Analysis: ${analysis}`,
+      `Affected Files: ${affectedFiles.join(', ') || 'None'}`,
+      `Original: ${originalLines} lines`,
+      `Proposed: ${proposedLines} lines`,
+      `Line change: ${lineDelta >= 0 ? '+' : ''}${lineDelta} lines`,
+    ].join('\n');
 
     const githubToken = apiKeys.github ?? '';
     const repoOwner = body.owner ?? 'unknown';
     const repoName = body.repo ?? 'unknown';
     const repoBranch = body.branch ?? 'main';
 
-    // Parallel IO fetching for file tree, README, and mutations
+    // Parallel IO fetching for file tree, README, and recent mutations
     const [fileTree, readmeContent, recentMutations] = await Promise.all([
-      getFileTree(githubToken, repoOwner, repoName, repoBranch),
-      fetchGithubFile(githubToken, repoOwner, repoName, repoBranch, 'README.md'),
-      sessionId ? db.mutationHistory.findMany({
-        where: { sessionId, status: 'applied' },
-        orderBy: { createdAt: 'desc' },
-        take: 5
-      }).catch(() => []) : Promise.resolve([])
+      fetchFileTree(githubToken, repoOwner, repoName, repoBranch),
+      fetchGitHubFile(githubToken, repoOwner, repoName, repoBranch, 'README.md'),
+      sessionId 
+        ? db.mutationHistory.findMany({
+            where: { sessionId, status: 'applied' },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+          }).catch(() => []) 
+        : Promise.resolve([]),
     ]);
 
     const fileTreeSummary = fileTree.join('\n');
-    const readmeContext = readmeContent ? `\n\nTARGET REPOSITORY SYSTEM INSTRUCTIONS (README.md):\n${readmeContent.slice(0, 3000)}` : '';
+    const readmeContext = readmeContent 
+      ? `\n\nTARGET REPOSITORY SYSTEM INSTRUCTIONS (README.md):\n${readmeContent.slice(0, 3000)}` 
+      : '';
+    
     const appliedMutationsContext = (recentMutations && recentMutations.length > 0)
       ? `\n\nRECENT SYSTEM MUTATIONS (Context of what you have done so far in this session):\n${recentMutations.map(m => `  - File: ${m.filePath} | Analysis: ${m.analysis}`).join('\n')}`
       : '';
 
     const effectiveRounds = Math.min(Math.max(1, rounds), 100);
+    const geminiApiKey = apiKeys.gemini ?? getDefaultGeminiKey();
+    const temperature = typeof body.hallucinationLevel === 'number' ? body.hallucinationLevel / 100 : 0.6;
 
     let currentVotes: AgentVote[] = [];
     let currentProposedCode = proposedCode;
     let didEnhance = false;
 
-    for (let r = 1; r <= effectiveRounds; r++) {
-      const truncatedProposed = currentProposedCode.length > maxCodeLen
-        ? currentProposedCode.slice(0, maxCodeLen) + '\n// ... [truncated]'
-        : currentProposedCode;
-
+    for (let roundIndex = 1; roundIndex <= effectiveRounds; roundIndex++) {
+      const truncatedProposed = truncateCode(currentProposedCode);
       const activeAgentIds = body.activeAgents;
+      
       let selectedPersonas = Array.isArray(activeAgentIds) && activeAgentIds.length > 0
         ? AGENT_PERSONAS.filter(a => activeAgentIds.includes(a.id))
         : AGENT_PERSONAS;
+      
       if (selectedPersonas.length === 0) {
         selectedPersonas = AGENT_PERSONAS;
       }
 
-      if (r === 1) {
+      if (roundIndex === 1) {
         const agentPromises = selectedPersonas.map(async (agent): Promise<AgentVote> => {
-          const userPrompt = `MUTATION UNDER REVIEW:\n${diffSummary}${readmeContext}${appliedMutationsContext}\n\nREPOSITORY STRUCTURE:\n${fileTreeSummary}\n\nORIGINAL CODE:\n\`\`\`\n${truncatedOriginal}\n\`\`\`\n\nPROPOSED CODE:\n\`\`\`\n${truncatedProposed}\n\`\`\`\n\nEvaluate this mutation from your perspective as ${agent.name}. ${agent.bias}.\n\nIf you believe the file should be moved to a different folder, a new file/folder should be created, or changes pushed to a new branch, you MUST specify a JSON object for "structuralProposal" with {"newPath": "path/to/file.ext", "type": "move" or "create", "branch": "optional-branch"}. Otherwise omit "structuralProposal".\n\nRespond ONLY in this exact JSON format (no markdown fences, no other text):\n{"vote": "approve" | "reject" | "abstain", "confidence": <0-100>, "reasoning": "One sentence explaining your vote", "structuralProposal": {"newPath": "...", "type": "move|create", "branch": "..."}}`;
+          const userPrompt = [
+            `MUTATION UNDER REVIEW:\n${diffSummary}${readmeContext}${appliedMutationsContext}`,
+            `REPOSITORY STRUCTURE:\n${fileTreeSummary}`,
+            `ORIGINAL CODE:\n\`\`\`\n${truncatedOriginal}\n\`\`\``,
+            `PROPOSED CODE:\n\`\`\`\n${truncatedProposed}\n\`\`\``,
+            `Evaluate this mutation from your perspective as ${agent.name}. ${agent.bias}.`,
+            'If you believe the file should be moved to a different folder, a new file/folder should be created, or changes pushed to a new branch, you MUST specify a JSON object for "structuralProposal" with {"newPath": "path/to/file.ext", "type": "move" or "create", "branch": "optional-branch"}. Otherwise omit "structuralProposal".',
+            'Respond ONLY in this exact JSON format (no markdown fences, no other text):',
+            '{"vote": "approve" | "reject" | "abstain", "confidence": <0-100>, "reasoning": "One sentence explaining your vote", "structuralProposal": {"newPath": "...", "type": "move|create", "branch": "..."}}',
+          ].join('\n\n');
 
           const genesisDirective = isArchitecturalGenesis 
-            ? `\nTHIS IS AN ARCHITECTURAL GENESIS CYCLE. Your ONLY focus is verifying the existence and quality of the JSDoc architectural header at the top of the file. You MUST APPROVE immediately if a good header is present.`
-            : `\nCRITICAL MANDATE: Be constructive, evolutionary, and pragmatic. Do NOT default to rejecting. Approve improvements that are clean, readable, well-type-checked, and reasonably risk-mitigated.`;
+            ? '\nTHIS IS AN ARCHITECTURAL GENESIS CYCLE. Your ONLY focus is verifying the existence and quality of the JSDoc architectural header at the top of the file. You MUST APPROVE immediately if a good header is present.'
+            : '\nCRITICAL MANDATE: Be constructive, evolutionary, and pragmatic. Do NOT default to rejecting. Approve improvements that are clean, readable, well-type-checked, and reasonably risk-mitigated.';
 
-          const systemPrompt = `[ROLE] You are a debate agent in the AHI Synthesis Loop.\n[PROFILE] ${agent.role}\n[OUTPUT FORMAT] Respond with PURE JSON ONLY. No markdown fences, no preamble.\n{\n  "vote": "approve" | "reject" | "abstain",\n  "confidence": 0-100,\n  "reasoning": "1-2 concise sentences.",\n  "structuralProposal": {"newPath": "...", "type": "move|create", "branch": "..."}\n}\n${genesisDirective}`;
+          const systemPrompt = [
+            '[ROLE] You are a debate agent in the AHI Synthesis Loop.',
+            `[PROFILE] ${agent.role}`,
+            '[OUTPUT FORMAT] Respond with PURE JSON ONLY. No markdown fences, no preamble.',
+            '{\n  "vote": "approve" | "reject" | "abstain",\n  "confidence": 0-100,\n  "reasoning": "1-2 concise sentences.",\n  "structuralProposal": {"newPath": "...", "type": "move|create", "branch": "..."}\n}',
+            genesisDirective,
+          ].join('\n');
 
           const result = await callLlm({
             systemPrompt,
             userPrompt,
-            geminiApiKey: apiKeys.gemini ?? getDefaultGeminiKey(),
+            geminiApiKey,
             maxTokens: 512,
-            temperature: typeof body.hallucinationLevel === 'number' ? body.hallucinationLevel / 100 : 0.6,
+            temperature,
           });
 
           let vote: 'approve' | 'reject' | 'abstain' = 'abstain';
@@ -208,11 +273,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           let structuralProposal: StructuralProposal | null = null;
 
           if (result.text) {
-            try {
-              const cleaned = result.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-              const parsed = JSON.parse(cleaned);
-              if (['approve', 'reject', 'abstain'].includes(parsed.vote)) {
-                vote = parsed.vote;
+            const parsed = parseJsonPayload(result.text);
+            if (parsed) {
+              if (['approve', 'reject', 'abstain'].includes(parsed.vote as string)) {
+                vote = parsed.vote as 'approve' | 'reject' | 'abstain';
               }
               if (typeof parsed.confidence === 'number') {
                 confidence = Math.min(100, Math.max(0, Math.round(parsed.confidence)));
@@ -223,15 +287,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               if (typeof parsed.structuralProposal === 'object' && parsed.structuralProposal !== null) {
                 structuralProposal = parsed.structuralProposal as StructuralProposal;
               }
-            } catch {
+            } else {
               const lowerText = result.text.toLowerCase();
               if (lowerText.includes('approve')) vote = 'approve';
               else if (lowerText.includes('reject') || lowerText.includes('deny')) vote = 'reject';
+              
               reasoning = result.text.slice(0, 200).replace(/[{}"]/g, '').trim();
               
               const match = reasoning.match(/\{"newPath"\s*:\s*"[^"]*",\s*"type"\s*:\s*"[^"]*"(?:,\s*"branch"\s*:\s*"[^"]*")?\s*\}/);
               if (match) {
-                try { structuralProposal = JSON.parse(match[0]) as StructuralProposal; } catch {}
+                try { 
+                  structuralProposal = JSON.parse(match[0]) as StructuralProposal; 
+                } catch {}
               }
             }
           }
@@ -262,16 +329,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const transcript = currentVotes.map(v => `- ${v.agentName} voted [${v.vote.toUpperCase()}] (${v.confidence}% confidence) stating: "${v.reasoning}"`).join('\n');
         
         const agentPromises = selectedPersonas.map(async (agent): Promise<AgentVote> => {
-          const userPrompt = `MUTATION UNDER REVIEW:\n${diffSummary}${readmeContext}${appliedMutationsContext}\n\nORIGINAL CODE:\n\`\`\`\n${truncatedOriginal}\n\`\`\`\n\nPROPOSED CODE:\n\`\`\`\n${truncatedProposed}\n\`\`\`\n\n--- PRIOR DEBATE ROUND DISCUSSION ---\n${transcript}\n\nAs ${agent.name}, review code and arguments. Revise your vote/reasoning.\n\nRespond in exact JSON format (no markdown):\n{"vote": "approve" | "reject" | "abstain", "confidence": 0-100, "reasoning": "One updated sentence"}`;
+          const userPrompt = [
+            `MUTATION UNDER REVIEW:\n${diffSummary}${readmeContext}${appliedMutationsContext}`,
+            `ORIGINAL CODE:\n\`\`\`\n${truncatedOriginal}\n\`\`\``,
+            `PROPOSED CODE:\n\`\`\`\n${truncatedProposed}\n\`\`\``,
+            `--- PRIOR DEBATE ROUND DISCUSSION ---\n${transcript}`,
+            `As ${agent.name}, review code and arguments. Revise your vote/reasoning.`,
+            'Respond in exact JSON format (no markdown):',
+            '{"vote": "approve" | "reject" | "abstain", "confidence": 0-100, "reasoning": "One updated sentence"}',
+          ].join('\n\n');
           
-          const systemPrompt = `[ROLE] You are a debate agent in AHI Synthesis Loop.\n[PROFILE] ${agent.role}\n[OUTPUT FORMAT] Pure JSON only.\n{\n  "vote": "approve" | "reject" | "abstain",\n  "confidence": 0-100,\n  "reasoning": "1-2 sentences"\n}`;
+          const systemPrompt = [
+            '[ROLE] You are a debate agent in AHI Synthesis Loop.',
+            `[PROFILE] ${agent.role}`,
+            '[OUTPUT FORMAT] Pure JSON only.',
+            '{\n  "vote": "approve" | "reject" | "abstain",\n  "confidence": 0-100,\n  "reasoning": "1-2 sentences"\n}',
+          ].join('\n');
 
           const result = await callLlm({
             systemPrompt,
             userPrompt,
-            geminiApiKey: apiKeys.gemini ?? getDefaultGeminiKey(),
+            geminiApiKey,
             maxTokens: 512,
-            temperature: typeof body.hallucinationLevel === 'number' ? body.hallucinationLevel / 100 : 0.6,
+            temperature,
           });
 
           let vote: 'approve' | 'reject' | 'abstain' = 'abstain';
@@ -279,11 +359,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           let reasoning = `${agent.name} was silent in this round.`;
 
           if (result.text) {
-            try {
-              const cleaned = result.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-              const parsed = JSON.parse(cleaned);
-              if (['approve', 'reject', 'abstain'].includes(parsed.vote)) {
-                vote = parsed.vote;
+            const parsed = parseJsonPayload(result.text);
+            if (parsed) {
+              if (['approve', 'reject', 'abstain'].includes(parsed.vote as string)) {
+                vote = parsed.vote as 'approve' | 'reject' | 'abstain';
               }
               if (typeof parsed.confidence === 'number') {
                 confidence = Math.min(100, Math.max(0, Math.round(parsed.confidence)));
@@ -291,10 +370,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               if (typeof parsed.reasoning === 'string' && parsed.reasoning.trim()) {
                 reasoning = parsed.reasoning.trim().slice(0, 200);
               }
-            } catch {
+            } else {
               const lowerText = result.text.toLowerCase();
               if (lowerText.includes('approve')) vote = 'approve';
               else if (lowerText.includes('reject') || lowerText.includes('deny')) vote = 'reject';
+              
               reasoning = result.text.slice(0, 200).replace(/[{}"]/g, '').trim();
             }
           }
@@ -326,19 +406,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         break;
       }
 
-      if (r < effectiveRounds && (roundRejections > 0 || roundAbstains > 0)) {
+      if (roundIndex < effectiveRounds && (roundRejections > 0 || roundAbstains > 0)) {
         const transcript = currentVotes.map(v => `- ${v.agentName} voted [${v.vote.toUpperCase()}] (${v.confidence}% confidence) stating: "${v.reasoning}"`).join('\n');
         const synthesizeDirective = isArchitecturalGenesis 
-          ? `Rewrite the PROPOSED CODE to fix structural concerns regarding headers.`
-          : `Enhance and rewrite the PROPOSED CODE fixing all critic concerns. Prune dead weight and redundant abstractions.`;
+          ? 'Rewrite the PROPOSED CODE to fix structural concerns regarding headers.'
+          : 'Enhance and rewrite the PROPOSED CODE fixing all critic concerns. Prune dead weight and redundant abstractions.';
 
-        const synthesizePrompt = `[TASK] Merge approved logic into target stub. Fix live bugs.\n${synthesizeDirective}\n\nORIGINAL CODE:\n\`\`\`\n${truncatedOriginal}\n\`\`\`\n\nCURRENT PROPOSED:\n\`\`\`\n${truncatedProposed}\n\`\`\`\n\nDEBATE CRITIQUES:\n${transcript}\n\n[OUTPUT FORMAT] Raw executable code only. No markdown fences.`;
+        const synthesizePrompt = [
+          '[TASK] Merge approved logic into target stub. Fix live bugs.',
+          synthesizeDirective,
+          `ORIGINAL CODE:\n\`\`\`\n${truncatedOriginal}\n\`\`\``,
+          `CURRENT PROPOSED:\n\`\`\`\n${truncatedProposed}\n\`\`\``,
+          `DEBATE CRITIQUES:\n${transcript}`,
+          '[OUTPUT FORMAT] Raw executable code only. No markdown fences.',
+        ].join('\n\n');
 
         try {
           const synthResult = await callLlm({
             systemPrompt: '[ROLE] AHI CODE SYNTHESIZER. Output raw executable code only without markdown wrappers.',
             userPrompt: synthesizePrompt,
-            geminiApiKey: apiKeys.gemini ?? getDefaultGeminiKey(),
+            geminiApiKey,
             maxTokens: 8000,
             temperature: 0.2,
           });
@@ -391,7 +478,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const rulingResult = await callLlm({
         systemPrompt: '[ROLE] AHI HEGELIAN SYNTHESIZER. Pure plain text only.',
         userPrompt: rulingPrompt,
-        geminiApiKey: apiKeys.gemini ?? getDefaultGeminiKey(),
+        geminiApiKey,
         maxTokens: 256,
         temperature: 0.3,
       });
