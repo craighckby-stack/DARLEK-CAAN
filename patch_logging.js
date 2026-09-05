@@ -11,7 +11,7 @@ const path = require('node:path');
 
 const TARGET_FILE_PATH = path.normalize('src/app/api/evolution/propose/route.ts');
 
-const PATCH_CONFIGS = [
+const PATCH_CONFIGS = Object.freeze([
     {
         name: 'Target Signature 1',
         search: 'let proposedCode = parsed?.proposedCode;',
@@ -22,7 +22,7 @@ const PATCH_CONFIGS = [
         search: 'proposedCode = fileContent;',
         replacement: "console.log('[Propose] Fallback matched no code fences. Using fileContent.');\n        proposedCode = fileContent;"
     }
-];
+]);
 
 /**
  * Validates that all required target strings exist within the source code content.
@@ -32,9 +32,9 @@ const PATCH_CONFIGS = [
  * @returns {void}
  */
 function validateTargetSignatures(sourceContent, filePath) {
-    for (const patch of PATCH_CONFIGS) {
-        if (!sourceContent.includes(patch.search)) {
-            console.warn(`[EMG-v49] Warning: ${patch.name} not found in ${filePath}`);
+    for (const { name, search } of PATCH_CONFIGS) {
+        if (!sourceContent.includes(search)) {
+            console.warn(`[EMG-v49] Warning: ${name} not found in ${filePath}`);
         }
     }
 }
@@ -47,7 +47,7 @@ function validateTargetSignatures(sourceContent, filePath) {
  */
 function applyPatches(sourceContent) {
     return PATCH_CONFIGS.reduce(
-        (content, patch) => content.replace(patch.search, patch.replacement),
+        (content, { search, replacement }) => content.replace(search, replacement),
         sourceContent
     );
 }
