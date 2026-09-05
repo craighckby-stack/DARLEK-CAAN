@@ -18,6 +18,34 @@ interface BrainApiResponse {
   [key: string]: unknown;
 }
 
+const API_ENDPOINT = '/api/brain';
+const MUTATION_ACTION = 'get-mutation-history';
+
+async function fetchMutationHistory(
+  sessionId: string,
+  signal: AbortSignal
+): Promise<MutationRecord[]> {
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: MUTATION_ACTION,
+      sessionId,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const data = (await response.json()) as BrainApiResponse;
+
+  return Array.isArray(data?.mutations) ? (data.mutations as MutationRecord[]) : [];
+}
+
 export function useMutationData(
   sessionId: string | null | undefined,
   trigger?: number
@@ -36,6 +64,7 @@ export function useMutationData(
 
   useEffect(() => {
     const currentSessionId = sessionIdRef.current;
+    
     if (!currentSessionId) {
       setMutations([]);
       setLoading(false);
@@ -46,35 +75,15 @@ export function useMutationData(
     let isMounted = true;
     const controller = new AbortController();
 
-    const fetchMutations = async (): Promise<void> => {
+    const loadMutations = async (): Promise<void> => {
       setLoading(true);
       setError(null);
 
       try {
-        const response = await fetch('/api/brain', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'get-mutation-history',
-            sessionId: currentSessionId,
-          }),
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = (await response.json()) as BrainApiResponse;
+        const result = await fetchMutationHistory(currentSessionId, controller.signal);
 
         if (isMounted) {
-          setMutations(
-            Array.isArray(data?.mutations)
-              ? (data.mutations as MutationRecord[])
-              : []
-          );
+          setMutations(result);
         }
       } catch (err: unknown) {
         if (isMounted && err instanceof Error && err.name !== 'AbortError') {
@@ -88,7 +97,7 @@ export function useMutationData(
       }
     };
 
-    void fetchMutations();
+    void loadMutations();
 
     return () => {
       isMounted = false;
