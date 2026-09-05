@@ -2,9 +2,9 @@
 
 ## Overview
 
-The `SaturationMetrics` component is a core telemetry module within the `unitary-core` diagnostic suite. It is engineered to monitor real-time cognitive load, structural integrity, and operational health across distributed agent swarms with zero-latency visual indicators.
+The `SaturationMetrics` component is a core telemetry module within the `unitary-core` diagnostic suite. It monitors real-time cognitive load, structural integrity, and operational health across distributed agent swarms utilizing zero-latency visual indicators.
 
-## Integration & Architecture
+## Integration and Architecture
 
 - **Inputs**: Consumes the strongly typed `SaturationMetrics` interface imported from `@/lib/types`.
 - **Styling**: Utilizes `Tailwind CSS` for performant layout design alongside `Lucide-React` iconography to ensure high-contrast, low-latency visual feedback.
