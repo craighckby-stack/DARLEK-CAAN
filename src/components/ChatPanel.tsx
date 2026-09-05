@@ -6,9 +6,14 @@ import type { Message, SystemState, BranchInfo } from '@/lib/types';
 import { SETUP_STEPS, COLORS } from '@/lib/constants';
 import ChatMessage from './ChatMessage';
 
+interface AttachedFile {
+  name: string;
+  content: string;
+}
+
 interface ChatPanelProps {
   messages: Message[];
-  onSendMessage: (content: string, fileAttachment?: { name: string; content: string }) => void;
+  onSendMessage: (content: string, fileAttachment?: AttachedFile) => void;
   isLoading: boolean;
   systemState: SystemState;
   onTestConnection: (provider: string, key: string) => void;
@@ -32,18 +37,27 @@ export default function ChatPanel({
   onFetchBranches,
 }: ChatPanelProps) {
   const [input, setInput] = useState<string>('');
-  const [attachedFile, setAttachedFile] = useState<{ name: string; content: string } | null>(null);
+  const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Auto-scroll to bottom on new messages or loading state transitions
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
+
+  const readFileAsText = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve((e.target?.result as string) || '');
+      reader.readAsText(file);
+    });
+  };
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -59,37 +73,21 @@ export default function ChatPanel({
         body: formData,
       });
       
-      let extractedData: { success?: boolean; text?: string } | null = null;
       const contentType = response.headers.get('content-type') || '';
       if (response.ok && contentType.includes('application/json')) {
-        extractedData = await response.json();
+        const extractedData = await response.json();
+        if (extractedData?.success && extractedData.text) {
+          setAttachedFile({ name: file.name, content: extractedData.text });
+          return;
+        }
       }
       
-      if (extractedData?.success && extractedData.text) {
-        setAttachedFile({
-          name: file.name,
-          content: extractedData.text,
-        });
-      } else {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setAttachedFile({
-            name: file.name,
-            content: (e.target?.result as string) || '',
-          });
-        };
-        reader.readAsText(file);
-      }
+      const fallbackContent = await readFileAsText(file);
+      setAttachedFile({ name: file.name, content: fallbackContent });
     } catch (error) {
       console.error('File extraction failed:', error);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAttachedFile({
-          name: file.name,
-          content: (e.target?.result as string) || '',
-        });
-      };
-      reader.readAsText(file);
+      const fallbackContent = await readFileAsText(file);
+      setAttachedFile({ name: file.name, content: fallbackContent });
     } finally {
       setIsExtracting(false);
     }
@@ -98,7 +96,7 @@ export default function ChatPanel({
   const handleSend = useCallback(() => {
     const trimmedInput = input.trim();
     if ((trimmedInput || attachedFile) && !isLoading) {
-      onSendMessage(trimmedInput, attachedFile || undefined);
+      onSendMessage(trimmedInput, attachedFile ?? undefined);
       setInput('');
       setAttachedFile(null);
       if (fileInputRef.current) {
@@ -114,7 +112,7 @@ export default function ChatPanel({
     }
   };
 
-  const currentStep = systemState?.currentStep || 0;
+  const currentStep = systemState?.currentStep ?? 0;
   const setupStep = currentStep < SETUP_STEPS.length ? SETUP_STEPS[currentStep] : null;
 
   const getStatusText = (status: string): string => {
@@ -134,9 +132,15 @@ export default function ChatPanel({
   const renderSetupInput = () => {
     if (!setupStep || systemState.setupComplete) return null;
 
-    const stepId = setupStep.id;
+    const { id: stepId } = setupStep;
 
     if (stepId === 'repo') {
+      const handleRepoSubmit = () => {
+        if (systemState.repoConfig.owner && systemState.repoConfig.repo) {
+          onSendMessage(`repo: ${systemState.repoConfig.owner}/${systemState.repoConfig.repo}`);
+        }
+      };
+
       return (
         <div className="space-y-3 p-4 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
           <input
@@ -145,23 +149,16 @@ export default function ChatPanel({
             defaultValue="craighckby-stack/DARLEK-CAAN-Cognitive-Engine"
             className="dalek-input w-full px-4 py-3 text-sm"
             onChange={(e) => {
-              const val = e.target.value;
-              const parts = val.split('/');
-              onUpdateRepoConfig('owner', parts[0] || '');
-              onUpdateRepoConfig('repo', parts.slice(1).join('/') || '');
+              const [owner = '', ...repoParts] = e.target.value.split('/');
+              onUpdateRepoConfig('owner', owner);
+              onUpdateRepoConfig('repo', repoParts.join('/'));
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && systemState.repoConfig.owner && systemState.repoConfig.repo) {
-                onSendMessage(`repo: ${systemState.repoConfig.owner}/${systemState.repoConfig.repo}`);
-              }
+              if (e.key === 'Enter') handleRepoSubmit();
             }}
           />
           <button
-            onClick={() => {
-              if (systemState.repoConfig.owner && systemState.repoConfig.repo) {
-                onSendMessage(`repo: ${systemState.repoConfig.owner}/${systemState.repoConfig.repo}`);
-              }
-            }}
+            onClick={handleRepoSubmit}
             disabled={!systemState.repoConfig.owner || !systemState.repoConfig.repo}
             className="dalek-btn dalek-btn-primary px-6 py-2 text-xs w-full"
           >
@@ -391,8 +388,16 @@ export default function ChatPanel({
 
     if (stepId === 'llm-keys') {
       const geminiStatus = systemState.connectionStatus.gemini;
-      const geminiKey = systemState.apiKeys.gemini || '';
+      const geminiKey = systemState.apiKeys.gemini ?? '';
       const isGeoblocked = Boolean((systemState as unknown as Record<string, unknown>).geminiGeoblocked);
+
+      const handleGeminiSubmit = (val: string) => {
+        if (val.trim()) {
+          onTestConnection('gemini', val);
+        } else {
+          onSendMessage('skip');
+        }
+      };
 
       return (
         <div className="space-y-3 p-4 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
@@ -446,11 +451,7 @@ export default function ChatPanel({
                 onChange={(e) => onUpdateKey('gemini', e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    if (e.currentTarget.value.trim()) {
-                      onTestConnection('gemini', e.currentTarget.value);
-                    } else {
-                      onSendMessage('skip');
-                    }
+                    handleGeminiSubmit(e.currentTarget.value);
                   }
                 }}
                 style={{
@@ -462,7 +463,7 @@ export default function ChatPanel({
                 }}
               />
               <button
-                onClick={() => geminiKey.trim() ? onTestConnection('gemini', geminiKey) : onSendMessage('skip')}
+                onClick={() => handleGeminiSubmit(geminiKey)}
                 disabled={geminiStatus === 'testing'}
                 className="px-3 py-2 text-xs transition-all whitespace-nowrap"
                 style={{
@@ -491,10 +492,7 @@ export default function ChatPanel({
             {geminiStatus === 'error' && !isGeoblocked && (
               <div
                 className="px-2 py-1 rounded text-xs"
-                style={{
-                  color: COLORS.dalekRed,
-                  fontSize: '9px',
-                }}
+                style={{ color: COLORS.dalekRed, fontSize: '9px' }}
               >
                 Connection failed. Check your key.
               </div>
@@ -502,10 +500,7 @@ export default function ChatPanel({
             {isGeoblocked && geminiStatus === 'error' && (
               <div
                 className="px-2 py-1 rounded text-xs"
-                style={{
-                  color: COLORS.gold,
-                  fontSize: '9px',
-                }}
+                style={{ color: COLORS.gold, fontSize: '9px' }}
               >
                 Region blocked. Dalek Brain active.
               </div>
