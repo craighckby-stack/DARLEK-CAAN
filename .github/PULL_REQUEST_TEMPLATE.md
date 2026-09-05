@@ -3,7 +3,7 @@
 # Engine: EMG Core v49 Neural Code and Documentation Optimizer Engine
 # Role: Enforces strict quality gates, architectural compliance, automated verification, and security controls.
 # Integration: Aligns PR submissions with the Zero-Leak Sandbox, Dynamic Consensus Weighting (DCW), Diagnostic Engine, and Security Assurance Framework.
-# Version: 2.3.0-PERFORMANCE-OPTIMIZED
+# Version: 2.3.1-READABILITY-OPTIMIZED
 -->
 
 ## ⚡ Executive Summary
@@ -31,7 +31,7 @@
 
 ## 1. Description & Context
 
-> **Overview:** High-level summary of code mutations, core architecture integration, affected modules, and data-handling implications.
+> **Overview:** A high-level summary of code mutations, core architecture integration, affected modules, and data-handling implications.
 
 ### Scope Breakdown
 - **Mutation Overview:** <!-- Describe core changes -->
@@ -47,11 +47,11 @@
 
 *Select all applicable classifications:*
 
-- [ ] **CRITICAL BUG FIX:** Non-breaking change fixing a system-level regression.
-- [ ] **SECURITY MITIGATION:** Patch/enhancement addressing a vulnerability, secret leak, or threat vector (CVE/Audit item).
-- [ ] **EVOLUTIONARY FEATURE:** Non-breaking change adding high-value functionality.
-- [ ] **ARCHITECTURAL BREAK:** Fix or feature altering core system interfaces (requires Lead Architect & Security Lead approval).
-- [ ] **SANDBOXED MODULE:** New isolated module introduced under `modules/`.
+- [ ] **CRITICAL BUG FIX:** A non-breaking change fixing a system-level regression.
+- [ ] **SECURITY MITIGATION:** A patch or enhancement addressing a vulnerability, secret leak, or threat vector (CVE/Audit item).
+- [ ] **EVOLUTIONARY FEATURE:** A non-breaking change adding high-value functionality.
+- [ ] **ARCHITECTURAL BREAK:** A fix or feature altering core system interfaces (requires Lead Architect & Security Lead approval).
+- [ ] **SANDBOXED MODULE:** A new isolated module introduced under `modules/`.
 - [ ] **TELEMETRY/DIAGNOSTIC:** Enhancements to system visibility, health metrics, or diagnostics.
 
 ---
@@ -85,8 +85,8 @@
 ### 4.1 Security Best Practices Checklist
 - [ ] **Secret Scanning:** No hardcoded API keys, tokens, certificates, private keys, or credentials present.
 - [ ] **Input Sanitization:** All user-supplied and dynamic input boundaries validated, sanitized, and type-checked.
-- [ ] **Access Control:** Adheres to Principle of Least Privilege; strict authentication/authorization boundaries.
-- [ ] **Dependency Audit:** Zero high/critical alerts via `npm audit` / `pip-audit` / `cargo audit`.
+- [ ] **Access Control:** Adheres to the Principle of Least Privilege; strict authentication and authorization boundaries enforced.
+- [ ] **Dependency Audit:** Zero high or critical alerts via `npm audit`, `pip-audit`, or `cargo audit`.
 - [ ] **Data Protection:** Sensitive PII and internal system states encrypted at rest and in transit.
 
 ### 4.2 Threat Model & Surface Impact
@@ -129,5 +129,5 @@
 
 Report via our **Private Vulnerability Reporting Protocol**:
 1. **Email:** [security@your-domain.com](mailto:security@your-domain.com) (PGP Key ID: `0xSECURITYKEY`)
-2. **GitHub Security Advisory:** Navigate to **Security** tab -> **Report a vulnerability**.
+2. **GitHub Security Advisory:** Navigate to the **Security** tab -> **Report a vulnerability**.
 3. **Response SLA:** Acknowledgment within 24 hours with a mitigation timeline.
