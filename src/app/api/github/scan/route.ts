@@ -4,55 +4,111 @@ import { safeReqJson } from '@/lib/safe-json';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+const GITHUB_API_BASE_URL = 'https://api.github.com';
+const GITHUB_API_VERSION_HEADER = 'application/vnd.github.v3+json';
+
+const EXCLUDED_DIRECTORIES = Object.freeze([
+  'node_modules/',
+  '.git/',
+  'dist/',
+  'build/',
+  '.next/',
+  '__pycache__/',
+  '.svn/',
+]);
+
+const EXCLUDED_FILES = Object.freeze([
+  '.env',
+  '.env.local',
+  'package-lock.json',
+  'yarn.lock',
+  '.DS_Store',
+]);
+
+interface GitHubTreeItem {
+  path: string;
+  size: number;
+  type: string;
+  sha: string;
+}
+
+interface GitHubTreeResponse {
+  tree?: GitHubTreeItem[];
+}
+
+/**
+ * Validates whether a file path resides within an excluded directory.
+ */
+function isPathInExcludedDirectory(filePath: string): boolean {
+  return EXCLUDED_DIRECTORIES.some((dir) => filePath.includes(dir));
+}
+
+/**
+ * Validates whether a file name matches any explicitly excluded system/config files.
+ */
+function isExcludedFileName(filePath: string): boolean {
+  const pathSegments = filePath.split('/');
+  const fileName = pathSegments[pathSegments.length - 1];
+  return EXCLUDED_FILES.includes(fileName);
+}
+
+/**
+ * Determines if a tree item should be retained in the final file scan list.
+ */
+function isValidBlobItem(item: GitHubTreeItem): boolean {
+  if (item.type !== 'blob') {
+    return false;
+  }
+
+  return !isPathInExcludedDirectory(item.path) && !isExcludedFileName(item.path);
+}
+
+/**
+ * Handles health-check requests for the GitHub scan service.
+ */
+export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ status: 'online', service: 'GITHUB_SCAN_API' });
 }
 
-export async function POST(req: NextRequest) {
+/**
+ * Scans a GitHub repository tree recursively while filtering out ignored files and directories.
+ */
+export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body: ScanRepoBody = await safeReqJson(req, {} as ScanRepoBody);
     const { token, owner, repo, branch } = body;
 
-    const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+    const encodedBranch = encodeURIComponent(branch);
+    const repositoryTreeUrl = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/git/trees/${encodedBranch}?recursive=1`;
 
-    const res = await fetch(url, {
+    const githubResponse = await fetch(repositoryTreeUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: GITHUB_API_VERSION_HEADER,
       },
     });
 
-    if (!res.ok) {
-      const err = await res.text();
+    if (!githubResponse.ok) {
+      const errorDetails = await githubResponse.text();
       return NextResponse.json(
-        { error: `GitHub API error: ${err}` },
-        { status: res.status }
+        { error: `GitHub API error: ${errorDetails}` },
+        { status: githubResponse.status }
       );
     }
 
-    const data = await res.json();
+    const data: GitHubTreeResponse = await githubResponse.json();
 
     if (!data.tree) {
-      return NextResponse.json({ error: 'No tree data returned. Check the branch name.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No tree data returned. Check the branch name.' },
+        { status: 400 }
+      );
     }
 
-    const files: GitHubFile[] = data.tree
-      .filter((item: { type: string; path: string }) => item.type === 'blob')
-      .filter((item: { path: string }) => {
-        // Precise directory and file level exclusions to prevent false-positives
-        // (such as falsely excluding .env.example or other custom files with matching substrings)
-        const excludeDirs = ['node_modules/', '.git/', 'dist/', 'build/', '.next/', '__pycache__/', '.svn/'];
-        const excludeFiles = ['.env', '.env.local', 'package-lock.json', 'yarn.lock', '.DS_Store'];
-
-        const inExcludedDir = excludeDirs.some(dir => item.path.includes(dir));
-        
-        const pathParts = item.path.split('/');
-        const fileName = pathParts[pathParts.length - 1];
-        const isExcludedFile = excludeFiles.includes(fileName);
-
-        return !inExcludedDir && !isExcludedFile;
-      })
-      .map((item: { path: string; size: number; type: string; sha: string }) => ({
+    const allBlobs = data.tree.filter((item) => item.type === 'blob');
+    const filteredFiles: GitHubFile[] = allBlobs
+      .filter(isValidBlobItem)
+      .map((item) => ({
         path: item.path,
         size: item.size,
         type: item.type,
@@ -60,9 +116,9 @@ export async function POST(req: NextRequest) {
       }));
 
     return NextResponse.json({
-      files,
-      total: files.length,
-      repoTotal: data.tree.filter((item: { type: string }) => item.type === 'blob').length,
+      files: filteredFiles,
+      total: filteredFiles.length,
+      repoTotal: allBlobs.length,
     });
   } catch (error) {
     console.error('Scan repo error:', error);
