@@ -10,47 +10,56 @@
 const https = require('https');
 
 const TARGET_URL = 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/README.md';
-const MAX_DATA_SIZE = 1024 * 1024; // 1MB bounds check to prevent memory exhaustion / overflow
+const MAX_DATA_SIZE_BYTES = 1024 * 1024; // 1MB bounds check to prevent memory exhaustion / overflow
 
-const options = {
+const REQUEST_OPTIONS = {
   headers: {
     'User-Agent': 'EMG-Core-v49-Neural-Code-Optimizer'
   }
 };
 
-const req = https.get(TARGET_URL, options, (res) => {
-  if (res.statusCode !== 200) {
-    console.error(`Error: Non-200 status code received (${res.statusCode})`);
-    res.resume(); // Consume response data to free up memory
+/**
+ * Handles the incoming HTTPS response stream with strict memory bounds validation.
+ * @param {import('http').IncomingMessage} response 
+ * @param {import('http').ClientRequest} request 
+ */
+function handleResponse(response, request) {
+  if (response.statusCode !== 200) {
+    console.error(`Error: Non-200 status code received (${response.statusCode})`);
+    response.resume();
     return;
   }
 
-  let data = '';
-  let dataSize = 0;
+  let accumulatedData = '';
+  let currentDataSize = 0;
 
-  res.on('data', (chunk) => {
-    dataSize += chunk.length;
-    if (dataSize > MAX_DATA_SIZE) {
+  response.on('data', (chunk) => {
+    currentDataSize += chunk.length;
+    if (currentDataSize > MAX_DATA_SIZE_BYTES) {
       console.error('Error: Payload size exceeds safety bounds.');
-      req.destroy();
+      request.destroy();
       return;
     }
-    data += chunk;
+    accumulatedData += chunk;
   });
 
-  res.on('end', () => {
-    // Basic sanitization/validation check on output string length bounds
-    if (typeof data === 'string' && data.length <= MAX_DATA_SIZE) {
-      process.stdout.write(data + '\n');
+  response.on('end', () => {
+    if (typeof accumulatedData === 'string' && accumulatedData.length <= MAX_DATA_SIZE_BYTES) {
+      process.stdout.write(accumulatedData + '\n');
     } else {
       console.error('Error: Invalid data payload format or size.');
     }
   });
-});
+}
 
-req.on('error', (err) => {
-  // Defensive error logging preventing potential exposure of stack traces
+/**
+ * Handles transmission errors securely without exposing stack traces.
+ * @param {Error} error 
+ */
+function handleError(error) {
   console.error('Network transmission error encountered securely handled.');
-});
+}
 
+const req = https.get(TARGET_URL, REQUEST_OPTIONS, (res) => handleResponse(res, req));
+req.on('error', handleError);
 req.end();
