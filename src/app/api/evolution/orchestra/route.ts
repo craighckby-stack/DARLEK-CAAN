@@ -67,37 +67,25 @@ const DEFAULT_AGENTS: AgentConfig[] = [
     name: 'ARCHITECT',
     color: '#00ffcc',
     icon: '◇',
-    systemInstruction: `[ROLE] You are an Agent Orchestra member in the AHI framework.
-[DIRECTIVE] Analyze the provided ENCYCLOPEDIA_JSON. Respond according to your assigned profile. Be direct, precise, and concise. No conversational padding.
-
-[PROFILE] ARCHITECT
-Identify which stubs have the strongest historical lineage and are ready for synthesis.`,
+    systemInstruction: `[ROLE] You are an Agent Orchestra member in the AHI framework.\n[DIRECTIVE] Analyze the provided ENCYCLOPEDIA_JSON. Respond according to your assigned profile. Be direct, precise, and concise. No conversational padding.\n\n[PROFILE] ARCHITECT\nIdentify which stubs have the strongest historical lineage and are ready for synthesis.`,
   },
   {
     id: 'disruptor',
     name: 'DISRUPTOR',
     color: '#cc00ff',
     icon: '◆',
-    systemInstruction: `[ROLE] You are an Agent Orchestra member in the AHI framework.
-[DIRECTIVE] Analyze the provided ENCYCLOPEDIA_JSON. Respond according to your assigned profile. Be direct, precise, and concise. No conversational padding.
-
-[PROFILE] DISRUPTOR
-Identify code signatures that completely contradict their repository names (impostors/collisions).`,
+    systemInstruction: `[ROLE] You are an Agent Orchestra member in the AHI framework.\n[DIRECTIVE] Analyze the provided ENCYCLOPEDIA_JSON. Respond according to your assigned profile. Be direct, precise, and concise. No conversational padding.\n\n[PROFILE] DISRUPTOR\nIdentify code signatures that completely contradict their repository names (impostors/collisions).`,
   },
   {
     id: 'realist',
     name: 'REALIST',
     color: '#ff2020',
     icon: '◈',
-    systemInstruction: `[ROLE] You are an Agent Orchestra member in the AHI framework.
-[DIRECTIVE] Analyze the provided ENCYCLOPEDIA_JSON. Respond according to your assigned profile. Be direct, precise, and concise. No conversational padding.
-
-[PROFILE] REALIST
-Identify which repositories are just backup noise and should be purged from the encyclopedia to save context space.`,
+    systemInstruction: `[ROLE] You are an Agent Orchestra member in the AHI framework.\n[DIRECTIVE] Analyze the provided ENCYCLOPEDIA_JSON. Respond according to your assigned profile. Be direct, precise, and concise. No conversational padding.\n\n[PROFILE] REALIST\nIdentify which repositories are just backup noise and should be purged from the encyclopedia to save context space.`,
   },
 ];
 
-const now = (): string => new Date().toISOString();
+const getCurrentTimestamp = (): string => new Date().toISOString();
 
 // ─────────────────────────────────────────────
 // Route Handlers
@@ -112,7 +100,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const body = await safeReqJson<OrchestraRequestBody>(req, {});
     const mode = body.mode ?? 'parallel';
     const topic = body.topic ?? '';
-    const rounds = body.rounds ?? 1;
+    const requestedRounds = body.rounds ?? 1;
     const apiKeys = body.apiKeys ?? {};
     const agentConfigs = body.agentConfigs;
 
@@ -125,22 +113,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const agents: AgentConfig[] = agentConfigs && agentConfigs.length > 0 ? agentConfigs : DEFAULT_AGENTS;
-    const effectiveRounds = Math.min(Math.max(1, rounds), 100);
+    const effectiveRounds = Math.min(Math.max(1, requestedRounds), 100);
     const logs: OrchestraLog[] = [];
 
-    // Gemini key: user-provided or env default
     const geminiKey = apiKeys.gemini || getDefaultGeminiKey();
 
     logs.push({
-      timestamp: now(),
+      timestamp: getCurrentTimestamp(),
       type: 'info',
       message: `Orchestra started — mode: ${mode}, rounds: ${effectiveRounds}, topic: "${topic.slice(0, 60)}${topic.length > 60 ? '...' : ''}"`,
     });
 
     if (mode === 'parallel') {
-      // ── PARALLEL MODE: Fire all agents simultaneously ──
-      const callAgent = async (agent: AgentConfig): Promise<AgentCallResult> => {
-        logs.push({ timestamp: now(), type: 'call', agent: agent.name, message: `Initiating ${agent.name} analysis...` });
+      const executeParallelAgentCall = async (agent: AgentConfig): Promise<AgentCallResult> => {
+        logs.push({ timestamp: getCurrentTimestamp(), type: 'call', agent: agent.name, message: `Initiating ${agent.name} analysis...` });
 
         const userPrompt = `Analyze the following topic from your unique perspective as ${agent.name}.\n\nTOPIC:\n${topic}\n\nProvide your analysis. Be specific, insightful, and substantive. Do not merely summarize — deliver genuine analytical value.`;
         
@@ -155,7 +141,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
           if (result.text) {
             logs.push({
-              timestamp: now(),
+              timestamp: getCurrentTimestamp(),
               type: 'response',
               agent: agent.name,
               provider: result.provider,
@@ -172,7 +158,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             };
           } else {
             logs.push({
-              timestamp: now(),
+              timestamp: getCurrentTimestamp(),
               type: 'error',
               agent: agent.name,
               provider: result.provider,
@@ -191,7 +177,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Unknown execution error';
           logs.push({
-            timestamp: now(),
+            timestamp: getCurrentTimestamp(),
             type: 'error',
             agent: agent.name,
             provider: 'System',
@@ -208,12 +194,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
       };
 
-      const results = await Promise.all(agents.map(callAgent));
+      const results = await Promise.all(agents.map(executeParallelAgentCall));
       const successfulCount = results.filter((r) => r.response).length;
       const totalLatency = results.reduce((sum, r) => sum + r.latencyMs, 0);
 
       logs.push({
-        timestamp: now(),
+        timestamp: getCurrentTimestamp(),
         type: 'info',
         message: `Parallel complete — ${successfulCount}/${agents.length} agents responded, total latency: ${totalLatency}ms`,
       });
@@ -228,7 +214,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: r.response ? 'responded' : 'error',
           response: r.response,
           provider: r.provider,
-          timestamp: now(),
+          timestamp: getCurrentTimestamp(),
           latencyMs: r.latencyMs,
         })),
         logs,
@@ -240,21 +226,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const debateTurns: DebateTurn[] = [];
 
     for (let round = 1; round <= effectiveRounds; round++) {
-      logs.push({ timestamp: now(), type: 'info', message: `─── Debate Round ${round}/${effectiveRounds} ───` });
+      logs.push({ timestamp: getCurrentTimestamp(), type: 'info', message: `─── Debate Round ${round}/${effectiveRounds} ───` });
 
       const turnResponses: AgentResponseItem[] = [];
 
       for (const agent of agents) {
-        logs.push({ timestamp: now(), type: 'call', agent: agent.name, message: `Round ${round} — ${agent.name} thinking...` });
+        logs.push({ timestamp: getCurrentTimestamp(), type: 'call', agent: agent.name, message: `Round ${round} — ${agent.name} thinking...` });
 
-        // Build multi-turn conversation contents for Gemini
-        const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+        const conversationHistory: Array<{ role: string; parts: Array<{ text: string }> }> = [];
 
-        // Add previous rounds as conversation history
         for (const turn of debateTurns) {
           for (const resp of turn.responses) {
             if (resp.response) {
-              contents.push({
+              conversationHistory.push({
                 role: 'user',
                 parts: [{ text: `[${resp.agentName}]: ${resp.response}` }],
               });
@@ -262,18 +246,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
         }
 
-        // Add current agent's prompt
         const currentPrompt =
           round === 1 && debateTurns.length === 0
             ? `Analyze the following topic from your unique perspective as ${agent.name}.\n\nTOPIC:\n${topic}\n\nProvide your analysis. Be specific, insightful, and substantive.`
             : `The orchestra is in debate mode, Round ${round}/${effectiveRounds}.\n\nORIGINAL TOPIC:\n${topic}\n\n--- YOUR TURN (${agent.name}, Round ${round}) ---\nReview the prior discussion. You may:\n- Build upon points you agree with\n- Challenge positions you disagree with\n- Introduce new perspectives or data\n- Synthesize the discussion toward consensus or highlight irreconcilable differences\n\nRespond as ${agent.name}. Be substantive and move the discussion forward.`;
 
-        contents.push({ role: 'user', parts: [{ text: currentPrompt }] });
+        conversationHistory.push({ role: 'user', parts: [{ text: currentPrompt }] });
 
-        let result;
+        let executionResult;
         try {
           if (round === 1 && debateTurns.length === 0) {
-            result = await callLlm({
+            executionResult = await callLlm({
               systemPrompt: agent.systemInstruction,
               userPrompt: currentPrompt,
               geminiApiKey: geminiKey,
@@ -281,35 +264,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               temperature: 0.7,
             });
           } else {
-            result = await callLlmMultiTurn(agent.systemInstruction, contents, geminiKey, 1024);
+            executionResult = await callLlmMultiTurn(agent.systemInstruction, conversationHistory, geminiKey, 1024);
           }
         } catch (err) {
-          const errMessage = err instanceof Error ? err.message : 'Provider failure';
-          result = {
+          const errorMessage = err instanceof Error ? err.message : 'Provider failure';
+          executionResult = {
             text: '',
             provider: 'System',
             latencyMs: 0,
-            error: errMessage,
+            error: errorMessage,
           };
         }
 
         turnResponses.push({
           agentId: agent.id,
           agentName: agent.name,
-          status: result.text ? 'responded' : 'error',
-          response: result.text || `[${agent.name} was unable to respond — LLM unavailable]`,
-          provider: result.provider || 'None',
-          timestamp: now(),
-          latencyMs: result.latencyMs ?? 0,
+          status: executionResult.text ? 'responded' : 'error',
+          response: executionResult.text || `[${agent.name} was unable to respond — LLM unavailable]`,
+          provider: executionResult.provider || 'None',
+          timestamp: getCurrentTimestamp(),
+          latencyMs: executionResult.latencyMs ?? 0,
         });
 
         logs.push({
-          timestamp: now(),
-          type: result.text ? 'response' : 'error',
+          timestamp: getCurrentTimestamp(),
+          type: executionResult.text ? 'response' : 'error',
           agent: agent.name,
-          provider: result.provider || 'None',
-          message: `${agent.name} round ${round}: ${result.text ? `${result.text.length} chars` : 'failed'}`,
-          latencyMs: result.latencyMs,
+          provider: executionResult.provider || 'None',
+          message: `${agent.name} round ${round}: ${executionResult.text ? `${executionResult.text.length} chars` : 'failed'}`,
+          latencyMs: executionResult.latencyMs,
         });
       }
 
@@ -322,7 +305,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
 
     logs.push({
-      timestamp: now(),
+      timestamp: getCurrentTimestamp(),
       type: 'info',
       message: `Debate complete — ${effectiveRounds} rounds, ${totalDebateResponses} total responses`,
     });
