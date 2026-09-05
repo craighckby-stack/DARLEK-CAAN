@@ -1,24 +1,30 @@
-(function () {
+(function initializeInterceptionRouteRewriteManifest() {
   "use strict";
 
-  const TARGET_SCOPE = typeof globalThis !== "undefined" ? globalThis : (typeof self !== "undefined" ? self : this);
-  const MANIFEST_KEY = "__INTERCEPTION_ROUTE_REWRITE_MANIFEST";
-  const MANIFEST_PAYLOAD = "[]";
+  const GLOBAL_SCOPE = globalThis ?? self ?? this;
+  const MANIFEST_PROPERTY_KEY = "__INTERCEPTION_ROUTE_REWRITE_MANIFEST";
+  const MANIFEST_INITIAL_PAYLOAD = "[]";
+  const MAXIMUM_PAYLOAD_LENGTH = 1048576;
 
-  // Defensive validation: Enforce type safety and upper bound payload constraints
-  if (typeof MANIFEST_PAYLOAD !== "string" || MANIFEST_PAYLOAD.length > 1048576) {
-    throw new TypeError("Security Violation: Interception route rewrite manifest failed integrity validation.");
+  function validateManifestPayload(payload) {
+    if (typeof payload !== "string" || payload.length > MAXIMUM_PAYLOAD_LENGTH) {
+      throw new TypeError("Security Violation: Interception route rewrite manifest failed integrity validation.");
+    }
   }
 
-  // Prevent prototype pollution and unauthorized runtime mutation via immutable property definition
-  try {
-    Object.defineProperty(TARGET_SCOPE, MANIFEST_KEY, {
-      value: MANIFEST_PAYLOAD,
-      writable: false,
-      configurable: false,
-      enumerable: true
-    });
-  } catch (_) {
-    TARGET_SCOPE[MANIFEST_KEY] = MANIFEST_PAYLOAD;
+  function registerManifestGlobally(scope, key, payload) {
+    try {
+      Object.defineProperty(scope, key, {
+        value: payload,
+        writable: false,
+        configurable: false,
+        enumerable: true
+      });
+    } catch {
+      scope[key] = payload;
+    }
   }
+
+  validateManifestPayload(MANIFEST_INITIAL_PAYLOAD);
+  registerManifestGlobally(GLOBAL_SCOPE, MANIFEST_PROPERTY_KEY, MANIFEST_INITIAL_PAYLOAD);
 })();
