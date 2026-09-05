@@ -10,20 +10,20 @@ export const dynamic = 'force-dynamic';
 // Types & Interfaces
 // ============================================================================
 
-interface AgentPersona {
+export interface AgentPersona {
   readonly id: string;
   readonly name: string;
   readonly role: string;
   readonly bias: string;
 }
 
-interface StructuralProposal {
+export interface StructuralProposal {
   readonly newPath?: string;
   readonly type?: 'move' | 'create';
   readonly branch?: string;
 }
 
-interface AgentVote {
+export interface AgentVote {
   readonly agentId: string;
   readonly agentName: string;
   readonly vote: 'approve' | 'reject' | 'abstain';
@@ -33,7 +33,7 @@ interface AgentVote {
   readonly structuralProposal?: StructuralProposal | null;
 }
 
-interface DebateBody {
+export interface DebateBody {
   readonly filePath?: string;
   readonly originalCode?: string;
   readonly proposedCode?: string;
@@ -55,15 +55,15 @@ interface DebateBody {
 // Constants
 // ============================================================================
 
-const MAX_CODE_LENGTH = 35000;
-const TREE_FETCH_TIMEOUT_MS = 8000;
-const FILE_FETCH_TIMEOUT_MS = 6000;
+const MAX_CODE_LENGTH = 35_000;
+const TREE_FETCH_TIMEOUT_MS = 8_000;
+const FILE_FETCH_TIMEOUT_MS = 6_000;
 
 const AGENT_PERSONAS: readonly AgentPersona[] = [
   {
     id: 'archivist',
     name: 'ARCHIVIST',
-    role: 'Evaluate if the extracted logic is the truest historical representation of the stub\'s PURPOSE. Reject name collisions and dashboard impostors.',
+    role: "Evaluate if the extracted logic is the truest historical representation of the stub's PURPOSE. Reject name collisions and dashboard impostors.",
     bias: 'favors authentic historical lineage',
   },
   {
@@ -86,13 +86,13 @@ const AGENT_PERSONAS: readonly AgentPersona[] = [
 
 async function fetchFileTree(token: string, owner: string, repo: string, branch: string): Promise<string[]> {
   if (!token || !owner || !repo || !branch) return [];
-  
+
   try {
     const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
         'User-Agent': 'EMG-Neural-Engine',
       },
       signal: AbortSignal.timeout(TREE_FETCH_TIMEOUT_MS),
@@ -107,15 +107,21 @@ async function fetchFileTree(token: string, owner: string, repo: string, branch:
   }
 }
 
-async function fetchGitHubFile(token: string, owner: string, repo: string, branch: string, path: string): Promise<string | null> {
+async function fetchGitHubFile(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  path: string,
+): Promise<string | null> {
   if (!token || !owner || !repo || !branch || !path) return null;
 
   try {
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`;
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3.raw',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3.raw',
         'User-Agent': 'EMG-Neural-Engine',
       },
       signal: AbortSignal.timeout(FILE_FETCH_TIMEOUT_MS),
@@ -144,6 +150,19 @@ function parseJsonPayload(rawText: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+function cleanMarkdownCode(text: string): string {
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) {
+    const lines = cleaned.split('\n');
+    lines.shift();
+    if (lines[lines.length - 1]?.startsWith('```')) {
+      lines.pop();
+    }
+    cleaned = lines.join('\n').trim();
+  }
+  return cleaned;
 }
 
 // ============================================================================
@@ -176,7 +195,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const originalLines = originalCode.split('\n').length;
     const proposedLines = proposedCode.split('\n').length;
     const lineDelta = proposedLines - originalLines;
-    
+
     const diffSummary = [
       `File: ${filePath}`,
       `Risk Score: ${riskScore}/10`,
@@ -196,23 +215,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const [fileTree, readmeContent, recentMutations] = await Promise.all([
       fetchFileTree(githubToken, repoOwner, repoName, repoBranch),
       fetchGitHubFile(githubToken, repoOwner, repoName, repoBranch, 'README.md'),
-      sessionId 
-        ? db.mutationHistory.findMany({
-            where: { sessionId, status: 'applied' },
-            orderBy: { createdAt: 'desc' },
-            take: 5,
-          }).catch(() => []) 
+      sessionId
+        ? db.mutationHistory
+            .findMany({
+              where: { sessionId, status: 'applied' },
+              orderBy: { createdAt: 'desc' },
+              take: 5,
+            })
+            .catch(() => [])
         : Promise.resolve([]),
     ]);
 
     const fileTreeSummary = fileTree.join('\n');
-    const readmeContext = readmeContent 
-      ? `\n\nTARGET REPOSITORY SYSTEM INSTRUCTIONS (README.md):\n${readmeContent.slice(0, 3000)}` 
+    const readmeContext = readmeContent
+      ? `\n\nTARGET REPOSITORY SYSTEM INSTRUCTIONS (README.md):\n${readmeContent.slice(0, 3000)}`
       : '';
-    
-    const appliedMutationsContext = (recentMutations && recentMutations.length > 0)
-      ? `\n\nRECENT SYSTEM MUTATIONS (Context of what you have done so far in this session):\n${recentMutations.map(m => `  - File: ${m.filePath} | Analysis: ${m.analysis}`).join('\n')}`
-      : '';
+
+    const appliedMutationsContext =
+      recentMutations && recentMutations.length > 0
+        ? `\n\nRECENT SYSTEM MUTATIONS (Context of what you have done so far in this session):\n${recentMutations
+            .map((m) => `  - File: ${m.filePath} | Analysis: ${m.analysis}`)
+            .join('\n')}`
+        : '';
 
     const effectiveRounds = Math.min(Math.max(1, rounds), 100);
     const geminiApiKey = apiKeys.gemini ?? getDefaultGeminiKey();
@@ -225,11 +249,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     for (let roundIndex = 1; roundIndex <= effectiveRounds; roundIndex++) {
       const truncatedProposed = truncateCode(currentProposedCode);
       const activeAgentIds = body.activeAgents;
-      
-      let selectedPersonas = Array.isArray(activeAgentIds) && activeAgentIds.length > 0
-        ? AGENT_PERSONAS.filter(a => activeAgentIds.includes(a.id))
-        : AGENT_PERSONAS;
-      
+
+      let selectedPersonas =
+        Array.isArray(activeAgentIds) && activeAgentIds.length > 0
+          ? AGENT_PERSONAS.filter((a) => activeAgentIds.includes(a.id))
+          : AGENT_PERSONAS;
+
       if (selectedPersonas.length === 0) {
         selectedPersonas = AGENT_PERSONAS;
       }
@@ -247,7 +272,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             '{"vote": "approve" | "reject" | "abstain", "confidence": <0-100>, "reasoning": "One sentence explaining your vote", "structuralProposal": {"newPath": "...", "type": "move|create", "branch": "..."}}',
           ].join('\n\n');
 
-          const genesisDirective = isArchitecturalGenesis 
+          const genesisDirective = isArchitecturalGenesis
             ? '\nTHIS IS AN ARCHITECTURAL GENESIS CYCLE. Your ONLY focus is verifying the existence and quality of the JSDoc architectural header at the top of the file. You MUST APPROVE immediately if a good header is present.'
             : '\nCRITICAL MANDATE: Be constructive, evolutionary, and pragmatic. Do NOT default to rejecting. Approve improvements that are clean, readable, well-type-checked, and reasonably risk-mitigated.';
 
@@ -291,20 +316,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               const lowerText = result.text.toLowerCase();
               if (lowerText.includes('approve')) vote = 'approve';
               else if (lowerText.includes('reject') || lowerText.includes('deny')) vote = 'reject';
-              
+
               reasoning = result.text.slice(0, 200).replace(/[{}"]/g, '').trim();
-              
-              const match = reasoning.match(/\{"newPath"\s*:\s*"[^"]*",\s*"type"\s*:\s*"[^"]*"(?:,\s*"branch"\s*:\s*"[^"]*")?\s*\}/);
+
+              const match = reasoning.match(
+                /\{"newPath"\s*:\s*"[^"]*",\s*"type"\s*:\s*"[^"]*"(?:,\s*"branch"\s*:\s*"[^"]*")?\s*\}/,
+              );
               if (match) {
-                try { 
-                  structuralProposal = JSON.parse(match[0]) as StructuralProposal; 
+                try {
+                  structuralProposal = JSON.parse(match[0]) as StructuralProposal;
                 } catch {}
               }
             }
           }
 
           if (vote === 'abstain' && confidence === 50 && reasoning.includes('LLM unavailable')) {
-            const fallbackVote = dalekBrainDebateVote(agent.id, agent.name, filePath || 'module.ts', originalCode, currentProposedCode, 3);
+            const fallbackVote = dalekBrainDebateVote(
+              agent.id,
+              agent.name,
+              filePath || 'module.ts',
+              originalCode,
+              currentProposedCode,
+              3,
+            );
             vote = fallbackVote.vote as 'approve' | 'reject' | 'abstain';
             confidence = fallbackVote.confidence;
             reasoning = fallbackVote.reasoning;
@@ -326,8 +360,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         currentVotes = await Promise.all(agentPromises);
       } else {
-        const transcript = currentVotes.map(v => `- ${v.agentName} voted [${v.vote.toUpperCase()}] (${v.confidence}% confidence) stating: "${v.reasoning}"`).join('\n');
-        
+        const transcript = currentVotes
+          .map((v) => `- ${v.agentName} voted [${v.vote.toUpperCase()}] (${v.confidence}% confidence) stating: "${v.reasoning}"`)
+          .join('\n');
+
         const agentPromises = selectedPersonas.map(async (agent): Promise<AgentVote> => {
           const userPrompt = [
             `MUTATION UNDER REVIEW:\n${diffSummary}${readmeContext}${appliedMutationsContext}`,
@@ -338,7 +374,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             'Respond in exact JSON format (no markdown):',
             '{"vote": "approve" | "reject" | "abstain", "confidence": 0-100, "reasoning": "One updated sentence"}',
           ].join('\n\n');
-          
+
           const systemPrompt = [
             '[ROLE] You are a debate agent in AHI Synthesis Loop.',
             `[PROFILE] ${agent.role}`,
@@ -374,13 +410,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               const lowerText = result.text.toLowerCase();
               if (lowerText.includes('approve')) vote = 'approve';
               else if (lowerText.includes('reject') || lowerText.includes('deny')) vote = 'reject';
-              
+
               reasoning = result.text.slice(0, 200).replace(/[{}"]/g, '').trim();
             }
           }
 
           if (vote === 'abstain' && confidence === 50) {
-            const fallbackVote = dalekBrainDebateVote(agent.id, agent.name, filePath || 'module.ts', originalCode, currentProposedCode, 3);
+            const fallbackVote = dalekBrainDebateVote(
+              agent.id,
+              agent.name,
+              filePath || 'module.ts',
+              originalCode,
+              currentProposedCode,
+              3,
+            );
             vote = fallbackVote.vote as 'approve' | 'reject' | 'abstain';
             confidence = fallbackVote.confidence;
             reasoning = fallbackVote.reasoning;
@@ -399,16 +442,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         currentVotes = await Promise.all(agentPromises);
       }
 
-      const roundRejections = currentVotes.filter(v => v.vote === 'reject').length;
-      const roundAbstains = currentVotes.filter(v => v.vote === 'abstain').length;
+      const roundRejections = currentVotes.filter((v) => v.vote === 'reject').length;
+      const roundAbstains = currentVotes.filter((v) => v.vote === 'abstain').length;
 
-      if (roundRejections === 0 && roundAbstains === 0 && currentVotes.every(v => v.vote === 'approve')) {
+      if (roundRejections === 0 && roundAbstains === 0 && currentVotes.every((v) => v.vote === 'approve')) {
         break;
       }
 
       if (roundIndex < effectiveRounds && (roundRejections > 0 || roundAbstains > 0)) {
-        const transcript = currentVotes.map(v => `- ${v.agentName} voted [${v.vote.toUpperCase()}] (${v.confidence}% confidence) stating: "${v.reasoning}"`).join('\n');
-        const synthesizeDirective = isArchitecturalGenesis 
+        const transcript = currentVotes
+          .map((v) => `- ${v.agentName} voted [${v.vote.toUpperCase()}] (${v.confidence}% confidence) stating: "${v.reasoning}"`)
+          .join('\n');
+        const synthesizeDirective = isArchitecturalGenesis
           ? 'Rewrite the PROPOSED CODE to fix structural concerns regarding headers.'
           : 'Enhance and rewrite the PROPOSED CODE fixing all critic concerns. Prune dead weight and redundant abstractions.';
 
@@ -426,21 +471,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             systemPrompt: '[ROLE] AHI CODE SYNTHESIZER. Output raw executable code only without markdown wrappers.',
             userPrompt: synthesizePrompt,
             geminiApiKey,
-            maxTokens: 8000,
+            maxTokens: 8_000,
             temperature: 0.2,
           });
 
           if (synthResult.text && synthResult.text.trim().length > 10) {
-            let enhanced = synthResult.text.trim();
-            if (enhanced.startsWith('```')) {
-              const lines = enhanced.split('\n');
-              lines.shift();
-              if (lines[lines.length - 1]?.startsWith('```')) {
-                lines.pop();
-              }
-              enhanced = lines.join('\n');
-            }
-            currentProposedCode = enhanced;
+            currentProposedCode = cleanMarkdownCode(synthResult.text);
             didEnhance = true;
           } else {
             const localEnhanced = dalekBrainSynthesize(truncatedOriginal, currentProposedCode, filePath || 'module.ts');
@@ -460,9 +496,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const votes = currentVotes;
-    const approvals = votes.filter(v => v.vote === 'approve').length;
-    const rejections = votes.filter(v => v.vote === 'reject').length;
-    const abstains = votes.filter(v => v.vote === 'abstain').length;
+    const approvals = votes.filter((v) => v.vote === 'approve').length;
+    const rejections = votes.filter((v) => v.vote === 'reject').length;
+    const abstains = votes.filter((v) => v.vote === 'abstain').length;
     const consensus = approvals > rejections ? 'APPROVE' : rejections > approvals ? 'REJECT' : 'TIED';
 
     const totalWeights = votes.reduce((acc, v) => acc + (v.vote !== 'abstain' ? v.confidence : 0), 0);
@@ -472,7 +508,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     let epistemicRuling = `The swarm has deliberated. Simple consensus achieved: ${consensus}.`;
     try {
-      const transcript = votes.map(v => `- ${v.agentName} (${v.vote.toUpperCase()}, confidence: ${v.confidence}%): "${v.reasoning}"`).join('\n');
+      const transcript = votes
+        .map((v) => `- ${v.agentName} (${v.vote.toUpperCase()}, confidence: ${v.confidence}%): "${v.reasoning}"`)
+        .join('\n');
       const rulingPrompt = `[TASK] Review synthesis debate and output a 1-2 sentence Epistemological Ruling in strict plain text.\n\nTRANSCRIPT:\n${transcript}`;
 
       const rulingResult = await callLlm({
@@ -489,13 +527,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     } catch {}
 
     let structuralProposal: StructuralProposal | null = null;
-    for (const v of votes.filter(v => v.vote === 'approve')) {
+    for (const v of votes.filter((v) => v.vote === 'approve')) {
       if (v.structuralProposal?.newPath) {
         structuralProposal = v.structuralProposal;
         break;
       }
       try {
-        const match = v.reasoning.match(/\{"newPath"\s*:\s*"[^"]*",\s*"type"\s*:\s*"[^"]*"(?:,\s*"branch"\s*:\s*"[^"]*")?\s*\}/);
+        const match = v.reasoning.match(
+          /\{"newPath"\s*:\s*"[^"]*",\s*"type"\s*:\s*"[^"]*"(?:,\s*"branch"\s*:\s*"[^"]*")?\s*\}/,
+        );
         if (match) {
           structuralProposal = JSON.parse(match[0]) as StructuralProposal;
           break;
