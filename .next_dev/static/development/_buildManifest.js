@@ -1,19 +1,19 @@
-(function (globalContext) {
+(function initializeBuildManifest(globalContext) {
   "use strict";
 
   if (!globalContext || (typeof globalContext !== "object" && typeof globalContext !== "function")) {
     return;
   }
 
+  const DEFAULT_CATCH_ALL_ROUTE = {
+    has: undefined,
+    source: "/:path((?!api|_next|static|favicon.ico).*)",
+    destination: "/"
+  };
+
   const buildManifest = {
     __rewrites: {
-      afterFiles: [
-        {
-          has: undefined,
-          source: "/:path((?!api|_next|static|favicon.ico).*)",
-          destination: "/"
-        }
-      ],
+      afterFiles: [DEFAULT_CATCH_ALL_ROUTE],
       beforeFiles: [],
       fallback: []
     },
@@ -22,13 +22,20 @@
     sortedPages: ["/_app"]
   };
 
-  if (typeof Object.freeze === "function") {
-    Object.freeze(buildManifest.__rewrites.afterFiles[0]);
-    Object.freeze(buildManifest.__rewrites.afterFiles);
-    Object.freeze(buildManifest.__rewrites);
-    Object.freeze(buildManifest.sortedPages);
-    Object.freeze(buildManifest);
-  }
+  const deepFreeze = (targetObject) => {
+    if (typeof Object.freeze === "function" && targetObject && typeof targetObject === "object") {
+      Object.freeze(targetObject);
+      Object.getOwnPropertyNames(targetObject).forEach((propertyName) => {
+        const propertyValue = targetObject[propertyName];
+        if (propertyValue && typeof propertyValue === "object") {
+          deepFreeze(propertyValue);
+        }
+      });
+    }
+    return targetObject;
+  };
+
+  deepFreeze(buildManifest);
 
   try {
     Object.defineProperty(globalContext, "__BUILD_MANIFEST", {
@@ -41,14 +48,14 @@
     globalContext.__BUILD_MANIFEST = buildManifest;
   }
 
-  const cb = globalContext.__BUILD_MANIFEST_CB;
-  if (typeof cb === "function") {
+  const manifestCallback = globalContext.__BUILD_MANIFEST_CB;
+  if (typeof manifestCallback === "function") {
     try {
-      cb();
+      manifestCallback();
     } catch (callbackError) {
-      const consoleRef = typeof console !== "undefined" ? console : globalContext.console;
-      if (consoleRef && typeof consoleRef.error === "function") {
-        consoleRef.error("Error executing __BUILD_MANIFEST_CB callback:", callbackError);
+      const consoleReference = globalContext.console;
+      if (consoleReference && typeof consoleReference.error === "function") {
+        consoleReference.error("Error executing __BUILD_MANIFEST_CB callback:", callbackError);
       }
     }
   }
