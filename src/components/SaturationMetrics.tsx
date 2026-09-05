@@ -71,38 +71,107 @@ const METRIC_CONFIGS: readonly MetricConfig[] = [
   },
 ] as const;
 
-function getMetricColor(value: number, warning: number, critical: number, inverted?: boolean): string {
+function resolveMetricColor(value: number, warning: number, critical: number, inverted?: boolean): string {
   const safeValue = Number.isFinite(value) ? value : 0;
+  
   if (inverted) {
     if (safeValue <= critical) return COLORS.dalekRed;
     if (safeValue <= warning) return COLORS.gold;
     return COLORS.cyan;
   }
+
   if (safeValue >= critical) return COLORS.dalekRed;
   if (safeValue >= warning) return COLORS.gold;
   return COLORS.cyan;
 }
 
-function getStatusLabel(value: number, warning: number, critical: number, inverted?: boolean): string {
+function resolveStatusLabel(value: number, warning: number, critical: number, inverted?: boolean): string {
   const safeValue = Number.isFinite(value) ? value : 0;
+  
   if (inverted) {
     if (safeValue <= critical) return '[CRITICAL]';
     if (safeValue <= warning) return '[WARNING]';
     return '[OK]';
   }
+
   if (safeValue >= critical) return '[OVER THRESHOLD]';
   if (safeValue >= warning) return '[WARNING]';
   return '[OK]';
+}
+
+interface PanelHeaderProps {
+  readonly title: string;
+}
+
+function PanelHeader({ title }: PanelHeaderProps) {
+  return (
+    <div className="dalek-panel-header py-2 px-1 flex items-center gap-2">
+      <BarChart3 size={14} style={{ color: COLORS.dalekRed }} />
+      <span style={{ fontSize: '11px' }}>{title}</span>
+    </div>
+  );
+}
+
+interface MetricBarProps {
+  readonly config: MetricConfig;
+  readonly rawValue: unknown;
+}
+
+function MetricBar({ config, rawValue }: MetricBarProps) {
+  const value = typeof rawValue === 'number' && Number.isFinite(rawValue) ? rawValue : 0;
+  const denominator = config.max > 0 ? config.max : 1;
+  const percentage = Math.min(100, Math.max(0, (value / denominator) * 100));
+  const barColor = resolveMetricColor(value, config.warning, config.critical, config.inverted);
+  const statusLabel = resolveStatusLabel(value, config.warning, config.critical, config.inverted);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span 
+          style={{ 
+            fontSize: '8px', 
+            color: COLORS.textMuted, 
+            fontFamily: 'var(--font-orbitron), sans-serif', 
+            letterSpacing: '0.1em' 
+          }}
+        >
+          {config.label}
+        </span>
+        <div className="flex items-center gap-2">
+          <span
+            style={{
+              fontSize: '7px',
+              color: barColor,
+              fontFamily: 'var(--font-orbitron), sans-serif',
+              letterSpacing: '0.05em',
+            }}
+          >
+            {statusLabel}
+          </span>
+          <span style={{ fontSize: '10px', color: barColor, fontWeight: 600 }}>
+            {config.format(value)}
+          </span>
+        </div>
+      </div>
+      <div className="dalek-progress rounded-sm h-2">
+        <div
+          className="dalek-progress-fill h-full rounded-sm transition-all duration-300"
+          style={{
+            width: `${percentage}%`,
+            backgroundColor: barColor,
+            boxShadow: `0 0 6px ${barColor}40`,
+          }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function SaturationMetricsPanelComponent({ metrics }: SaturationMetricsPanelProps) {
   if (!metrics) {
     return (
       <div className="dalek-panel rounded-lg p-4 space-y-4">
-        <div className="dalek-panel-header py-2 px-1 flex items-center gap-2">
-          <BarChart3 size={14} style={{ color: COLORS.dalekRed }} />
-          <span style={{ fontSize: '11px' }}>COGNITIVE DOMINANCE METRICS</span>
-        </div>
+        <PanelHeader title="COGNITIVE DOMINANCE METRICS" />
         <div style={{ fontSize: '10px', color: COLORS.textMuted }}>NO METRICS DATA AVAILABLE</div>
       </div>
     );
@@ -110,62 +179,15 @@ function SaturationMetricsPanelComponent({ metrics }: SaturationMetricsPanelProp
 
   return (
     <div className="dalek-panel rounded-lg p-4 space-y-4">
-      <div className="dalek-panel-header py-2 px-1 flex items-center gap-2">
-        <BarChart3 size={14} style={{ color: COLORS.dalekRed }} />
-        <span style={{ fontSize: '11px' }}>COGNITIVE DOMINANCE METRICS</span>
-      </div>
-
+      <PanelHeader title="COGNITIVE DOMINANCE METRICS" />
       <div className="space-y-3">
-        {METRIC_CONFIGS.map((config) => {
-          const rawValue = metrics[config.key];
-          const value = typeof rawValue === 'number' && Number.isFinite(rawValue) ? rawValue : 0;
-          const denominator = config.max > 0 ? config.max : 1;
-          const percentage = Math.min(100, Math.max(0, (value / denominator) * 100));
-          const barColor = getMetricColor(value, config.warning, config.critical, config.inverted);
-          const statusLabel = getStatusLabel(value, config.warning, config.critical, config.inverted);
-
-          return (
-            <div key={config.key} className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span 
-                  style={{ 
-                    fontSize: '8px', 
-                    color: COLORS.textMuted, 
-                    fontFamily: 'var(--font-orbitron), sans-serif', 
-                    letterSpacing: '0.1em' 
-                  }}
-                >
-                  {config.label}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span
-                    style={{
-                      fontSize: '7px',
-                      color: barColor,
-                      fontFamily: 'var(--font-orbitron), sans-serif',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
-                    {statusLabel}
-                  </span>
-                  <span style={{ fontSize: '10px', color: barColor, fontWeight: 600 }}>
-                    {config.format(value)}
-                  </span>
-                </div>
-              </div>
-              <div className="dalek-progress rounded-sm h-2">
-                <div
-                  className="dalek-progress-fill h-full rounded-sm transition-all duration-300"
-                  style={{
-                    width: `${percentage}%`,
-                    backgroundColor: barColor,
-                    boxShadow: `0 0 6px ${barColor}40`,
-                  }}
-                />
-              </div>
-            </div>
-          );
-        })}
+        {METRIC_CONFIGS.map((config) => (
+          <MetricBar 
+            key={config.key} 
+            config={config} 
+            rawValue={metrics[config.key]} 
+          />
+        ))}
       </div>
     </div>
   );
