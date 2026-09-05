@@ -1,12 +1,11 @@
 /**
  * EMG Core v49 Neural Code Optimizer Engine
  * File: .next_dev/server/app/page_client-reference-manifest.js
- * Goal: READABILITY - Modern idioms, modular decomposition, clean architectural clarity.
+ * Goal: PERFORMANCE - Execution speed, memory footprint reduction, caching, and allocation efficiency.
  */
 (function initializeRscClientManifest(scope) {
   "use strict";
 
-  // Validate execution context availability
   if (!scope || (typeof scope !== "object" && typeof scope !== "function")) {
     return;
   }
@@ -14,26 +13,6 @@
   const RSC_MANIFEST_KEY = "__RSC_MANIFEST";
   const MANIFEST_ROUTE_KEY = "/page";
 
-  /**
-   * Ensures the target scope possesses a valid __RSC_MANIFEST registry container.
-   */
-  function ensureRscManifestRegistry(target) {
-    const hasManifest = Object.prototype.hasOwnProperty.call(target, RSC_MANIFEST_KEY);
-    const isValidManifest = target[RSC_MANIFEST_KEY] !== null && typeof target[RSC_MANIFEST_KEY] === "object";
-
-    if (!hasManifest || !isValidManifest) {
-      Object.defineProperty(target, RSC_MANIFEST_KEY, {
-        value: Object.create(null),
-        writable: true,
-        enumerable: true,
-        configurable: true,
-      });
-    }
-
-    return target[RSC_MANIFEST_KEY];
-  }
-
-  // Define modular configuration payload mapping for client references
   const manifestPayload = {
     moduleLoading: {
       prefix: "/_next/",
@@ -244,7 +223,16 @@
     edgeRscModuleMapping: {},
   };
 
-  const rscManifest = ensureRscManifestRegistry(scope);
+  let rscManifest = scope[RSC_MANIFEST_KEY];
+  if (!rscManifest || typeof rscManifest !== "object") {
+    rscManifest = Object.create(null);
+    Object.defineProperty(scope, RSC_MANIFEST_KEY, {
+      value: rscManifest,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
 
   Object.defineProperty(rscManifest, MANIFEST_ROUTE_KEY, {
     value: manifestPayload,
