@@ -9,6 +9,7 @@ const USER_AGENT_HEADER = 'EMG-Core-Neural-Code-Optimizer';
 interface GitHubBranch {
   name: string;
   protected?: boolean;
+  default?: boolean;
   commit?: {
     sha: string;
     url: string;
@@ -36,6 +37,10 @@ interface ErrorResponse {
   error: string;
 }
 
+interface ErrorCause {
+  status?: number;
+}
+
 /**
  * Validates whether a given value is a non-empty trimmed string.
  */
@@ -50,7 +55,7 @@ async function extractGitHubErrorMessage(response: Response): Promise<string> {
   const defaultMessage = `GitHub API returned status ${response.status}`;
   
   try {
-    const errorData = (await response.json()) as { message?: string };
+    const errorData = (await response.json()) as { message?: unknown };
     return typeof errorData?.message === 'string' ? errorData.message : defaultMessage;
   } catch {
     return defaultMessage;
@@ -58,10 +63,24 @@ async function extractGitHubErrorMessage(response: Response): Promise<string> {
 }
 
 /**
+ * Extracts and normalizes the HTTP status code from an error cause.
+ */
+function extractErrorStatus(error: unknown): number {
+  if (!(error instanceof Error) || !error.cause || typeof error.cause !== 'object') {
+    return 500;
+  }
+
+  const { status } = error.cause as ErrorCause;
+  return typeof status === 'number' ? status : 500;
+}
+
+/**
  * Fetches and sanitizes repository branches from the GitHub API.
  */
 async function fetchRepositoryBranches(owner: string, repo: string, token: string): Promise<SanitizedBranch[]> {
-  const response = await fetch(`${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/branches`, {
+  const endpoint = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/branches`;
+  
+  const response = await fetch(endpoint, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github.v3+json',
@@ -108,9 +127,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<SuccessRespon
     return NextResponse.json({ success: true, branches });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown execution error';
-    const status = (error instanceof Error && typeof error.cause === 'object' && error.cause !== null && 'status' in error.cause && typeof (error.cause as { status?: unknown }).status === 'number')
-      ? ((error.cause as { status: number }).status)
-      : 500;
+    const status = extractErrorStatus(error);
 
     console.error('[EMG Core v49] Branch list retrieval error:', error);
     
