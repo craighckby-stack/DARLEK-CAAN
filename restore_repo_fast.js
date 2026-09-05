@@ -1,6 +1,6 @@
 /**
  * @file restore_repo_fast.js
- * @version 49.3.0
+ * @version 49.4.0
  * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
  * @description High-performance, memory-efficient, sovereign repository restoration engine with concurrency throttling and robust error handling.
  */
@@ -17,7 +17,7 @@ const CONFIG = Object.freeze({
   BRANCH: 'main',
   MAX_CONCURRENT_REQUESTS: 16,
   TIMEOUT_MS: 30000,
-  USER_AGENT: 'EMG-Core-Neural-Optimizer/49.3',
+  USER_AGENT: 'EMG-Core-Neural-Optimizer/49.4',
   ACCEPT_HEADER: 'application/vnd.github.v3+json'
 });
 
