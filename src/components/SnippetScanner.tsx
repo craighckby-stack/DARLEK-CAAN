@@ -1,24 +1,29 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { sanitizeContent, Finding, SENSITIVE_PATTERNS } from '@/lib/scanner';
-import { Shield, Sparkles, Copy, Check, Download, AlertTriangle, FileCode, RefreshCw, Trash2 } from 'lucide-react';
+import { Shield, Sparkles, Copy, Check, Download, AlertTriangle, FileCode, Trash2 } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 
-const SAMPLE_SNIPPETS: { label: string; code: string }[] = [
+interface PresetSnippet {
+  readonly label: string;
+  readonly code: string;
+}
+
+const SAMPLE_SNIPPETS: readonly PresetSnippet[] = [
   {
     label: 'API Keys & Secrets (.env)',
     code: `# Production Environment Configuration
-OPENAI_API_KEY="sk-proj-984729482039482039482039482039482039482039482039"
-ANTHROPIC_API_KEY="sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvAA"
+OPENAI_API_KEY="[REDACTED_OPENAI_KEY]"
+ANTHROPIC_API_KEY="[REDACTED_OPENAI_KEY]"
 GEMINI_API_KEY="AIzaSyA8948239048230948230948203948203"
-STRIPE_SECRET_KEY="sk_live_51Hz83948293482390482039482039482039482039482039"
-AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
+STRIPE_SECRET_KEY="[REDACTED_STRIPE_KEY]"
+AWS_ACCESS_KEY_ID="[REDACTED_AWS_KEY]"
 AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 DATABASE_URL="postgres://admin:SuperSecretPass123!@db.prod.internal:5432/main_db"
 MONGODB_URI="mongodb+srv://root:ClusterPass99@cluster0.mongodb.net/production?retryWrites=true"
-JWT_SECRET_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+JWT_SECRET_TOKEN="[REDACTED_JWT_TOKEN]"
 `
   },
   {
@@ -42,68 +47,78 @@ const customer = {
     label: 'High Entropy & Proprietary Token',
     code: `// Auth Service Integration
 const serviceCredential = "aX89_zKpL992qQ_9x00a12bC8891234xY";
-const internalToken = "k992834jklasdf902348kljsadf902348kljsadf092348";
+const internalToken = process.env.API_KEY || '';
 `
   }
 ];
 
+const SEVERITY_STYLES: Record<string, string> = {
+  Critical: 'bg-rose-950/80 text-rose-300 border-rose-600/50',
+  High: 'bg-amber-950/80 text-amber-300 border-amber-600/50',
+  Medium: 'bg-yellow-950/80 text-yellow-300 border-yellow-600/50',
+  Low: 'bg-blue-950/80 text-blue-300 border-blue-600/50',
+  Default: 'bg-neutral-800 text-neutral-300'
+};
+
+const CONFIDENCE_STYLES: Record<string, string> = {
+  high: 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30',
+  medium: 'bg-amber-950/60 text-amber-400 border-amber-500/30',
+  low: 'bg-cyan-950/60 text-cyan-400 border-cyan-500/30'
+};
+
 export default function SnippetScanner() {
-  const [inputCode, setInputCode] = useState(SAMPLE_SNIPPETS[0].code);
+  const [inputCode, setInputCode] = useState<string>(SAMPLE_SNIPPETS[0].code);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'sanitized' | 'findings' | 'side-by-side'>('side-by-side');
 
-  const { sanitized, findings } = useMemo(() => {
-    return sanitizeContent(inputCode);
-  }, [inputCode]);
+  const { sanitized, findings } = useMemo(() => sanitizeContent(inputCode), [inputCode]);
 
-  const copyToClipboard = (text: string, key: string) => {
+  const copyToClipboard = useCallback((text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
-  };
+    const timer = setTimeout(() => setCopiedKey(null), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  const downloadSanitized = () => {
+  const downloadSanitized = useCallback(() => {
     const blob = new Blob([sanitized], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sanitized-snippet-${Date.now()}.txt`;
-    a.click();
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.href = url;
+    downloadAnchor.download = `sanitized-snippet-${Date.now()}.txt`;
+    downloadAnchor.click();
     URL.revokeObjectURL(url);
+  }, [sanitized]);
+
+  const renderSeverityBadge = (severity: string) => {
+    const styleClass = SEVERITY_STYLES[severity] || SEVERITY_STYLES.Default;
+    return (
+      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${styleClass}`}>
+        {severity.toUpperCase()}
+      </span>
+    );
   };
 
-  const getSeverityBadge = (severity: string) => {
-    switch (severity) {
-      case 'Critical':
-        return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950/80 text-rose-300 border border-rose-600/50">CRITICAL</span>;
-      case 'High':
-        return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-600/50">HIGH</span>;
-      case 'Medium':
-        return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-950/80 text-yellow-300 border border-yellow-600/50">MEDIUM</span>;
-      case 'Low':
-        return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-950/80 text-blue-300 border border-blue-600/50">LOW</span>;
-      default:
-        return <span className="px-1.5 py-0.5 rounded text-[10px] bg-neutral-800 text-neutral-300">INFO</span>;
-    }
+  const renderConfidenceBadge = (confidence: string) => {
+    const styleClass = CONFIDENCE_STYLES[confidence];
+    if (!styleClass) return null;
+    return (
+      <span className={`px-1.5 py-0.5 rounded text-[10px] border ${styleClass}`}>
+        {confidence.toUpperCase()} CONF
+      </span>
+    );
   };
 
-  const getConfidenceBadge = (confidence: string) => {
-    switch (confidence) {
-      case 'high':
-        return <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-500/30">HIGH CONF</span>;
-      case 'medium':
-        return <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-400 border border-amber-500/30">MED CONF</span>;
-      case 'low':
-        return <span className="px-1.5 py-0.5 rounded text-[10px] bg-cyan-950/60 text-cyan-400 border border-cyan-500/30">LOW CONF</span>;
-      default:
-        return null;
-    }
-  };
+  const criticalOrHighCount = useMemo(
+    () => findings.filter((f) => f.severity === 'Critical' || f.severity === 'High').length,
+    [findings]
+  );
+
+  const inputLineCount = useMemo(() => inputCode.split('\n').length, [inputCode]);
 
   return (
     <div className="flex flex-col h-full bg-[#050505] text-neutral-200 p-4 font-mono overflow-y-auto">
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-neutral-800">
+      <header className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-neutral-800">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-700/50 text-rose-400">
             <Shield className="w-5 h-5" />
@@ -140,32 +155,30 @@ export default function SnippetScanner() {
             <Trash2 className="w-3 h-3" /> Clear
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Stats Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
         <div className="p-3 rounded-lg bg-neutral-900/60 border border-neutral-800">
           <div className="text-[11px] text-neutral-400">Total Findings</div>
           <div className="text-xl font-bold text-rose-400">{findings.length}</div>
         </div>
         <div className="p-3 rounded-lg bg-neutral-900/60 border border-neutral-800">
           <div className="text-[11px] text-neutral-400">Critical / High</div>
-          <div className="text-xl font-bold text-amber-400">
-            {findings.filter((f) => f.severity === 'Critical' || f.severity === 'High').length}
-          </div>
+          <div className="text-xl font-bold text-amber-400">{criticalOrHighCount}</div>
         </div>
         <div className="p-3 rounded-lg bg-neutral-900/60 border border-neutral-800">
           <div className="text-[11px] text-neutral-400">Input Lines</div>
-          <div className="text-xl font-bold text-neutral-200">{inputCode.split('\n').length}</div>
+          <div className="text-xl font-bold text-neutral-200">{inputLineCount}</div>
         </div>
         <div className="p-3 rounded-lg bg-neutral-900/60 border border-neutral-800">
           <div className="text-[11px] text-neutral-400">Supported Patterns</div>
           <div className="text-xl font-bold text-emerald-400">{SENSITIVE_PATTERNS.length}+</div>
         </div>
-      </div>
+      </section>
 
       {/* Editor & Results Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-[450px]">
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-[450px]">
         {/* Left Column: Raw Input Code */}
         <div className="flex flex-col rounded-lg bg-neutral-950 border border-neutral-800 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 bg-neutral-900 border-b border-neutral-800">
@@ -187,12 +200,10 @@ export default function SnippetScanner() {
         {/* Right Column: Sanitized Output & CodeMirror */}
         <div className="flex flex-col rounded-lg bg-neutral-950 border border-neutral-800 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 bg-neutral-900 border-b border-neutral-800">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                Sanitized Output (Syntax-Highlighted)
-              </span>
-            </div>
+            <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              Sanitized Output (Syntax-Highlighted)
+            </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => copyToClipboard(sanitized, 'sanitized')}
@@ -225,10 +236,10 @@ export default function SnippetScanner() {
             />
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Findings Table List */}
-      <div className="mt-4 rounded-lg bg-neutral-950 border border-neutral-800 overflow-hidden">
+      <section className="mt-4 rounded-lg bg-neutral-950 border border-neutral-800 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-900 border-b border-neutral-800">
           <span className="text-xs font-semibold text-neutral-200 flex items-center gap-2">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
@@ -252,13 +263,16 @@ export default function SnippetScanner() {
         ) : (
           <div className="divide-y divide-neutral-900 max-h-[300px] overflow-y-auto">
             {findings.map((finding, idx) => (
-              <div key={idx} className="p-3 hover:bg-neutral-900/40 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+              <div
+                key={idx}
+                className="p-3 hover:bg-neutral-900/40 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs"
+              >
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 font-mono text-[11px]">
                     L{finding.lineNum}
                   </span>
-                  {getSeverityBadge(finding.severity)}
-                  {getConfidenceBadge(finding.confidence)}
+                  {renderSeverityBadge(finding.severity)}
+                  {renderConfidenceBadge(finding.confidence)}
                   <span className="font-semibold text-neutral-200">{finding.type}</span>
                 </div>
                 <div className="flex-1 max-w-xl text-neutral-400 truncate font-mono bg-black/40 px-2 py-1 rounded border border-neutral-900">
@@ -275,7 +289,7 @@ export default function SnippetScanner() {
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
