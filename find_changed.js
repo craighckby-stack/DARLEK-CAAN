@@ -30,6 +30,9 @@ const crypto = require('crypto');
  * @property {boolean} truncated - Whether the response was truncated.
  */
 
+const MAX_RESPONSE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB limit for DoS mitigation
+const BASE_WATCH_DIR = 'src';
+
 /**
  * Recursively scans a directory for files using dirents to minimize filesystem I/O overhead.
  * Enforces strict input validation and path traversal sanitization.
@@ -43,8 +46,7 @@ function walk(dirPath, accumulator = []) {
     return accumulator;
   }
 
-  // Resolve and validate absolute base path to protect against path traversal attacks
-  const resolvedBase = path.resolve('src');
+  const resolvedBase = path.resolve(BASE_WATCH_DIR);
   const resolvedTarget = path.resolve(dirPath);
 
   if (!resolvedTarget.startsWith(resolvedBase)) {
@@ -58,13 +60,14 @@ function walk(dirPath, accumulator = []) {
 
   try {
     const entries = fs.readdirSync(resolvedTarget, { withFileTypes: true });
-    for (let i = 0; i < entries.length; i++) {
-      const entry = entries[i];
+    
+    for (const entry of entries) {
       if (!entry || typeof entry.name !== 'string') {
         continue;
       }
       
       const fullPath = path.join(resolvedTarget, entry.name);
+      
       if (entry.isDirectory()) {
         walk(fullPath, accumulator);
       } else if (entry.isFile()) {
@@ -79,6 +82,35 @@ function walk(dirPath, accumulator = []) {
 }
 
 /**
+ * Processes the raw response payload from the GitHub API tree endpoint.
+ * Validates schema integrity, extracts blob nodes, and serializes results locally.
+ *
+ * @param {string} rawData - Raw JSON string from the API response.
+ */
+function processTreeResponse(rawData) {
+  try {
+    /** @type {GitTreeResponse} */
+    const parsedData = JSON.parse(rawData);
+
+    if (!parsedData || !Array.isArray(parsedData.tree)) {
+      throw new TypeError('Invalid response schema: missing "tree" array');
+    }
+
+    const remoteFiles = parsedData.tree.filter((node) => node?.type === 'blob');
+    const localFiles = walk(BASE_WATCH_DIR);
+
+    fs.writeFileSync('remote_blobs.json', JSON.stringify(remoteFiles, null, 2), {
+      encoding: 'utf8',
+      mode: 0o600
+    });
+    
+    console.log('Written blobs');
+  } catch (error) {
+    console.error('Failed to parse response or write remote blobs:', error);
+  }
+}
+
+/**
  * Executes remote Git repository tree fetch and handles local repository indexing.
  * Implements strict payload size limits, protocol enforcement, and response validation.
  */
@@ -86,7 +118,6 @@ function executeSyncCycle() {
   const targetUrl = 'https://api.github.com/repos/craighckby-stack/epistemic_debate_engine/git/trees/main?recursive=1';
   const parsedUrl = new URL(targetUrl);
 
-  // Enforce secure HTTPS protocol strictly
   if (parsedUrl.protocol !== 'https:') {
     console.error('Security violation: Non-HTTPS protocol rejected.');
     return;
@@ -111,11 +142,10 @@ function executeSyncCycle() {
 
     const chunks = [];
     let totalBytes = 0;
-    const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10 MB strict upper bounds check to prevent memory exhaustion
 
     res.on('data', (chunk) => {
       totalBytes += chunk.length;
-      if (totalBytes > MAX_RESPONSE_SIZE) {
+      if (totalBytes > MAX_RESPONSE_SIZE_BYTES) {
         console.error('Security error: Response payload exceeded maximum allowable size (DoS mitigation).');
         res.destroy();
         return;
@@ -124,25 +154,8 @@ function executeSyncCycle() {
     });
 
     res.on('end', () => {
-      try {
-        const rawData = Buffer.concat(chunks).toString('utf8');
-        /** @type {GitTreeResponse} */
-        const parsedData = JSON.parse(rawData);
-
-        if (!parsedData || !Array.isArray(parsedData.tree)) {
-          throw new TypeError('Invalid response schema: missing "tree" array');
-        }
-
-        const remoteFiles = parsedData.tree.filter((node) => node && node.type === 'blob');
-        const localFiles = walk('src');
-
-        // We need to compare contents because git shas are blob shas (which include length headers).
-        // Let's just download the remote files that are present locally and compare their text!
-        fs.writeFileSync('remote_blobs.json', JSON.stringify(remoteFiles, null, 2), { encoding: 'utf8', mode: 0o600 });
-        console.log("Written blobs");
-      } catch (error) {
-        console.error('Failed to parse response or write remote blobs:', error);
-      }
+      const rawData = Buffer.concat(chunks).toString('utf8');
+      processTreeResponse(rawData);
     });
   });
 
