@@ -16,18 +16,29 @@ The system architecture is built upon a high-performance, modern technology stac
 
 ---
 
-## Security Protocols
+## Security Protocols & Guidelines
 
-To maintain rigorous security standards across all deployment environments, strictly adhere to the following guidelines:
+To maintain rigorous security standards across all deployment environments, strictly adhere to the following mandatory guidelines:
 
-* **Environment Variables**: All runtime configuration files are strictly ignored via `.gitignore`. Always use `.env.example` as the canonical template for secure local distribution.
-* **Memory Isolation**: Sensitive agent memory dumps and runtime states are strictly excluded from Version Control Systems (VCS) to prevent PII and secret leakage.
+* **Environment Isolation**: All runtime configuration files containing secrets must be strictly ignored via `.gitignore`. Always use `.env.example` as the canonical, sanitized template for secure local distribution. Never commit plain-text API keys, tokens, or credentials.
+* **Memory Isolation**: Sensitive agent memory dumps, cryptographic keys, and runtime states are strictly excluded from Version Control Systems (VCS) to prevent PII, credential exposure, and secret leakage.
+* **Least Privilege Principle**: Ensure that all autonomous agent nodes and service accounts operate under the strictest minimum permission sets required to execute their specific optimization vectors.
+
+---
+
+## Vulnerability Disclosure & Reporting
+
+We take the security of DARLEK CANN seriously. If you discover a security vulnerability, potential exploit, or secret leakage vector within this repository, please follow our responsible disclosure protocol:
+
+1. **Do Not Open Public Issues**: Refrain from disclosing vulnerabilities through public GitHub issues, pull requests, or social media channels.
+2. **Private Reporting**: Send a detailed description of the vulnerability, including steps to reproduce and potential impact, directly to our security team via encrypted channels (details available in our main security policy or via contact points in the repository profile).
+3. **Coordinated Disclosure**: Allow our engineering team a reasonable window (typically 90 days) to investigate, patch, and release mitigations before any public disclosure or advisory is published.
 
 ---
 
 ## Development Workflow
 
-Execute the standard deployment and operations pipeline to analyze, mutate, and verify system modules:
+Execute the standard deployment and operations pipeline to analyze, mutate, and verify system modules securely:
 
 ```bash
 # 1. Analyze target modules for optimization vectors
