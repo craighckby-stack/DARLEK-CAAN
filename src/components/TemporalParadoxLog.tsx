@@ -27,14 +27,28 @@ const STORAGE_KEYS = {
   LOG_ENTRIES: 'darlek_cann_log_entries',
 } as const;
 
-function formatTimeString(ts: unknown): string {
-  if (!ts) return new Date().toLocaleTimeString();
-  if (ts instanceof Date) return ts.toLocaleTimeString();
-  if (typeof ts === 'string') {
-    const d = new Date(ts);
-    return Number.isNaN(d.getTime()) ? ts : d.toLocaleTimeString();
+const MAX_PARADOX_ENTRIES = 10;
+const REFRESH_INTERVAL_MS = 3000;
+
+function formatTimeString(timestamp: unknown): string {
+  if (!timestamp) return new Date().toLocaleTimeString();
+  if (timestamp instanceof Date) return timestamp.toLocaleTimeString();
+  if (typeof timestamp === 'string') {
+    const parsedDate = new Date(timestamp);
+    return Number.isNaN(parsedDate.getTime()) ? timestamp : parsedDate.toLocaleTimeString();
   }
-  return String(ts);
+  return String(timestamp);
+}
+
+function fetchStoredData<T>(storageKey: string): T[] {
+  try {
+    const savedData = localStorage.getItem(storageKey);
+    if (!savedData) return [];
+    const parsed = JSON.parse(savedData);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export default function TemporalParadoxLog({ logEntries, rejectionMemory }: TemporalParadoxLogProps) {
@@ -42,80 +56,62 @@ export default function TemporalParadoxLog({ logEntries, rejectionMemory }: Temp
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const updateRealParadoxes = useCallback(() => {
-    const realList: ParadoxEntry[] = [];
+    const collectedParadoxes: ParadoxEntry[] = [];
 
-    let rejections: RejectionItem[] = rejectionMemory ?? [];
-    if (rejections.length === 0) {
-      try {
-        const savedRejection = localStorage.getItem(STORAGE_KEYS.REJECTION_MEMORY);
-        if (savedRejection) {
-          const parsed = JSON.parse(savedRejection);
-          if (Array.isArray(parsed)) {
-            rejections = parsed;
-          }
-        }
-      } catch {
-        // Silently fail storage retrieval failures
-      }
-    }
-
-    for (const [index, r] of rejections.entries()) {
-      if (!r) continue;
-      realList.push({
-        id: `rej-${r.id ?? index}`,
-        time: formatTimeString(r.timestamp),
-        description: `Mutation rejected for ${r.filePath ?? 'unknown'}: ${r.reason ?? 'No reason specified'}`,
+    const activeRejections = (rejectionMemory?.length ? rejectionMemory : fetchStoredData<RejectionItem>(STORAGE_KEYS.REJECTION_MEMORY));
+    
+    activeRejections.forEach((rejection, index) => {
+      if (!rejection) return;
+      collectedParadoxes.push({
+        id: `rej-${rejection.id ?? index}`,
+        time: formatTimeString(rejection.timestamp),
+        description: `Mutation rejected for ${rejection.filePath ?? 'unknown'}: ${rejection.reason ?? 'No reason specified'}`,
         type: 'REJECTION',
       });
-    }
+    });
 
-    let logs: EvolutionLogEntry[] = logEntries ?? [];
-    if (logs.length === 0) {
-      try {
-        const savedLogs = localStorage.getItem(STORAGE_KEYS.LOG_ENTRIES);
-        if (savedLogs) {
-          const parsed = JSON.parse(savedLogs);
-          if (Array.isArray(parsed)) {
-            logs = parsed;
-          }
-        }
-      } catch {
-        // Silently fail storage retrieval failures
-      }
-    }
+    const activeLogs = (logEntries?.length ? logEntries : fetchStoredData<EvolutionLogEntry>(STORAGE_KEYS.LOG_ENTRIES));
 
-    for (const entry of logs) {
-      if (!entry) continue;
-      if (
-        entry.type === 'ERROR' ||
-        entry.type === 'WARNING' ||
-        (entry.description && (
+    activeLogs.forEach((entry) => {
+      if (!entry) return;
+      const isCriticalType = entry.type === 'ERROR' || entry.type === 'WARNING';
+      const hasCriticalKeywords = Boolean(
+        entry.description && (
           entry.description.includes('REJECTED') ||
           entry.description.includes('AST') ||
           entry.description.includes('Coherence Gate')
-        ))
-      ) {
-        realList.push({
+        )
+      );
+
+      if (isCriticalType || hasCriticalKeywords) {
+        collectedParadoxes.push({
           id: `log-${entry.id ?? Math.random().toString(36).substring(2, 9)}`,
           time: formatTimeString(entry.timestamp),
           description: entry.description ?? 'No description provided',
           type: entry.type ?? 'UNKNOWN',
         });
       }
-    }
+    });
 
-    setParadoxes(realList.slice(0, 10));
+    setParadoxes(collectedParadoxes.slice(0, MAX_PARADOX_ENTRIES));
   }, [logEntries, rejectionMemory]);
 
   useEffect(() => {
     updateRealParadoxes();
-    const interval = setInterval(updateRealParadoxes, 3000);
-    return () => clearInterval(interval);
+    const intervalId = setInterval(updateRealParadoxes, REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalId);
   }, [updateRealParadoxes]);
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev);
   }, []);
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleExpanded();
+    }
+  }, [toggleExpanded]);
 
   const hasParadoxes = useMemo(() => paradoxes.length > 0, [paradoxes.length]);
 
@@ -126,12 +122,7 @@ export default function TemporalParadoxLog({ logEntries, rejectionMemory }: Temp
         onClick={toggleExpanded}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggleExpanded();
-          }
-        }}
+        onKeyDown={handleKeyDown}
       >
         <AlertTriangle className="text-red-500 animate-pulse" size={16} />
         <h3 className="text-red-400 font-bold text-sm tracking-widest font-mono">
