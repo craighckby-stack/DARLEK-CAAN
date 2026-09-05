@@ -12,31 +12,41 @@ export interface CheckboxProps extends React.ComponentPropsWithoutRef<typeof Che
 }
 
 /**
- * Optimized Checkbox component utilizing Radix UI primitives and Tailwind CSS.
- * Enhanced with strict component memoization and explicit typing for maximum performance.
+ * Modernized Checkbox component utilizing Radix UI primitives and Tailwind CSS.
+ * Optimized for readability with modular decomposition of layout elements.
  */
 const Checkbox = React.memo(
   React.forwardRef<
     React.ElementRef<typeof CheckboxPrimitive.Root>,
     CheckboxProps
   >(({ className, icon, ...props }, ref) => {
-    const indicatorContent = React.useMemo(() => {
-      return icon ?? <CheckIcon className="size-3.5" />
-    }, [icon])
+    const indicatorContent = icon ?? <CheckIcon className="size-3.5" />
+
+    const rootStyles = cn(
+      "peer border-input dark:bg-input/30",
+      "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      "dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary",
+      "focus-visible:border-ring focus-visible:ring-ring/50",
+      "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+      "size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none",
+      "focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+      className
+    )
+
+    const indicatorStyles = cn(
+      "flex items-center justify-center text-current transition-none"
+    )
 
     return (
       <CheckboxPrimitive.Root
         ref={ref}
         data-slot="checkbox"
-        className={cn(
-          "peer border-input dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
+        className={rootStyles}
         {...props}
       >
         <CheckboxPrimitive.Indicator
           data-slot="checkbox-indicator"
-          className="flex items-center justify-center text-current transition-none"
+          className={indicatorStyles}
         >
           {indicatorContent}
         </CheckboxPrimitive.Indicator>
