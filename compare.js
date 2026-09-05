@@ -11,8 +11,33 @@ const fs = require('fs');
 const https = require('https');
 const path = require('path');
 
+// Security configuration limits
+const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB memory protection limit
+const MAX_PATH_LENGTH = 1024;
+
 /**
- * Recursively walks a directory to collect all file paths synchronously.
+ * Validates and normalizes input path strings to prevent directory traversal and injection.
+ * 
+ * @param {string} inputPath - The path string to validate.
+ * @returns {string|null} The normalized safe path or null if invalid.
+ */
+function sanitizePath(inputPath) {
+  if (typeof inputPath !== 'string' || inputPath.length === 0 || inputPath.length > MAX_PATH_LENGTH) {
+    return null;
+  }
+  // Prevent null byte injections and dangerous absolute navigation escape attempts
+  if (inputPath.includes('\0')) {
+    return null;
+  }
+  const normalized = path.normalize(inputPath);
+  if (normalized.startsWith('..') || path.isAbsolute(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+/**
+ * Recursively walks a directory to collect all file paths synchronously with strict bounds checking.
  * Uses `readdirSync` with `{ withFileTypes: true }` to avoid redundant stat calls
  * and optimizes array allocations.
  *
@@ -23,7 +48,8 @@ function walk(dir) {
   /** @type {string[]} */
   const results = [];
 
-  if (typeof dir !== 'string' || !dir) {
+  const safeDir = sanitizePath(dir);
+  if (!safeDir) {
     return results;
   }
 
@@ -33,26 +59,44 @@ function walk(dir) {
    */
   function traverse(currentDir) {
     try {
-      if (!fs.existsSync(currentDir)) {
+      const resolvedCurrent = path.resolve(currentDir);
+      const resolvedRoot = path.resolve(safeDir);
+      
+      // Ensure traversal remains strictly within the intended base directory bounds
+      if (!resolvedCurrent.startsWith(resolvedRoot)) {
         return;
       }
-      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
+      if (!fs.existsSync(resolvedCurrent)) {
+        return;
+      }
+
+      const entries = fs.readdirSync(resolvedCurrent, { withFileTypes: true });
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
-        const filePath = path.join(currentDir, entry.name);
+        if (typeof entry.name !== 'string' || entry.name.length === 0) {
+          continue;
+        }
+
+        const filePath = path.join(resolvedCurrent, entry.name);
+        const safeFilePath = sanitizePath(filePath);
+        if (!safeFilePath) {
+          continue;
+        }
+
         if (entry.isDirectory()) {
           traverse(filePath);
-        } else {
+        } else if (entry.isFile()) {
           results.push(filePath.replace(/\\/g, '/'));
         }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[EMG Error] Failed to read directory ${currentDir}:`, message);
+      console.error('[EMG Error] Failed to securely read directory:', message);
     }
   }
 
-  traverse(dir);
+  traverse(safeDir);
   return results;
 }
 
@@ -67,7 +111,7 @@ const options = {
 };
 
 /**
- * Executes the HTTPS GET request to fetch remote tree structure.
+ * Executes the HTTPS GET request to fetch remote tree structure with payload size and type validation.
  */
 const req = https.get(options, (res) => {
   if (res.statusCode !== 200) {
@@ -78,8 +122,15 @@ const req = https.get(options, (res) => {
 
   /** @type {Buffer[]} */
   const chunks = [];
+  let totalBytesReceived = 0;
 
   res.on('data', (chunk) => {
+    totalBytesReceived += chunk.length;
+    if (totalBytesReceived > MAX_RESPONSE_SIZE) {
+      console.error('[EMG Error] Response payload exceeded memory safety limits.');
+      res.destroy();
+      return;
+    }
     chunks.push(chunk);
   });
 
@@ -94,9 +145,18 @@ const req = https.get(options, (res) => {
       }
 
       /** @type {string[]} */
-      const remoteFiles = parsed.tree
-        .filter((f) => f && f.type === 'blob' && typeof f.path === 'string')
-        .map((f) => f.path);
+      const remoteFiles = [];
+      const tree = parsed.tree;
+      
+      for (let i = 0; i < tree.length; i++) {
+        const f = tree[i];
+        if (f && f.type === 'blob' && typeof f.path === 'string') {
+          const safeFPath = sanitizePath(f.path);
+          if (safeFPath) {
+            remoteFiles.push(safeFPath);
+          }
+        }
+      }
 
       const localFiles = walk('src');
 
