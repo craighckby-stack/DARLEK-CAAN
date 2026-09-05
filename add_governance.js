@@ -9,24 +9,45 @@ const fs = require('fs');
 const path = require('path');
 
 // Security hardening: Enforce explicit absolute path resolution to prevent directory traversal
-const targetPath = path.resolve(__dirname, 'src/utils/agi-engine.ts');
-let code;
+const TARGET_FILE_PATH = path.resolve(__dirname, 'src/utils/agi-engine.ts');
+const MAX_PAYLOAD_SIZE_BYTES = 131072; // 128KB Wasm Sandbox limit
 
-try {
-  code = fs.readFileSync(targetPath, 'utf8');
-} catch (err) {
-  console.error('Critical failure: Target file could not be safely accessed.');
-  process.exit(1);
+/**
+ * Safely reads the target source file with error handling.
+ * @param {string} filePath - Absolute path to target file.
+ * @returns {string} File content.
+ */
+function readTargetSource(filePath) {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch (error) {
+    console.error('Critical failure: Target file could not be safely accessed.');
+    process.exit(1);
+  }
 }
 
-const governanceClass = `
+/**
+ * Safely writes updated content back to the target source file.
+ * @param {string} filePath - Absolute path to target file.
+ * @param {string} content - Updated file content.
+ */
+function writeTargetSource(filePath, content) {
+  try {
+    fs.writeFileSync(filePath, content, 'utf8');
+  } catch (error) {
+    console.error('Critical failure: Target file could not be safely updated.');
+    process.exit(1);
+  }
+}
+
+const GOVERNANCE_CLASS_MODULE = `
 // ---------------------------------------------------------------------------
 // 9.5 Edge Governance: Absolute Lineage-Blind Containment
 // ---------------------------------------------------------------------------
 export class EdgeGovernanceGatekeeper {
   public validateAST(payload: string): boolean {
     // Strict type and bounds checking with defensive sanitization against injection
-    if (typeof payload !== 'string' || payload.length > 131072) {
+    if (typeof payload !== 'string' || payload.length > ${MAX_PAYLOAD_SIZE_BYTES}) {
       return false;
     }
     const isObfuscated = 
@@ -45,7 +66,7 @@ export class EdgeGovernanceGatekeeper {
     if (typeof payloadSize !== 'number' || Number.isNaN(payloadSize) || !Number.isFinite(payloadSize)) {
       return false;
     }
-    return payloadSize >= 0 && payloadSize <= 131072; // 128KB Wasm Sandbox limit
+    return payloadSize >= 0 && payloadSize <= ${MAX_PAYLOAD_SIZE_BYTES};
   }
 
   public secureIPC(): string {
@@ -58,15 +79,17 @@ export class EdgeGovernanceGatekeeper {
 }
 `;
 
-if (code.includes("// ---------------------------------------------------------------------------")) {
-  code = code.replace("// ---------------------------------------------------------------------------", governanceClass + "\n// ---------------------------------------------------------------------------");
-} else {
-  code += "\n" + governanceClass;
+function injectGovernanceModule() {
+  let sourceCode = readTargetSource(TARGET_FILE_PATH);
+  const targetAnchor = "// ---------------------------------------------------------------------------";
+
+  if (sourceCode.includes(targetAnchor)) {
+    sourceCode = sourceCode.replace(targetAnchor, GOVERNANCE_CLASS_MODULE + "\n" + targetAnchor);
+  } else {
+    sourceCode += "\n" + GOVERNANCE_CLASS_MODULE;
+  }
+
+  writeTargetSource(TARGET_FILE_PATH, sourceCode);
 }
 
-try {
-  fs.writeFileSync(targetPath, code, 'utf8');
-} catch (err) {
-  console.error('Critical failure: Target file could not be safely updated.');
-  process.exit(1);
-}
+injectGovernanceModule();
