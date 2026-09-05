@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { JSX, ReactNode } from "react";
-import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Git Secret & PII Sanitizer",
@@ -22,21 +22,20 @@ interface RootLayoutProps {
   readonly children: ReactNode;
 }
 
+/**
+ * Root Application Layout Component
+ * Provides global typography, theme scaffolding, and structural context.
+ */
 export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
   return (
     <html lang="en" dir="ltr" className="dark" suppressHydrationWarning>
       <body
         dir="ltr"
-        className="antialiased"
+        className="antialiased min-h-screen bg-black text-[#e0e0e0] font-mono overflow-x-hidden m-0 p-0"
         style={{
           direction: "ltr",
           textAlign: "left",
-          background: "#000000",
-          color: "#e0e0e0",
           fontFamily: "var(--font-share-tech-mono), monospace",
-          margin: 0,
-          padding: 0,
-          overflowX: "hidden",
         }}
       >
         {children}
