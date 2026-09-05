@@ -7,14 +7,14 @@ import { safeReqJson } from '@/lib/safe-json';
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
-interface RebootFileResult {
+export interface RebootFileResult {
   file: string;
   status: 'updated' | 'skipped' | 'error';
   backup?: string;
   error?: string;
 }
 
-interface RebootRequestBody {
+export interface RebootRequestBody {
   token?: string;
   owner?: string;
   repo?: string;
@@ -72,17 +72,25 @@ async function fetchSessionMutations(sessionId: string): Promise<string[]> {
       orderBy: { createdAt: 'desc' },
       select: { filePath: true },
     });
-    return mutations.map((m: { filePath: string }) => m.filePath);
+    return mutations.map((mutation: { filePath: string }) => mutation.filePath);
   } catch {
     return [];
   }
 }
 
-async function fetchRepositoryTreeSources(owner: string, repo: string, branch: string, token: string): Promise<string[]> {
-  const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+async function fetchRepositoryTreeSources(
+  owner: string,
+  repo: string,
+  branch: string,
+  token: string
+): Promise<string[]> {
+  const encodedBranch = encodeURIComponent(branch);
+  const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodedBranch}?recursive=1`;
   const response = await fetch(treeUrl, { headers: createGitHubHeaders(token) });
 
-  if (!response.ok) return [];
+  if (!response.ok) {
+    return [];
+  }
 
   const data = (await response.json()) as GitHubTreeResponse;
   const treeItems = data.tree ?? [];
@@ -90,9 +98,14 @@ async function fetchRepositoryTreeSources(owner: string, repo: string, branch: s
   return treeItems
     .filter((item) => {
       if (item.type !== 'blob') return false;
-      if (item.path.includes('node_modules/') || item.path.includes('.next/') || item.path.includes('.git/')) {
+      if (
+        item.path.includes('node_modules/') ||
+        item.path.includes('.next/') ||
+        item.path.includes('.git/')
+      ) {
         return false;
       }
+
       const extension = `.${item.path.split('.').pop()?.toLowerCase() ?? ''}`;
       const isSourceExt = SOURCE_EXTENSIONS.has(extension);
       const isConfigOrRoot =
@@ -100,6 +113,7 @@ async function fetchRepositoryTreeSources(owner: string, repo: string, branch: s
         ['next.config', 'package.json', 'tsconfig.json', 'tailwind.config', 'postcss.config', '.eslintrc'].some(
           (prefix) => item.path === prefix || item.path.startsWith(`${prefix}.`)
         );
+
       return isConfigOrRoot;
     })
     .map((item) => item.path);
@@ -112,24 +126,33 @@ async function createTimestampedBackupDir(projectRoot: string): Promise<{ backup
   return { backupDir, timestamp };
 }
 
-async function fetchGitHubFileContent(owner: string, repo: string, filePath: string, branch: string, token: string): Promise<string> {
+async function fetchGitHubFileContent(
+  owner: string,
+  repo: string,
+  filePath: string,
+  branch: string,
+  token: string
+): Promise<string> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(branch)}`;
+    const encodedPath = encodeURIComponent(filePath);
+    const encodedBranch = encodeURIComponent(branch);
+    const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodedBranch}`;
+
     const response = await fetch(fileUrl, {
       headers: createGitHubHeaders(token),
       signal: controller.signal,
     });
 
     if (!response.ok) {
-      throw new Error(`GitHub API returned ${response.status}`);
+      throw new Error(`GitHub API returned status ${response.status}`);
     }
 
     const fileData = (await response.json()) as GitHubContentResponse;
     if (fileData.encoding !== 'base64' || !fileData.content) {
-      throw new Error('Binary or empty file');
+      throw new Error('Retrieved file content is empty or uses an unsupported encoding');
     }
 
     return Buffer.from(fileData.content, 'base64').toString('utf-8');
@@ -149,7 +172,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (!token || !owner || !repo || !branch) {
       return NextResponse.json(
-        { error: 'token, owner, repo, and branch are required' },
+        { error: 'Missing required configuration: token, owner, repo, and branch are mandatory.' },
         { status: 400 }
       );
     }
@@ -163,10 +186,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (mutatedFiles.length === 0) {
       return NextResponse.json({
         success: true,
-        message: 'No files to reboot — no mutations found in this session.',
+        message: 'No files to reboot — no mutations or repository sources found.',
         results: [],
         total: 0,
         updated: 0,
+        failed: 0,
       });
     }
 
@@ -217,13 +241,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         results.push({ file: filePath, status: 'updated' });
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error encountered';
         results.push({ file: filePath, status: 'error', error: errorMessage });
         failedCount++;
       }
     }
 
-    const skippedCount = results.filter((r) => r.status === 'skipped').length;
+    const skippedCount = results.filter((result) => result.status === 'skipped').length;
+    
     return NextResponse.json({
       success: true,
       message: `Reboot complete. ${updatedCount} files updated, ${skippedCount} skipped, ${failedCount} failed.`,
@@ -234,8 +259,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       backupDir: `.darleK-backups/pre-reboot-${timestamp}`,
     });
   } catch (error: unknown) {
-    console.error('Reboot error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('System reboot encountered an unhandled error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown server error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
