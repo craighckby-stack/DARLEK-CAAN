@@ -13,10 +13,10 @@ const path = require('node:path');
 /**
  * Configuration constants for file system boundaries and safety limits.
  */
-const CONFIG = {
+const CONFIG = Object.freeze({
     TARGET_RELATIVE_PATH: 'src/utils/agi-engine.ts',
     MAX_FILE_SIZE_BYTES: 50 * 1024 * 1024, // 50MB limit
-};
+});
 
 /**
  * Validates and normalizes the target file path to prevent directory traversal and injection vectors.
@@ -26,7 +26,7 @@ const CONFIG = {
  * @throws {Error} If a path traversal attempt is detected.
  */
 function getValidatedTargetSecurePath(inputPath) {
-    const baseDir = path.resolve(process.cwd());
+    const baseDir = path.resolve();
     const resolvedPath = path.resolve(baseDir, inputPath);
 
     if (!resolvedPath.startsWith(baseDir)) {
