@@ -176,12 +176,12 @@ export function useFolderScanner(): UseFolderScannerReturn {
       
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `sanitized-project-${Date.now()}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const anchorElement = document.createElement('a');
+      anchorElement.href = url;
+      anchorElement.download = `sanitized-project-${Date.now()}.zip`;
+      document.body.appendChild(anchorElement);
+      anchorElement.click();
+      document.body.removeChild(anchorElement);
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to generate or download sanitized ZIP archive:', err);
