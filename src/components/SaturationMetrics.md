@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `SaturationMetrics` component is a core telemetry module within the `unitary-core` diagnostic suite. It monitors real-time cognitive load, structural integrity, and operational health across distributed agent swarms utilizing zero-latency visual indicators.
+The `SaturationMetrics` component is a core telemetry module within the `unitary-core` diagnostic suite. It monitors real-time cognitive load, structural integrity, and operational health across distributed agent swarms using zero-latency visual indicators.
 
 ## Integration and Architecture
 
@@ -14,9 +14,13 @@ The `SaturationMetrics` component is a core telemetry module within the `unitary
 
 The component evaluates incoming telemetry against the following standardized parameters:
 
-- **Structural Change**: Maximum threshold `5.0` (Warning: `3.5`, Critical: `4.5`).
-- **Semantic Saturation**: Maximum threshold `0.35` (Warning: `0.25`, Critical: `0.32`).
-- **Identity Preservation**: Evaluated via an inverted logic model where descending numerical values directly correlate with degraded operational states.
+| Metric Parameter | Maximum Threshold | Warning Level | Critical Level |
+| :--- | :--- | :--- | :--- |
+| **Structural Change** | `5.0` | `3.5` | `4.5` |
+| **Semantic Saturation** | `0.35` | `0.25` | `0.32` |
+| **Identity Preservation** | N/A (Inverted) | N/A | Descending Values |
+
+*Note: Identity Preservation is evaluated via an inverted logic model where descending numerical values directly correlate with degraded operational states.*
 
 ## Code Implementation Example
 
