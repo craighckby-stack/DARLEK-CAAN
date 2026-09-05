@@ -20,6 +20,10 @@ interface ParsedFirestoreError {
 const CHUNK_RELOAD_COOLDOWN_MS = 10000;
 const LAST_CHUNK_RELOAD_KEY = 'last_chunk_reload';
 
+/**
+ * Encapsulates runtime exceptions, automatically handles chunk loading retries,
+ * and renders a styled fallback interface for unrecoverable errors.
+ */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
     hasError: false,
