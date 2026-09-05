@@ -27,16 +27,42 @@ const CONFIG = Object.freeze({
 
 /**
  * Executes an idempotent, resilient code patch operation on the target route file.
- * Performs path resolution, existence checks, zero-write bypass, and comprehensive error containment.
+ * Performs strict path validation, traversal protection, zero-write bypass, and comprehensive error containment.
  * 
  * @returns {boolean} True if the file was modified, false otherwise.
  */
 function applyEvolutionPatch() {
-  const resolvedPath = path.resolve(process.cwd(), CONFIG.relativePath);
+  // Defensive Input Validation & Path Traversal Prevention
+  const baseDir = path.resolve(process.cwd());
+  const resolvedPath = path.resolve(baseDir, CONFIG.relativePath);
+
+  // Strict boundary enforcement to ensure path stays within base directory
+  if (!resolvedPath.startsWith(baseDir + path.sep) && resolvedPath !== baseDir) {
+    console.error(`[EMG Core] Security Violation: Path traversal attempt detected for "${CONFIG.relativePath}".`);
+    process.exitCode = 1;
+    return false;
+  }
 
   try {
-    if (!fs.existsSync(resolvedPath)) {
+    // Stat check to ensure target is a regular file and avoid race conditions / symlink exploits
+    let stats;
+    try {
+      stats = fs.lstatSync(resolvedPath);
+    } catch {
       console.warn(`[EMG Core] Target file omitted - non-existent path: "${resolvedPath}"`);
+      return false;
+    }
+
+    if (!stats.isFile()) {
+      console.warn(`[EMG Core] Security Warning: Target path is not a standard file: "${resolvedPath}"`);
+      return false;
+    }
+
+    // Enforce strict file size limits to prevent memory exhaustion / overflow (e.g., max 10MB)
+    const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+    if (stats.size > MAX_FILE_SIZE_BYTES) {
+      console.error(`[EMG Core] Security Warning: File exceeds maximum permissible size bounds (${MAX_FILE_SIZE_BYTES} bytes).`);
+      process.exitCode = 1;
       return false;
     }
 
@@ -61,7 +87,7 @@ function applyEvolutionPatch() {
     return false;
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error(`[EMG Core] Critical failure during file transformation execution: ${err.message}`, err.stack);
+    console.error(`[EMG Core] Critical failure during file transformation execution: ${err.message}`);
     process.exitCode = 1;
     return false;
   }
