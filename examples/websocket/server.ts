@@ -42,6 +42,7 @@ export interface SocketData {}
 const PORT = Number(process.env.PORT) || 3003
 const MAX_USERNAME_LENGTH = 50
 const MAX_CONTENT_LENGTH = 1000
+const MAX_USERS_CAPACITY = 10000
 
 const httpServer: HttpServer = createServer()
 
@@ -53,7 +54,8 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
     methods: ['GET', 'POST']
   },
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  maxHttpBufferSize: 1e6
 })
 
 const users = new Map<string, User>()
@@ -76,6 +78,14 @@ const createUserMessage = (username: string, content: string): Message => ({
   type: 'user'
 })
 
+const sanitizeString = (input: unknown, maxLength: number): string => {
+  if (typeof input !== 'string') return ''
+  return input
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+    .trim()
+    .slice(0, maxLength)
+}
+
 io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>) => {
   console.log(`User connected: ${socket.id}`)
 
@@ -94,11 +104,15 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, 
 
   socket.on('join', (data: { username: string }) => {
     try {
-      if (!data || typeof data.username !== 'string') {
+      if (!data || typeof data !== 'object') {
         return
       }
 
-      const username = data.username.trim().slice(0, MAX_USERNAME_LENGTH)
+      if (users.size >= MAX_USERS_CAPACITY && !users.has(socket.id)) {
+        return
+      }
+
+      const username = sanitizeString(data.username, MAX_USERNAME_LENGTH)
       if (!username) {
         return
       }
@@ -124,12 +138,12 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, 
 
   socket.on('message', (data: { content: string; username: string }) => {
     try {
-      if (!data || typeof data.content !== 'string' || typeof data.username !== 'string') {
+      if (!data || typeof data !== 'object') {
         return
       }
 
-      const content = data.content.trim().slice(0, MAX_CONTENT_LENGTH)
-      const username = data.username.trim()
+      const content = sanitizeString(data.content, MAX_CONTENT_LENGTH)
+      const username = sanitizeString(data.username, MAX_USERNAME_LENGTH)
 
       if (!content || !username) {
         return
