@@ -5,23 +5,7 @@
     return;
   }
 
-  const isObjectOrFunction = (value) => value !== null && (typeof value === "object" || typeof value === "function");
-
-  const deepFreeze = (targetObject) => {
-    if (isObjectOrFunction(targetObject)) {
-      Object.freeze(targetObject);
-      const propertyNames = Object.getOwnPropertyNames(targetObject);
-      for (const propName of propertyNames) {
-        const propertyValue = targetObject[propName];
-        if (isObjectOrFunction(propertyValue) && !Object.isFrozen(propertyValue)) {
-          deepFreeze(propertyValue);
-        }
-      }
-    }
-    return targetObject;
-  };
-
-  const buildManifest = deepFreeze({
+  const buildManifest = {
     __rewrites: {
       afterFiles: [
         {
@@ -36,7 +20,15 @@
     __routerFilterStatic: undefined,
     __routerFilterDynamic: undefined,
     sortedPages: ["/_app"]
-  });
+  };
+
+  if (typeof Object.freeze === "function") {
+    Object.freeze(buildManifest.__rewrites.afterFiles[0]);
+    Object.freeze(buildManifest.__rewrites.afterFiles);
+    Object.freeze(buildManifest.__rewrites);
+    Object.freeze(buildManifest.sortedPages);
+    Object.freeze(buildManifest);
+  }
 
   try {
     Object.defineProperty(globalContext, "__BUILD_MANIFEST", {
@@ -49,12 +41,14 @@
     globalContext.__BUILD_MANIFEST = buildManifest;
   }
 
-  if (typeof globalContext.__BUILD_MANIFEST_CB === "function") {
+  const cb = globalContext.__BUILD_MANIFEST_CB;
+  if (typeof cb === "function") {
     try {
-      globalContext.__BUILD_MANIFEST_CB();
+      cb();
     } catch (callbackError) {
-      if (typeof console !== "undefined" && typeof console.error === "function") {
-        console.error("Error executing __BUILD_MANIFEST_CB callback:", callbackError);
+      const consoleRef = typeof console !== "undefined" ? console : globalContext.console;
+      if (consoleRef && typeof consoleRef.error === "function") {
+        consoleRef.error("Error executing __BUILD_MANIFEST_CB callback:", callbackError);
       }
     }
   }
