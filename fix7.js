@@ -6,12 +6,26 @@
  */
 
 const fs = require('fs');
-let code = fs.readFileSync('src/app/api/evolution/propose/route.ts', 'utf8');
-const idx = code.indexOf('${siphonedCodeContext}');
+const path = require('path');
+
+const TARGET_FILE_PATH = path.normalize('src/app/api/evolution/propose/route.ts');
+const ALLOWED_BASE_DIR = path.resolve('src');
+
+const resolvedPath = path.resolve(TARGET_FILE_PATH);
+if (!resolvedPath.startsWith(ALLOWED_BASE_DIR)) {
+  throw new Error('Access denied: Path traversal attempt detected.');
+}
+
+let code = fs.readFileSync(resolvedPath, 'utf8');
+const targetToken = '${siphonedCodeContext}';
+const idx = code.indexOf(targetToken);
+
 if (idx !== -1) {
-  const start = code.substring(0, idx + 22);
-  let rest = code.substring(idx + 22);
-  rest = rest.replace('```', '\\`\\`\\`');
+  const tokenLength = targetToken.length;
+  const start = code.substring(0, idx + tokenLength);
+  let rest = code.substring(idx + tokenLength);
+  rest = rest.replace(/```/g, '\\`\\`\\`');
   code = start + rest;
 }
-fs.writeFileSync('src/app/api/evolution/propose/route.ts', code);
+
+fs.writeFileSync(resolvedPath, code, 'utf8');
