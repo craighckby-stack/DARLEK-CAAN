@@ -5,25 +5,27 @@
     return;
   }
 
-  var deepFreeze = function (obj) {
-    if (obj !== null && (typeof obj === "object" || typeof obj === "function")) {
-      Object.freeze(obj);
-      var propNames = Object.getOwnPropertyNames(obj);
-      for (var i = 0; i < propNames.length; i++) {
-        var prop = obj[propNames[i]];
-        if (prop !== null && (typeof prop === "object" || typeof prop === "function") && !Object.isFrozen(prop)) {
-          deepFreeze(prop);
+  const isObjectOrFunction = (value) => value !== null && (typeof value === "object" || typeof value === "function");
+
+  const deepFreeze = (targetObject) => {
+    if (isObjectOrFunction(targetObject)) {
+      Object.freeze(targetObject);
+      const propertyNames = Object.getOwnPropertyNames(targetObject);
+      for (const propName of propertyNames) {
+        const propertyValue = targetObject[propName];
+        if (isObjectOrFunction(propertyValue) && !Object.isFrozen(propertyValue)) {
+          deepFreeze(propertyValue);
         }
       }
     }
-    return obj;
+    return targetObject;
   };
 
-  var buildManifest = deepFreeze({
+  const buildManifest = deepFreeze({
     __rewrites: {
       afterFiles: [
         {
-          has: void 0,
+          has: undefined,
           source: "/:path((?!api|_next|static|favicon.ico).*)",
           destination: "/"
         }
@@ -31,8 +33,8 @@
       beforeFiles: [],
       fallback: []
     },
-    __routerFilterStatic: void 0,
-    __routerFilterDynamic: void 0,
+    __routerFilterStatic: undefined,
+    __routerFilterDynamic: undefined,
     sortedPages: ["/_app"]
   });
 
@@ -43,16 +45,16 @@
       enumerable: true,
       configurable: true
     });
-  } catch (_e) {
+  } catch (_error) {
     globalContext.__BUILD_MANIFEST = buildManifest;
   }
 
   if (typeof globalContext.__BUILD_MANIFEST_CB === "function") {
     try {
       globalContext.__BUILD_MANIFEST_CB();
-    } catch (cbError) {
+    } catch (callbackError) {
       if (typeof console !== "undefined" && typeof console.error === "function") {
-        console.error("Error executing __BUILD_MANIFEST_CB callback:", cbError);
+        console.error("Error executing __BUILD_MANIFEST_CB callback:", callbackError);
       }
     }
   }
