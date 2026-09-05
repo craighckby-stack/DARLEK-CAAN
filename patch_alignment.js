@@ -30,24 +30,36 @@ const EDGE_GOVERNANCE_VALIDATION_BLOCK = `
 const CHECK_COUNTER_REPLACEMENT = `${CHECK_COUNTER_TARGET}\n${EDGE_GOVERNANCE_VALIDATION_BLOCK}`;
 
 /**
- * Applies architectural patch alignments to the target AGI engine source code.
+ * Escapes special regex characters in a string for safe RegExp construction.
+ * @param {string} rawString - The raw string to escape.
+ * @returns {string} The escaped safe string.
  */
-function applyPatchAlignment() {
-  let sourceCode = readFileSync(TARGET_FILE_PATH, 'utf8');
-
-  sourceCode = sourceCode.replace(new RegExp(escapeRegExp(OVERSEER_PATCH_TARGET), 'g'), OVERSEER_PATCH_REPLACEMENT);
-  sourceCode = sourceCode.replace(new RegExp(escapeRegExp(CHECK_COUNTER_TARGET), 'g'), CHECK_COUNTER_REPLACEMENT);
-
-  writeFileSync(TARGET_FILE_PATH, sourceCode, 'utf8');
+function escapeRegExp(rawString) {
+  return rawString.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
- * Escapes special regex characters in a string for safe RegExp construction.
- * @param {string} string - The raw string to escape.
- * @returns {string} The escaped safe string.
+ * Performs a safe string replacement on source code utilizing escaped targets.
+ * @param {string} sourceCode - The original source code content.
+ * @param {string} target - The exact substring to locate and replace.
+ * @param {string} replacement - The replacement content.
+ * @returns {string} The updated source code.
  */
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function injectPatch(sourceCode, target, replacement) {
+  const pattern = new RegExp(escapeRegExp(target), 'g');
+  return sourceCode.replace(pattern, replacement);
+}
+
+/**
+ * Applies architectural patch alignments to the target AGI engine source code.
+ */
+function applyPatchAlignment() {
+  const originalSource = readFileSync(TARGET_FILE_PATH, 'utf8');
+
+  let updatedSource = injectPatch(originalSource, OVERSEER_PATCH_TARGET, OVERSEER_PATCH_REPLACEMENT);
+  updatedSource = injectPatch(updatedSource, CHECK_COUNTER_TARGET, CHECK_COUNTER_REPLACEMENT);
+
+  writeFileSync(TARGET_FILE_PATH, updatedSource, 'utf8');
 }
 
 applyPatchAlignment();
