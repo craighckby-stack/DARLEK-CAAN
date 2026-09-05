@@ -10,9 +10,13 @@ export interface InputOTPProps extends React.ComponentProps<typeof OTPInput> {
   containerClassName?: string
 }
 
+export interface InputOTPSlotProps extends React.ComponentProps<"div"> {
+  index: number
+}
+
 const InputOTP = React.memo(
   React.forwardRef<React.ElementRef<typeof OTPInput>, InputOTPProps>(
-    ({ className, containerClassName, ...props }, ref) => {
+    function InputOTP({ className, containerClassName, ...props }, ref) {
       return (
         <OTPInput
           ref={ref}
@@ -32,28 +36,27 @@ InputOTP.displayName = "InputOTP"
 
 const InputOTPGroup = React.memo(
   React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
-    ({ className, ...props }, ref) => (
-      <div
-        ref={ref}
-        data-slot="input-otp-group"
-        className={cn("flex items-center", className)}
-        {...props}
-      />
-    )
+    function InputOTPGroup({ className, ...props }, ref) {
+      return (
+        <div
+          ref={ref}
+          data-slot="input-otp-group"
+          className={cn("flex items-center", className)}
+          {...props}
+        />
+      )
+    }
   )
 )
 InputOTPGroup.displayName = "InputOTPGroup"
 
-export interface InputOTPSlotProps extends React.ComponentProps<"div"> {
-  index: number
-}
-
 const InputOTPSlot = React.memo(
   React.forwardRef<HTMLDivElement, InputOTPSlotProps>(
-    ({ index, className, ...props }, ref) => {
-      const inputOTPContext = React.useContext(OTPInputContext)
-      const slot = inputOTPContext?.slots?.[index]
-      const char = slot?.char
+    function InputOTPSlot({ index, className, ...props }, ref) {
+      const context = React.useContext(OTPInputContext)
+      const slot = context?.slots?.[index]
+      
+      const character = slot?.char
       const hasFakeCaret = slot?.hasFakeCaret
       const isActive = slot?.isActive
 
@@ -68,7 +71,7 @@ const InputOTPSlot = React.memo(
           )}
           {...props}
         >
-          {char}
+          {character}
           {hasFakeCaret && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="animate-caret-blink bg-foreground h-4 w-px duration-1000" />
@@ -83,11 +86,13 @@ InputOTPSlot.displayName = "InputOTPSlot"
 
 const InputOTPSeparator = React.memo(
   React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
-    ({ ...props }, ref) => (
-      <div ref={ref} data-slot="input-otp-separator" role="separator" {...props}>
-        <MinusIcon />
-      </div>
-    )
+    function InputOTPSeparator(props, ref) {
+      return (
+        <div ref={ref} data-slot="input-otp-separator" role="separator" {...props}>
+          <MinusIcon />
+        </div>
+      )
+    }
   )
 )
 InputOTPSeparator.displayName = "InputOTPSeparator"
