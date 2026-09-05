@@ -13,7 +13,32 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+// --- Component Interfaces ---
+
 export interface CommandProps extends React.ComponentProps<typeof CommandPrimitive> {}
+
+export interface CommandDialogProps extends React.ComponentProps<typeof Dialog> {
+  title?: string
+  description?: string
+  className?: string
+  showCloseButton?: boolean
+}
+
+export interface CommandInputProps extends React.ComponentProps<typeof CommandPrimitive.Input> {}
+
+export interface CommandListProps extends React.ComponentProps<typeof CommandPrimitive.List> {}
+
+export interface CommandEmptyProps extends React.ComponentProps<typeof CommandPrimitive.Empty> {}
+
+export interface CommandGroupProps extends React.ComponentProps<typeof CommandPrimitive.Group> {}
+
+export interface CommandSeparatorProps extends React.ComponentProps<typeof CommandPrimitive.Separator> {}
+
+export interface CommandItemProps extends React.ComponentProps<typeof CommandPrimitive.Item> {}
+
+export interface CommandShortcutProps extends React.ComponentProps<"span"> {}
+
+// --- Component Implementation ---
 
 const Command = React.memo(
   React.forwardRef<HTMLDivElement, CommandProps>(function Command(
@@ -34,13 +59,6 @@ const Command = React.memo(
   })
 )
 Command.displayName = "Command"
-
-export interface CommandDialogProps extends React.ComponentProps<typeof Dialog> {
-  title?: string
-  description?: string
-  className?: string
-  showCloseButton?: boolean
-}
 
 const CommandDialog = React.memo(function CommandDialog({
   title = "Command Palette",
@@ -69,8 +87,6 @@ const CommandDialog = React.memo(function CommandDialog({
 })
 CommandDialog.displayName = "CommandDialog"
 
-export interface CommandInputProps extends React.ComponentProps<typeof CommandPrimitive.Input> {}
-
 const CommandInput = React.memo(
   React.forwardRef<HTMLInputElement, CommandInputProps>(function CommandInput(
     { className, ...props },
@@ -97,8 +113,6 @@ const CommandInput = React.memo(
 )
 CommandInput.displayName = "CommandInput"
 
-export interface CommandListProps extends React.ComponentProps<typeof CommandPrimitive.List> {}
-
 const CommandList = React.memo(
   React.forwardRef<HTMLDivElement, CommandListProps>(function CommandList(
     { className, ...props },
@@ -119,8 +133,6 @@ const CommandList = React.memo(
 )
 CommandList.displayName = "CommandList"
 
-export interface CommandEmptyProps extends React.ComponentProps<typeof CommandPrimitive.Empty> {}
-
 const CommandEmpty = React.memo(
   React.forwardRef<HTMLDivElement, CommandEmptyProps>(function CommandEmpty(
     props,
@@ -137,8 +149,6 @@ const CommandEmpty = React.memo(
   })
 )
 CommandEmpty.displayName = "CommandEmpty"
-
-export interface CommandGroupProps extends React.ComponentProps<typeof CommandPrimitive.Group> {}
 
 const CommandGroup = React.memo(
   React.forwardRef<HTMLDivElement, CommandGroupProps>(function CommandGroup(
@@ -160,8 +170,6 @@ const CommandGroup = React.memo(
 )
 CommandGroup.displayName = "CommandGroup"
 
-export interface CommandSeparatorProps extends React.ComponentProps<typeof CommandPrimitive.Separator> {}
-
 const CommandSeparator = React.memo(
   React.forwardRef<HTMLDivElement, CommandSeparatorProps>(function CommandSeparator(
     { className, ...props },
@@ -178,8 +186,6 @@ const CommandSeparator = React.memo(
   })
 )
 CommandSeparator.displayName = "CommandSeparator"
-
-export interface CommandItemProps extends React.ComponentProps<typeof CommandPrimitive.Item> {}
 
 const CommandItem = React.memo(
   React.forwardRef<HTMLDivElement, CommandItemProps>(function CommandItem(
@@ -200,8 +206,6 @@ const CommandItem = React.memo(
   })
 )
 CommandItem.displayName = "CommandItem"
-
-export interface CommandShortcutProps extends React.ComponentProps<"span"> {}
 
 const CommandShortcut = React.memo(
   React.forwardRef<HTMLSpanElement, CommandShortcutProps>(function CommandShortcut(
