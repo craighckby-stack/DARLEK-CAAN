@@ -65,7 +65,7 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     const [canScrollPrev, setCanScrollPrev] = React.useState<boolean>(false)
     const [canScrollNext, setCanScrollNext] = React.useState<boolean>(false)
 
-    const onSelect = React.useCallback((emblaApi: CarouselApi) => {
+    const updateScrollStates = React.useCallback((emblaApi: CarouselApi) => {
       if (!emblaApi) return
       setCanScrollPrev(emblaApi.canScrollPrev())
       setCanScrollNext(emblaApi.canScrollNext())
@@ -100,15 +100,15 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     React.useEffect(() => {
       if (!api) return
       
-      onSelect(api)
-      api.on("reInit", onSelect)
-      api.on("select", onSelect)
+      updateScrollStates(api)
+      api.on("reInit", updateScrollStates)
+      api.on("select", updateScrollStates)
 
       return () => {
-        api.off("reInit", onSelect)
-        api.off("select", onSelect)
+        api.off("reInit", updateScrollStates)
+        api.off("select", updateScrollStates)
       }
-    }, [api, onSelect])
+    }, [api, updateScrollStates])
 
     const computedOrientation =
       orientation || (opts?.axis === "y" ? "vertical" : "horizontal")
