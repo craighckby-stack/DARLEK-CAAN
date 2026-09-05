@@ -1,13 +1,10 @@
- 
-
-
-
 https://ai.studio/apps/28b5e1aa-99d6-4c55-90cc-34608023c592
 
 # 🚀 DARLEK CAAN — Autonomous Code Evolution & AI Command Center
 
 [![Live App](https://img.shields.io/badge/Live_App-Open_Application-00FF88?style=for-the-badge&logo=googlecloud)](https://ais-dev-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app)
 [![Repository](https://img.shields.io/badge/Repository-craighckby--stack%2FDarlek--Caan--vs--Jesus--Chess-blue?style=for-the-badge&logo=github)](https://github.com/craighckby-stack/Darlek-Caan-vs-Jesus-Chess)
+[![Security Policy](https://img.shields.io/badge/Security-Policy_%26_Disclosure-red?style=for-the-badge&logo=shield)](docs/SECURITY.md)
 
 ---
 
@@ -60,6 +57,27 @@ Whether you want to generate code from a design specification, analyze existing 
 ### 4. Enable Batch Evolution Mode
 1. Toggle **Batch Mode** to allow the system to sequentially analyze and propose improvements across multiple files in your repository.
 2. Set your preferred **Auto-Approve Risk Threshold** (Low, Medium, or Manual Check) to control how much autonomy the AI has.
+
+---
+
+## 🔒 Security Guidelines & Best Practices
+
+To ensure secure interactions with your repositories and sensitive infrastructure, please adhere to the following best practices:
+
+- **Token Scoping**: When generating a GitHub Personal Access Token (PAT), grant **only** the minimum required scopes (e.g., `repo` or specific repository access) necessary for your intended operations. Avoid using tokens with broad organization-wide or account-wide administrative permissions.
+- **Credential Management**: Never hardcode API keys, GitHub tokens, or LLM secrets inside source code files or specification documents. Always use secure environment variables or the application's built-in protected credential inputs.
+- **Review AI Mutations**: Autonomous code evolution and batch modes can introduce unintended modifications. Always thoroughly review side-by-side diffs, safety scores, and Multi-LLM debate logs before approving automated commits to production branches.
+
+---
+
+## 🛡️ Vulnerability Reporting & Disclosure
+
+We take the security of DARLEK CAAN and its connected codebases very seriously. If you discover a security vulnerability, bug, or safety concern within this project, please follow our responsible disclosure guidelines:
+
+1. **Do Not Open Public Issues**: Refrain from disclosing security vulnerabilities through public GitHub issues, pull requests, or public chat channels.
+2. **Private Reporting**: Report security issues directly via private communication or by creating a confidential security advisory on the [GitHub Repository Security Tab](https://github.com/craighckby-stack/Darlek-Caan-vs-Jesus-Chess/security/advisories/new).
+3. **Information to Include**: Please provide a detailed description of the vulnerability, steps to reproduce, potential impact, and any suggested remediation.
+4. **Response Timeline**: We aim to acknowledge receipt of vulnerability reports within 48 hours and provide regular updates regarding remediation status.
 
 ---
 
