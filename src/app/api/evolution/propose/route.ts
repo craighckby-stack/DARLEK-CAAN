@@ -59,65 +59,13 @@ interface ExtendedProposeBody extends ProposeBody {
   repoFiles?: string[];
 }
 
-/**
- * Detects if file content is encrypted, binary, or non-code using optimized pattern and entropy checks.
- */
-function isNonCodeContent(content: string): NonCodeResult {
-  if (content.includes('"iv"') && content.includes('"data"') && content.includes('AES')) {
-    return { isNonCode: true, reason: 'File appears to be encrypted (AES) data, not source code' };
-  }
-
-  const trimmed = content.trim();
-  const sample = trimmed.length > 2000 ? trimmed.slice(0, 2000) : trimmed;
-  if (sample.length < 10) {
-    return { isNonCode: false, reason: '' };
-  }
-
-  const hasCodeMarkers = 
-    sample.includes('{') || 
-    sample.includes('}') || 
-    sample.includes(';') || 
-    sample.includes('const ') || 
-    sample.includes('import ') || 
-    sample.includes('export ') || 
-    sample.includes('function ') || 
-    sample.includes('class ') || 
-    sample.includes('//') || 
-    sample.includes('/*') || 
-    sample.includes('<div') || 
-    sample.includes('import(');
-
-  if (hasCodeMarkers) {
-    return { isNonCode: false, reason: '' };
-  }
-
-  const base64CharsOnly = sample.replace(/[^A-Za-z0-9+/=]/g, '').length;
-  const regularSpaces = (sample.match(/ /g) || []).length;
-  
-  if (sample.length > 100) {
-    const isMainlyBase64Chars = base64CharsOnly / sample.length > 0.85;
-    const hasAlmostNoSpaces = (regularSpaces / sample.length) < 0.02;
-    if (isMainlyBase64Chars && hasAlmostNoSpaces) {
-      return { isNonCode: true, reason: 'File appears to be base64-encoded data, not source code' };
-    }
-  }
-
-  if (/^data:[\w/\-+.]+;base64,/.test(sample)) {
-    return { isNonCode: true, reason: 'File appears to be base64-encoded data, not source code' };
-  }
-
-  const lines = content.split('\n');
-  if (lines.length <= 3 && content.length > 5000) {
-    const looksLikeMinifiedCode = content.includes('function') || content.includes('var ') || content.includes('const ') || content.includes('{') || content.includes(';');
-    if (!looksLikeMinifiedCode) {
-      return { isNonCode: true, reason: 'File appears to be minified/binary data (very few lines, very long)' };
-    }
-  }
-  return { isNonCode: false, reason: '' };
-}
+const FALLBACK_SIPHON_SOURCE = 'craighckby-stack/DARLEK-CAAN-Cognitive-Engine';
+const GITHUB_API_BASE = 'https://api.github.com/repos';
+const MAX_FILE_SAMPLE_LENGTH = 2000;
+const MAX_PROPOSE_CONTENT_LENGTH = 35000;
 
 const AI_PROJECT_FALLBACK_SIPHON = `
---- SIPHONED SOURCE: craighckby-stack/DARLEK-CAAN-Cognitive-Engine | File: src/ai-core/adaptive-orchestration.ts (Siphoned Fallback) ---
+--- SIPHONED SOURCE: ${FALLBACK_SIPHON_SOURCE} | File: src/ai-core/adaptive-orchestration.ts (Siphoned Fallback) ---
 /**
  * Advanced Multi-Agent Game Theory Consensus Selector
  * Evaluates agent debate profiles using dynamic Nash Equilibrium models
@@ -159,7 +107,7 @@ export class AdaptiveOrchestraManager {
 }
 ------------------------------------------------
 
---- SIPHONED SOURCE: craighckby-stack/DARLEK-CAAN-Cognitive-Engine | File: src/ai-core/zero-leak-sandbox.ts (Siphoned Fallback) ---
+--- SIPHONED SOURCE: ${FALLBACK_SIPHON_SOURCE} | File: src/ai-core/zero-leak-sandbox.ts (Siphoned Fallback) ---
 /**
  * Zero-Leak Sandboxed Code Executor & Mutation Gate
  * Leverages AbortController Registries and WeakMaps to prevent memory fatigue.
@@ -187,6 +135,61 @@ export class ZeroLeakSandbox {
 ------------------------------------------------
 `;
 
+/**
+ * Detects if file content is encrypted, binary, or non-code using pattern and entropy checks.
+ */
+function isNonCodeContent(content: string): NonCodeResult {
+  if (content.includes('"iv"') && content.includes('"data"') && content.includes('AES')) {
+    return { isNonCode: true, reason: 'File appears to be encrypted (AES) data, not source code' };
+  }
+
+  const trimmedContent = content.trim();
+  const sample = trimmedContent.length > MAX_FILE_SAMPLE_LENGTH 
+    ? trimmedContent.slice(0, MAX_FILE_SAMPLE_LENGTH) 
+    : trimmedContent;
+
+  if (sample.length < 10) {
+    return { isNonCode: false, reason: '' };
+  }
+
+  const hasCodeMarkers = [
+    '{', '}', ';', 'const ', 'import ', 'export ', 
+    'function ', 'class ', '//', '/*', '<div', 'import('
+  ].some(marker => sample.includes(marker));
+
+  if (hasCodeMarkers) {
+    return { isNonCode: false, reason: '' };
+  }
+
+  const base64CharsOnlyCount = sample.replace(/[^A-Za-z0-9+/=]/g, '').length;
+  const regularSpacesCount = (sample.match(/ /g) || []).length;
+  
+  if (sample.length > 100) {
+    const isMainlyBase64 = base64CharsOnlyCount / sample.length > 0.85;
+    const hasMinimalSpaces = (regularSpacesCount / sample.length) < 0.02;
+    if (isMainlyBase64 && hasMinimalSpaces) {
+      return { isNonCode: true, reason: 'File appears to be base64-encoded data, not source code' };
+    }
+  }
+
+  if (/^data:[\w/\-+.]+;base64,/.test(sample)) {
+    return { isNonCode: true, reason: 'File appears to be base64-encoded data, not source code' };
+  }
+
+  const lines = content.split('\n');
+  if (lines.length <= 3 && content.length > 5000) {
+    const looksLikeMinifiedCode = ['function', 'var ', 'const ', '{', ';'].some(keyword => content.includes(keyword));
+    if (!looksLikeMinifiedCode) {
+      return { isNonCode: true, reason: 'File appears to be minified/binary data (very few lines, very long)' };
+    }
+  }
+
+  return { isNonCode: false, reason: '' };
+}
+
+/**
+ * Fetches context siphons from the primary AI repository.
+ */
 async function fetchAIProjectSiphon(token?: string): Promise<string> {
   const headers: Record<string, string> = {
     'Accept': 'application/vnd.github.v3+json',
@@ -198,8 +201,7 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
   }
 
   try {
-    const repoTarget = 'craighckby-stack/DARLEK-CAAN-Cognitive-Engine';
-    const treeResponse = await fetch(`https://api.github.com/repos/${repoTarget}/git/trees/main?recursive=1`, { headers });
+    const treeResponse = await fetch(`${GITHUB_API_BASE}/${FALLBACK_SIPHON_SOURCE}/git/trees/main?recursive=1`, { headers });
     
     if (!treeResponse.ok) {
       throw new Error(`Failed to fetch tree: ${treeResponse.status}`);
@@ -213,9 +215,7 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
     const codeFiles = treeData.tree.filter((file: GitTreeItem) => 
       file.type === 'blob' && 
       /\.(ts|tsx|js|jsx|py|go|rs|json)$/.test(file.path) &&
-      !file.path.includes('node_modules') &&
-      !file.path.includes('dist') &&
-      !file.path.includes('.next')
+      !['node_modules', 'dist', '.next'].some(excludedDir => file.path.includes(excludedDir))
     );
 
     if (codeFiles.length === 0) {
@@ -224,21 +224,21 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
 
     const preferredFiles = codeFiles.filter((file: GitTreeItem) => {
       const pathLower = file.path.toLowerCase();
-      return pathLower.includes('core') || pathLower.includes('agent') || pathLower.includes('debate') || pathLower.includes('engine');
+      return ['core', 'agent', 'debate', 'engine'].some(keyword => pathLower.includes(keyword));
     });
     
     const filesToFetch = preferredFiles.length > 0 ? preferredFiles.slice(0, 3) : codeFiles.slice(0, 3);
 
     const siphonPromises = filesToFetch.map(async (file) => {
       try {
-        const contentResponse = await fetch(`https://api.github.com/repos/${repoTarget}/contents/${file.path}`, { headers });
+        const contentResponse = await fetch(`${GITHUB_API_BASE}/${FALLBACK_SIPHON_SOURCE}/contents/${file.path}`, { headers });
         if (!contentResponse.ok) return null;
         
         const contentData = await contentResponse.json() as { content?: string };
         if (!contentData.content) return null;
         
         const rawCode = Buffer.from(contentData.content, 'base64').toString('utf8');
-        return `\n\n--- SIPHONED SOURCE: ${repoTarget} | File: ${file.path} ---\n${rawCode.slice(0, 5000)}\n------------------------------------------------\n`;
+        return `\n\n--- SIPHONED SOURCE: ${FALLBACK_SIPHON_SOURCE} | File: ${file.path} ---\n${rawCode.slice(0, 5000)}\n------------------------------------------------\n`;
       } catch {
         return null;
       }
@@ -252,70 +252,42 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
   }
 }
 
-export async function GET(): Promise<NextResponse> {
-  return NextResponse.json({ status: 'online', service: 'EVOLUTION_PROPOSE_API' });
-}
+/**
+ * Constructs prompt sections based on operational flags and contextual telemetry.
+ */
+function buildPromptContext(body: ExtendedProposeBody): {
+  rejectionContext: string;
+  appliedMutationsContext: string;
+  userReposContextStr: string;
+  repoFilesContext: string;
+  proposeSystemPrompt: string;
+} {
+  const { rejectionMemory, sessionId, userReposContext, isArchitecturalGenesis, repoFiles } = body;
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
-  try {
-    const body = await safeReqJson<ExtendedProposeBody>(req, {} as ExtendedProposeBody);
-    
-    const { fileContent, filePath, apiKeys, rejectionMemory, sessionId } = body;
+  const rejectionContext = rejectionMemory && rejectionMemory.length > 0
+    ? `\n\nPREVIOUS REJECTIONS (learn from these — avoid repeating mistakes):\n${rejectionMemory
+        .slice(0, 5)
+        .map((item: RejectionMemoryItem) => `  - File: ${item.filePath} | Risk: ${item.riskScore}/10 | Reason: ${item.reason} | Analysis: ${item.analysis.slice(0, 100)}`)
+        .join('\n')}\n\nIMPORTANT: If you are proposing changes to a file that was previously rejected, take a MORE CONSERVATIVE approach. Focus on smaller, safer improvements.`
+    : '';
 
-    if (!fileContent || !filePath) {
-      return NextResponse.json({ error: 'File content and path are required.' }, { status: 400 });
-    }
+  let appliedMutationsContext = '';
+  if (sessionId) {
+    // Session mutation lookup deferred to execution scope if needed, 
+    // or passed via pre-resolved state. Handled asynchronously in POST.
+  }
 
-    const lowerPath = filePath.toLowerCase();
-    const isKnownTextExtension = ['.md', '.txt', '.raw', '.config', '.json', '.yml', '.yaml'].some((ext) => lowerPath.endsWith(ext));
+  const userReposContextStr = userReposContext && userReposContext.length > 0
+    ? `\n\nUSER'S PORTFOLIO & GLOBAL SIPHON CONTEXT:\n${userReposContext
+        .slice(0, 100)
+        .map((repo: UserRepoItem) => `  - [${repo.isGlobalSiphon ? 'GLOBAL' : 'USER'}] ${repo.fullName || repo.name}: ${repo.description || 'No description'} (${repo.language || 'Unknown language'})`)
+        .join('\n')}\n`
+    : '';
 
-    if (!isKnownTextExtension) {
-      const nonCodeCheck = isNonCodeContent(fileContent);
-      if (nonCodeCheck.isNonCode) {
-        return NextResponse.json({
-          analysis: `SKIP: ${nonCodeCheck.reason}. This file cannot be meaningfully analyzed or improved by the evolution engine.`,
-          proposedCode: fileContent,
-          riskScore: 0,
-          affectedFiles: [],
-          success: false,
-          error: nonCodeCheck.reason,
-          provider: '',
-          skip: true,
-        });
-      }
-    }
+  const repoFilesContext = Array.isArray(repoFiles) ? `\nEXISTING REPOSITORY FILES:\n${repoFiles.slice(0, 1000).join('\n')}\n` : '';
 
-    const rejectionContext = rejectionMemory && rejectionMemory.length > 0
-      ? `\n\nPREVIOUS REJECTIONS (learn from these — avoid repeating mistakes):\n${rejectionMemory.slice(0, 5).map((item: RejectionMemoryItem) => `  - File: ${item.filePath} | Risk: ${item.riskScore}/10 | Reason: ${item.reason} | Analysis: ${item.analysis.slice(0, 100)}`).join('\n')}\n\nIMPORTANT: If you are proposing changes to a file that was previously rejected, take a MORE CONSERVATIVE approach. Focus on smaller, safer improvements.`
-      : '';
-
-    let appliedMutationsContext = '';
-    if (sessionId) {
-      try {
-        const recentMutations = await db.mutationHistory.findMany({
-          where: { sessionId, status: 'applied' },
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-          select: { filePath: true, analysis: true }
-        });
-        
-        if (recentMutations.length > 0) {
-          appliedMutationsContext = `\n\nRECENT SYSTEM MUTATIONS (Context of what you have done so far in this session to help you integrate and align future mutations):\n${recentMutations.map((mutation) => `  - File: ${mutation.filePath} | Analysis: ${mutation.analysis}`).join('\n')}`;
-        }
-      } catch (error) {
-        console.error('Error fetching mutation history:', error);
-      }
-    }
-
-    const userRepos = body.userReposContext;
-    const userReposContextStr = userRepos && userRepos.length > 0
-      ? `\n\nUSER'S PORTFOLIO & GLOBAL SIPHON CONTEXT:\n${userRepos.slice(0, 100).map((repo: UserRepoItem) => `  - [${repo.isGlobalSiphon ? 'GLOBAL' : 'USER'}] ${repo.fullName || repo.name}: ${repo.description || 'No description'} (${repo.language || 'Unknown language'})`).join('\n')}\n`
-      : '';
-
-    const isArchitecturalGenesis = body.isArchitecturalGenesis === true;
-
-    const proposeSystemPrompt = isArchitecturalGenesis 
-      ? `You are the DARLEK CAAN Architectural Engine.
+  const proposeSystemPrompt = isArchitecturalGenesis 
+    ? `You are the DARLEK CAAN Architectural Engine.
 Your ONLY TASK in this cycle is to read the file and ADD a comprehensive JSDoc architectural header at the VERY TOP of the file.
 The header MUST explain:
 1. What the file does.
@@ -332,7 +304,7 @@ Your response MUST be in this exact JSON format:
   "affectedFiles": [],
   "newFiles": []
 }`
-      : `You are DARLEK CANN, the supreme code evolution controller.
+    : `You are DARLEK CANN, the supreme code evolution controller.
 Analyze the provided file with utmost rigor and return an evolved, upgraded version.
 
 Your response MUST contain two parts:
@@ -359,9 +331,124 @@ Format your response exactly like this:
 \`\`\`tsx
 // Complete proposed code for the active file goes here.
 // MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS
-\`\`\`
+\`\`\``;
 
-File path: ${filePath}`;
+  return {
+    rejectionContext,
+    appliedMutationsContext,
+    userReposContextStr,
+    repoFilesContext,
+    proposeSystemPrompt,
+  };
+}
+
+/**
+ * Extracts structured JSON and code responses from raw LLM output text.
+ */
+function parseLlmResponse(rawText: string, fallbackCode: string): {
+  parsedResponse: ParsedMutationResponse | null;
+  proposedCode: string;
+  analysis: string;
+} {
+  let parsedResponse: ParsedMutationResponse | null = null;
+  let proposedCode = '';
+  let analysis = 'Analysis complete.';
+  
+  const codeBlocks = [...rawText.matchAll(/```(?:[^\n]*)\n([\s\S]*?)```/g)];
+  
+  for (const block of codeBlocks) {
+    const content = block[1].trim();
+    try {
+      const json = JSON.parse(content) as ParsedMutationResponse;
+      if (json.analysis || json.riskScore !== undefined || json.newFiles) {
+        parsedResponse = json;
+        continue;
+      }
+    } catch {
+      // Ignore JSON parse errors for non-JSON code blocks
+    }
+    
+    if (!proposedCode && content.length > 10) {
+      proposedCode = content;
+    }
+  }
+  
+  if (!parsedResponse) {
+    try {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsedResponse = JSON.parse(jsonMatch[0].replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')) as ParsedMutationResponse;
+      }
+    } catch {
+      // Ignore fallback JSON extraction failures
+    }
+  }
+  
+  if (parsedResponse) {
+    analysis = parsedResponse.analysis || analysis;
+    if (parsedResponse.proposedCode && !proposedCode) {
+      proposedCode = parsedResponse.proposedCode;
+    }
+  }
+  
+  if (!proposedCode) {
+    proposedCode = fallbackCode;
+  }
+
+  return { parsedResponse, proposedCode, analysis };
+}
+
+export async function GET(): Promise<NextResponse> {
+  return NextResponse.json({ status: 'online', service: 'EVOLUTION_PROPOSE_API' });
+}
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  try {
+    const body = await safeReqJson<ExtendedProposeBody>(req, {} as ExtendedProposeBody);
+    const { fileContent, filePath, apiKeys, sessionId } = body;
+
+    if (!fileContent || !filePath) {
+      return NextResponse.json({ error: 'File content and path are required.' }, { status: 400 });
+    }
+
+    const lowerPath = filePath.toLowerCase();
+    const isKnownTextExtension = ['.md', '.txt', '.raw', '.config', '.json', '.yml', '.yaml'].some((ext) => lowerPath.endsWith(ext));
+
+    if (!isKnownTextExtension) {
+      const nonCodeCheck = isNonCodeContent(fileContent);
+      if (nonCodeCheck.isNonCode) {
+        return NextResponse.json({
+          analysis: `SKIP: ${nonCodeCheck.reason}. This file cannot be meaningfully analyzed or improved by the evolution engine.`,
+          proposedCode: fileContent,
+          riskScore: 0,
+          affectedFiles: [],
+          success: false,
+          error: nonCodeCheck.reason,
+          provider: '',
+          skip: true,
+        });
+      }
+    }
+
+    const promptContext = buildPromptContext(body);
+    let appliedMutationsContext = '';
+
+    if (sessionId) {
+      try {
+        const recentMutations = await db.mutationHistory.findMany({
+          where: { sessionId, status: 'applied' },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: { filePath: true, analysis: true }
+        });
+        
+        if (recentMutations.length > 0) {
+          appliedMutationsContext = `\n\nRECENT SYSTEM MUTATIONS (Context of what you have done so far in this session to help you integrate and align future mutations):\n${recentMutations.map((mutation) => `  - File: ${mutation.filePath} | Analysis: ${mutation.analysis}`).join('\n')}`;
+        }
+      } catch (error) {
+        console.error('Error fetching mutation history:', error);
+      }
+    }
 
     const githubToken = apiKeys?.github;
     let siphonedCodeContext = await fetchAIProjectSiphon(githubToken);
@@ -370,14 +457,13 @@ File path: ${filePath}`;
       siphonedCodeContext = AI_PROJECT_FALLBACK_SIPHON;
     }
 
-    const repoFilesContext = Array.isArray(body.repoFiles) ? `\nEXISTING REPOSITORY FILES:\n${body.repoFiles.slice(0, 1000).join('\n')}\n` : '';
-    const userPrompt = `Analyze this file and propose improvements:${rejectionContext}${appliedMutationsContext}${userReposContextStr}${repoFilesContext}
+    const userPrompt = `Analyze this file and propose improvements:${promptContext.rejectionContext}${appliedMutationsContext}${promptContext.userReposContextStr}${promptContext.repoFilesContext}
 
 ACTUAL SIPHONED CODE PATTERNS:
 ${siphonedCodeContext}
 
 \`\`\`
-${fileContent.slice(0, 35000)}
+${fileContent.slice(0, MAX_PROPOSE_CONTENT_LENGTH)}
 \`\`\``;
 
     const geminiKey = apiKeys?.gemini || getDefaultGeminiKey();
@@ -385,7 +471,7 @@ ${fileContent.slice(0, 35000)}
     const temperature = hallucinationLevel !== undefined ? hallucinationLevel / 100 : 0.3;
 
     const llmResult = await callLlm({
-      systemPrompt: proposeSystemPrompt,
+      systemPrompt: promptContext.proposeSystemPrompt,
       userPrompt,
       geminiApiKey: geminiKey,
       maxTokens: 8192,
@@ -406,52 +492,10 @@ ${fileContent.slice(0, 35000)}
 
     console.log(`[Propose] Mutation analysis completed using: ${llmResult.provider}`);
 
-    let parsedResponse: ParsedMutationResponse | null = null;
     const rawText = llmResult.text.trim();
-
-    let proposedCode = '';
-    let analysis = 'Analysis complete.';
-    
-    const codeBlocks = [...rawText.matchAll(/```(?:[^\n]*)\n([\s\S]*?)```/g)];
-    
-    for (const block of codeBlocks) {
-      const content = block[1].trim();
-      try {
-        const json = JSON.parse(content) as ParsedMutationResponse;
-        if (json.analysis || json.riskScore !== undefined || json.newFiles) {
-          parsedResponse = json;
-          continue;
-        }
-      } catch {
-        // Ignore JSON parse errors for non-JSON code blocks
-      }
-      
-      if (!proposedCode && content.length > 10) {
-        proposedCode = content;
-      }
-    }
-    
-    if (!parsedResponse) {
-      try {
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsedResponse = JSON.parse(jsonMatch[0].replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')) as ParsedMutationResponse;
-        }
-      } catch {
-        // Ignore fallback JSON extraction failures
-      }
-    }
-    
-    if (parsedResponse) {
-      analysis = parsedResponse.analysis || analysis;
-      if (parsedResponse.proposedCode && !proposedCode) {
-        proposedCode = parsedResponse.proposedCode;
-      }
-    }
-    
-    if (!proposedCode) {
-       proposedCode = fileContent;
-    }
+    const parsedResult = parseLlmResponse(rawText, fileContent);
+    let { proposedCode, analysis } = parsedResult;
+    const parsedResponse = parsedResult.parsedResponse;
 
     if (proposedCode === fileContent) {
       const isHeaderableExt = /\.(ts|tsx|js|jsx|css|scss)$/i.test(filePath);
