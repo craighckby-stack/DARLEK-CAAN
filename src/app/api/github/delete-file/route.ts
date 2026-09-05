@@ -24,12 +24,31 @@ interface GitHubDeleteResponse {
   };
 }
 
+const GITHUB_API_BASE_URL = 'https://api.github.com';
+const GITHUB_API_VERSION_HEADER = 'application/vnd.github.v3+json';
+
 /**
  * Sanitizes and safely encodes a file path for GitHub API consumption.
  */
 function sanitizePath(filePath: string): string {
   const cleanPath = filePath.replace(/^\/+|\/+$/g, '');
   return cleanPath.split('/').map(encodeURIComponent).join('/');
+}
+
+/**
+ * Builds standard headers for GitHub API interactions.
+ */
+function buildGitHubHeaders(token: string, includeJsonContentType = false): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': GITHUB_API_VERSION_HEADER,
+  };
+
+  if (includeJsonContentType) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  return headers;
 }
 
 /**
@@ -44,24 +63,51 @@ async function getFileSha(
 ): Promise<string | null> {
   try {
     const encodedPath = sanitizePath(filePath);
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`;
+    const endpoint = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`;
     
-    const res = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-      },
+    const response = await fetch(endpoint, {
+      headers: buildGitHubHeaders(token),
       cache: 'no-store',
     });
 
-    if (res.ok) {
-      const data = (await res.json()) as GitHubContentResponse;
-      return data.sha ?? null;
+    if (!response.ok) {
+      return null;
     }
-    return null;
+
+    const data = (await response.json()) as GitHubContentResponse;
+    return data.sha ?? null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Executes the file deletion request against the GitHub API.
+ */
+async function deleteGitHubFileResource(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  filePath: string,
+  sha: string,
+  commitMessage?: string
+): Promise<Response> {
+  const encodedPath = sanitizePath(filePath);
+  const endpoint = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/contents/${encodedPath}`;
+
+  const payload = {
+    message: commitMessage ?? `[DARLEK CANN] Delete ${filePath}`,
+    sha,
+    branch,
+  };
+
+  return fetch(endpoint, {
+    method: 'DELETE',
+    headers: buildGitHubHeaders(token, true),
+    body: JSON.stringify(payload),
+    cache: 'no-store',
+  });
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -80,55 +126,39 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    let finalSha = sha ?? null;
-    if (!finalSha) {
-      const fetchedSha = await getFileSha(token, owner, repo, branch, filePath);
-      if (fetchedSha) {
-        finalSha = fetchedSha;
-      }
-    }
+    const resolvedSha = sha ?? (await getFileSha(token, owner, repo, branch, filePath));
 
-    if (!finalSha) {
+    if (!resolvedSha) {
       return NextResponse.json({
         success: true,
         message: 'File did not exist, no deletion necessary.',
       });
     }
 
-    const encodedPath = sanitizePath(filePath);
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}`;
-
-    const bodyPayload = {
-      message: commitMessage || `[DARLEK CANN] Delete ${filePath}`,
-      sha: finalSha,
+    const githubResponse = await deleteGitHubFileResource(
+      token,
+      owner,
+      repo,
       branch,
-    };
+      filePath,
+      resolvedSha,
+      commitMessage
+    );
 
-    const res = await fetch(url, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(bodyPayload),
-      cache: 'no-store',
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
+    if (!githubResponse.ok) {
+      const errorDetails = await githubResponse.text();
       return NextResponse.json(
-        { error: `GitHub API error during deletion: ${err}` },
-        { status: res.status }
+        { error: `GitHub API error during deletion: ${errorDetails}` },
+        { status: githubResponse.status }
       );
     }
 
-    const data = (await res.json()) as GitHubDeleteResponse;
+    const responseData = (await githubResponse.json()) as GitHubDeleteResponse;
 
     return NextResponse.json({
       success: true,
-      commitSha: data.commit?.sha,
-      commitUrl: data.commit?.html_url,
+      commitSha: responseData.commit?.sha,
+      commitUrl: responseData.commit?.html_url,
     });
   } catch (error: unknown) {
     console.error('Delete file error:', error);
