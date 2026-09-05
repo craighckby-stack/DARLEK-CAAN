@@ -4,40 +4,41 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-const MainPage = dynamic(() => import('@/components/MainPage'), {
-  ssr: false,
-  loading: () => (
+/**
+ * Terminal-styled loading indicator maintaining visual continuity
+ * during client-side hydration and dynamic bundle resolution.
+ */
+function LoadingScreen({ message }: { message: string }) {
+  return (
     <div
       className="min-h-screen flex items-center justify-center font-mono text-xs"
       style={{ background: '#030101', color: '#00ffcc' }}
     >
       <div className="flex items-center gap-2 animate-pulse">
-        <span>[DARLEK CAAN] SYNAPSE INJECTION IN PROGRESS...</span>
+        <span>{message}</span>
       </div>
     </div>
-  ),
+  );
+}
+
+const MainPage = dynamic(() => import('@/components/MainPage'), {
+  ssr: false,
+  loading: () => <LoadingScreen message="[DARLEK CAAN] SYNAPSE INJECTION IN PROGRESS..." />,
 });
 
 export default function PageClient() {
-  const [mounted, setMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    setIsMounted(true);
   }, []);
 
   return (
     <ErrorBoundary>
-      {mounted ? (
+      {isMounted ? (
         <MainPage />
       ) : (
-        <div
-          className="min-h-screen flex items-center justify-center font-mono text-xs"
-          style={{ background: '#030101', color: '#00ffcc' }}
-        >
-          <div className="flex items-center gap-2 animate-pulse">
-            <span>[DARLEK CAAN] INITIALIZING COGNITIVE DOMINANCE ENGINE...</span>
-          </div>
-        </div>
+        <LoadingScreen message="[DARLEK CAAN] INITIALIZING COGNITIVE DOMINANCE ENGINE..." />
       )}
     </ErrorBoundary>
   );
