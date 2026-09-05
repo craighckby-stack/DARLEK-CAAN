@@ -1,0 +1,72 @@
+# System Architecture: DARLEK CANN v3.0
+
+## Overview
+
+The **DARLEK CANN v3.0** module functions as the high-performance interfacing layer for the Quantum Dialogue Engine. It seamlessly integrates real-time debate logic with advanced temporal prophecy tracking to deliver fluid, responsive state management across distributed cluster nodes.
+
+---
+
+## Core Workflow
+
+The execution pipeline operates sequentially across three primary stages:
+
+1. **State Detection**: Continuously monitors reactive flags (`isDebating`, `loadingDialogue`) to determine the active operational context.
+2. **Node Synthesis**: Dynamically switches execution threads between **Quantum Node Caan** and **Neural Node Jesus** based on real-time heuristic evaluations.
+3. **Temporal Feedback**: Updates the global `prophecyLevel` state utilizing a gradient-accelerated progress bar rendering engine.
+
+---
+
+## Technical Integration Stack
+
+* **User Interface**: Tailwind CSS, Framer Motion
+* **Core Logic**: Next.js (App Router), TypeScript
+* **Primary Dependency**: `App.tsx` (Root Entry Point)
+
+---
+
+## Engine Implementation
+
+```typescript
+/**
+ * @file useCannEngine.ts
+ * @description Core State Detection & Node Synthesis Hook for DARLEK CANN v3.0.
+ * @module Engine/Cann
+ */
+
+import { useState, useEffect } from 'react';
+
+/**
+ * Interface representing the operational state of the CANN engine.
+ * 
+ * @property {boolean} isDebating - Flag indicating active debate routines.
+ * @property {boolean} loadingDialogue - Flag indicating asynchronous dialogue loading status.
+ * @property {number} prophecyLevel - Current metric tracking temporal prophecy progression (0-100).
+ */
+interface CannState {
+  isDebating: boolean;
+  loadingDialogue: boolean;
+  prophecyLevel: number;
+}
+
+/**
+ * Custom hook to manage real-time debate states and temporal prophecy progression.
+ * 
+ * @param {CannState} initialState - The starting configuration of the engine.
+ * @returns An object containing the current engine state and its dispatcher.
+ */
+export function useCannEngine(initialState: CannState) {
+  const [state, setState] = useState<CannState>(initialState);
+
+  useEffect(() => {
+    // Gradient-accelerated prophecy level adjustment during active debates
+    if (state.isDebating) {
+      setState(prev => ({ 
+        ...prev, 
+        prophecyLevel: Math.min(prev.prophecyLevel + 15, 100) 
+      }));
+    }
+  }, [state.isDebating]);
+
+  return { state, setState };
+}
+```

@@ -1,0 +1,8 @@
+{
+  "components/PageClient.tsx -> @/components/MainPage": {
+    "id": "components/PageClient.tsx -> @/components/MainPage",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_MainPage_tsx.js"
+    ]
+  }
+}

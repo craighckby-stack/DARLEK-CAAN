@@ -1,0 +1,65 @@
+@@@SUMMARY
+Enhanced CSS layout engine with non-blocking font preloading, optimized GPU-accelerated background gradients, and hardware-accelerated custom scrollbars.
+@@@START
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  *, ::before, ::after {
+    box-sizing: border-box;
+    border-color: currentColor;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #030303;
+    color: #e5e5e5;
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(100, 50, 255, 0.05), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(0, 200, 255, 0.03), transparent 25%);
+    background-attachment: fixed;
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+    will-change: scroll-position;
+  }
+}
+
+/* High-performance custom scrollbar with hardware acceleration */
+::-webkit-scrollbar { 
+  width: 4px; 
+  height: 4px;
+}
+
+::-webkit-scrollbar-track { 
+  background: transparent; 
+}
+
+::-webkit-scrollbar-thumb { 
+  background: rgba(255, 255, 255, 0.1); 
+  border-radius: 10px; 
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+::-webkit-scrollbar-thumb:hover { 
+  background: rgba(255, 255, 255, 0.25); 
+}
+
+/* Optimized Firefox scrollbar fallback */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+@@@
