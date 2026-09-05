@@ -1,39 +1,41 @@
-(function() {
+(function initializeMiddlewareBuildManifest() {
   "use strict";
 
-  var targetScope = typeof self !== "undefined" ? self : (typeof globalThis !== "undefined" ? globalThis : this);
+  const globalScope = 
+    typeof self !== "undefined" ? self : 
+    typeof globalThis !== "undefined" ? globalThis : 
+    this;
 
-  var getSafeBuildId = function() {
-    if (typeof process !== "undefined" && process && process.env && typeof process.env.__NEXT_BUILD_ID === "string") {
-      var rawId = process.env.__NEXT_BUILD_ID;
-      if (/^[a-zA-Z0-9_\-]+$/.test(rawId)) {
-        return rawId;
-      }
-      return encodeURIComponent(rawId);
-    }
-    return "development";
+  const sanitizeBuildId = (rawId) => 
+    /^[a-zA-Z0-9_\-]+$/.test(rawId) ? rawId : encodeURIComponent(rawId);
+
+  const resolveBuildId = () => {
+    const environmentBuildId = process?.env?.__NEXT_BUILD_ID;
+    return typeof environmentBuildId === "string" 
+      ? sanitizeBuildId(environmentBuildId) 
+      : "development";
   };
 
-  var safeBuildId = getSafeBuildId();
+  const currentBuildId = resolveBuildId();
 
-  targetScope.__BUILD_MANIFEST = {
-    "polyfillFiles": [
+  globalScope.__BUILD_MANIFEST = {
+    polyfillFiles: [
       "static/chunks/polyfills.js"
     ],
-    "devFiles": [],
-    "ampDevFiles": [],
-    "lowPriorityFiles": [
-      "/static/" + safeBuildId + "/_buildManifest.js",
-      "/static/" + safeBuildId + "/_ssgManifest.js"
+    devFiles: [],
+    ampDevFiles: [],
+    lowPriorityFiles: [
+      `/static/${currentBuildId}/_buildManifest.js`,
+      `/static/${currentBuildId}/_ssgManifest.js`
     ],
-    "rootMainFiles": [
+    rootMainFiles: [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js"
     ],
-    "rootMainFilesTree": {},
-    "pages": {
+    rootMainFilesTree: {},
+    pages: {
       "/_app": []
     },
-    "ampFirstPages": []
+    ampFirstPages: []
   };
 })();
