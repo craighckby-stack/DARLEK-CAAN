@@ -14,16 +14,36 @@ const https = require('node:https');
  */
 const SIPHON_ENDPOINT = 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/src/utils/siphon.ts';
 const TIMEOUT_MS = 10000;
+const MAX_CONTENT_LENGTH_BYTES = 5 * 1024 * 1024; // 5 MB bounds check to prevent memory exhaustion
 const REQUEST_HEADERS = Object.freeze({
   'User-Agent': 'EMG-Core-Neural-Optimizer/4.9',
   'Accept': 'text/plain,application/typescript'
 });
 
 /**
- * Fetches the remote siphon utility script with robust error handling and stream management.
+ * Validates that the endpoint URL strictly adheres to HTTPS protocol constraints.
+ * @param {string} urlString 
+ * @throws {TypeError} If the URL fails protocol validation.
+ */
+function validateEndpoint(urlString) {
+  let parsed;
+  try {
+    parsed = new URL(urlString);
+  } catch {
+    throw new TypeError('Malformed siphon endpoint URL.');
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error('Security violation: Only secure HTTPS endpoints are permitted.');
+  }
+}
+
+/**
+ * Fetches the remote siphon utility script with robust error handling, protocol validation, and strict stream bounds checking.
  * @returns {Promise<void>} Resolves when the payload is successfully outputted to stdout.
  */
 async function fetchSiphon() {
+  validateEndpoint(SIPHON_ENDPOINT);
+
   if (typeof globalThis.fetch === 'function') {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -33,14 +53,24 @@ async function fetchSiphon() {
     try {
       const response = await globalThis.fetch(SIPHON_ENDPOINT, {
         headers: REQUEST_HEADERS,
-        signal: controller.signal
+        signal: controller.signal,
+        redirect: 'error' // Prevent insecure or unexpected redirects
       });
 
       if (!response.ok) {
         throw new Error(`HTTP Operation Failed: Status Code ${response.status}`);
       }
 
+      const contentLength = response.headers.get('content-length');
+      if (contentLength && parseInt(contentLength, 10) > MAX_CONTENT_LENGTH_BYTES) {
+        throw new Error('Payload size exceeds safety bounds limit.');
+      }
+
       const text = await response.text();
+      if (Buffer.byteLength(text, 'utf8') > MAX_CONTENT_LENGTH_BYTES) {
+        throw new Error('Payload size exceeds safety bounds limit.');
+      }
+
       process.stdout.write(text + (text.endsWith('\n') ? '' : '\n'));
     } finally {
       clearTimeout(timeoutId);
@@ -53,15 +83,31 @@ async function fetchSiphon() {
       SIPHON_ENDPOINT,
       { headers: REQUEST_HEADERS, timeout: TIMEOUT_MS },
       (res) => {
-        const { statusCode } = res;
+        const { statusCode, headers } = res;
 
         if (statusCode !== 200) {
           res.resume();
           return reject(new Error(`HTTP Operation Failed: Status Code ${statusCode}`));
         }
 
+        const contentLength = headers['content-length'];
+        if (contentLength && parseInt(contentLength, 10) > MAX_CONTENT_LENGTH_BYTES) {
+          res.resume();
+          return reject(new Error('Payload size exceeds safety bounds limit.'));
+        }
+
+        let totalBytes = 0;
         const chunks = [];
-        res.on('data', (chunk) => chunks.push(chunk));
+
+        res.on('data', (chunk) => {
+          totalBytes += chunk.length;
+          if (totalBytes > MAX_CONTENT_LENGTH_BYTES) {
+            res.destroy(new Error('Payload size exceeds safety bounds limit.'));
+            return;
+          }
+          chunks.push(chunk);
+        });
+
         res.on('end', () => {
           try {
             const data = Buffer.concat(chunks).toString('utf8');
