@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 export interface BreadcrumbProps extends React.ComponentProps<"nav"> {}
 
 const Breadcrumb = React.forwardRef<HTMLElement, BreadcrumbProps>(
-  ({ ...props }, ref) => (
+  (props, ref) => (
     <nav ref={ref} aria-label="breadcrumb" data-slot="breadcrumb" {...props} />
   )
 )
@@ -49,11 +49,11 @@ export interface BreadcrumbLinkProps extends React.ComponentProps<"a"> {
 }
 
 const BreadcrumbLink = React.forwardRef<HTMLAnchorElement, BreadcrumbLinkProps>(
-  ({ asChild, className, ...props }, ref) => {
-    const Comp = asChild ? Slot : "a"
+  ({ asChild = false, className, ...props }, ref) => {
+    const Component = asChild ? Slot : "a"
 
     return (
-      <Comp
+      <Component
         ref={ref}
         data-slot="breadcrumb-link"
         className={cn("hover:text-foreground transition-colors", className)}
