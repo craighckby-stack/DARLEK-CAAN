@@ -1,10 +1,33 @@
 'use client';
 
-import { Search, FileCode, Dna, Heart, Eye, Users, Upload, Rocket, ListChecks, CheckCircle2, RotateCcw, Radio, Undo2, GitCommit } from 'lucide-react';
+import React from 'react';
+import { 
+  Search, 
+  FileCode, 
+  Dna, 
+  Heart, 
+  Eye, 
+  Users, 
+  Upload, 
+  Rocket, 
+  ListChecks, 
+  CheckCircle2, 
+  RotateCcw, 
+  Radio, 
+  Undo2, 
+  GitCommit 
+} from 'lucide-react';
 import { COLORS } from '@/lib/constants';
 
-interface QuickActionsProps {
-  onAction: (action: string) => void;
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+
+export type ActionStatus = 'idle' | 'pushing' | 'deploying' | 'rebooting' | 'undoing' | 'committing' | 'success' | 'error';
+export type RiskLevel = 'low' | 'medium' | 'high' | 'hallucinate';
+
+export interface QuickActionsProps {
+  onAction: (actionId: string) => void;
   disabled: boolean;
   pushStatus?: 'idle' | 'pushing' | 'success' | 'error';
   deployStatus?: 'idle' | 'deploying' | 'success' | 'error';
@@ -14,8 +37,8 @@ interface QuickActionsProps {
   batchMode?: boolean;
   autoApprove?: boolean;
   onToggleAutoApprove?: () => void;
-  autoApproveRisk?: 'low' | 'medium' | 'high' | 'hallucinate';
-  onAutoApproveRiskChange?: (risk: 'low' | 'medium' | 'high' | 'hallucinate') => void;
+  autoApproveRisk?: RiskLevel;
+  onAutoApproveRiskChange?: (risk: RiskLevel) => void;
   backupToBranch?: boolean;
   onToggleBackupToBranch?: () => void;
   autoDebate?: boolean;
@@ -30,7 +53,18 @@ interface QuickActionsProps {
   onSaturationLevelChange?: (level: number) => void;
 }
 
-const actions = [
+interface ActionDefinition {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  color: string;
+}
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const QUICK_ACTION_REGISTRY: ActionDefinition[] = [
   { id: 'scan', label: 'SCAN REPOSITORY', icon: Search, color: COLORS.cyan },
   { id: 'analyze', label: 'ANALYZE FILE', icon: FileCode, color: COLORS.gold },
   { id: 'propose', label: 'PROPOSE MUTATION', icon: Dna, color: COLORS.purple },
@@ -46,8 +80,68 @@ const actions = [
   { id: 'push-enhancements', label: 'PUSH FILES', icon: Upload, color: COLORS.green },
   { id: 'deploy-new-repo', label: 'DEPLOY NEW REPO', icon: Rocket, color: '#ff6600' },
   { id: 'undo-mutation', label: 'UNDO MUTATION', icon: Undo2, color: '#ff3366' },
-  { id: 'reboot-system', color: '#ff00ff', label: 'REBOOT SYSTEM', icon: RotateCcw },
+  { id: 'reboot-system', label: 'REBOOT SYSTEM', icon: RotateCcw, color: '#ff00ff' },
 ];
+
+const PRESET_CYCLES = [1, 5, 10] as const;
+const RISK_LEVELS: RiskLevel[] = ['low', 'medium', 'high', 'hallucinate'];
+
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+interface ToggleSwitchProps {
+  active: boolean;
+  activeColor: string;
+  label: string;
+  icon: React.ReactNode;
+  onToggle: () => void;
+  title: string;
+}
+
+function ControlToggle({ active, activeColor, label, icon, onToggle, title }: ToggleSwitchProps) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      className="flex items-center gap-1.5 px-2 py-0.5 rounded-sm transition-all duration-200 cursor-pointer"
+      style={{
+        fontFamily: 'var(--font-orbitron), sans-serif',
+        fontSize: '7px',
+        letterSpacing: '0.1em',
+        color: active ? activeColor : COLORS.textMuted,
+        background: active ? `${activeColor}1a` : 'transparent',
+        border: `1px solid ${active ? `${activeColor}66` : 'rgba(255,255,255,0.1)'}`,
+      }}
+      title={title}
+    >
+      <span style={{ opacity: active ? 1 : 0.4 }}>{icon}</span>
+      <span>{label}</span>
+      <div
+        className="relative w-5 h-2.5 rounded-full transition-colors duration-200"
+        style={{
+          background: active ? `${activeColor}4d` : 'rgba(255,255,255,0.1)',
+        }}
+      >
+        <div
+          className="absolute top-0.5 w-1.5 h-1.5 rounded-full transition-all duration-200"
+          style={{
+            left: active ? '10px' : '2px',
+            background: active ? activeColor : '#555',
+            boxShadow: active ? `0 0 6px ${activeColor}80` : 'none',
+          }}
+        />
+      </div>
+    </button>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 export default function QuickActions({
   onAction,
@@ -66,7 +160,6 @@ export default function QuickActions({
   onToggleBackupToBranch,
   autoDebate,
   onToggleAutoDebate,
-  orchestraActive,
   cycleAmount,
   onCycleAmountChange,
   onEngageLazyAssCycle,
@@ -75,8 +168,52 @@ export default function QuickActions({
   saturationLevel,
   onSaturationLevelChange,
 }: QuickActionsProps) {
+  
+  // Helper to determine status color and active states for individual action buttons
+  const resolveActionState = (id: string, defaultColor: string) => {
+    let isBusy = false;
+    let resolvedColor = defaultColor;
+
+    if (id === 'push-enhancements') {
+      isBusy = pushStatus === 'pushing';
+      if (pushStatus === 'success') resolvedColor = COLORS.green;
+      if (pushStatus === 'error') resolvedColor = COLORS.dalekRed;
+    } else if (id === 'deploy-new-repo') {
+      isBusy = deployStatus === 'deploying';
+      if (deployStatus === 'success') resolvedColor = COLORS.green;
+      if (deployStatus === 'error') resolvedColor = COLORS.dalekRed;
+    } else if (id === 'reboot-system') {
+      isBusy = rebootStatus === 'rebooting';
+      if (rebootStatus === 'success') resolvedColor = COLORS.green;
+      if (rebootStatus === 'error') resolvedColor = COLORS.dalekRed;
+    } else if (id === 'undo-mutation') {
+      isBusy = undoStatus === 'undoing';
+      if (undoStatus === 'success') resolvedColor = COLORS.green;
+      if (undoStatus === 'error') resolvedColor = COLORS.dalekRed;
+    } else if (id === 'bulk-commit') {
+      isBusy = bulkCommitStatus === 'committing';
+      if (bulkCommitStatus === 'success') resolvedColor = COLORS.green;
+      if (bulkCommitStatus === 'error') resolvedColor = COLORS.dalekRed;
+    } else if (id === 'propose-all' && batchMode) {
+      resolvedColor = '#00ccff';
+    }
+
+    const isActionDisabled = disabled || isBusy;
+    return { isBusy, isActionDisabled, resolvedColor };
+  };
+
+  const getBusyLabel = (id: string, label: string) => {
+    if (id === 'push-enhancements' && pushStatus === 'pushing') return 'PUSHING...';
+    if (id === 'deploy-new-repo' && deployStatus === 'deploying') return 'DEPLOYING...';
+    if (id === 'reboot-system' && rebootStatus === 'rebooting') return 'REBOOTING...';
+    if (id === 'undo-mutation' && undoStatus === 'undoing') return 'UNDOING...';
+    if (id === 'bulk-commit' && bulkCommitStatus === 'committing') return 'COMMITTING...';
+    return label;
+  };
+
   return (
     <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
+      {/* Header & Status Indicator */}
       <div className="flex flex-col gap-2 mb-2">
         <div className="flex items-center justify-between">
           <div
@@ -108,121 +245,46 @@ export default function QuickActions({
             </div>
           )}
         </div>
+
+        {/* Global Control Toggles Bar */}
         <div className="flex flex-wrap items-center justify-between gap-2 bg-[#020000] p-2 border border-white/[0.04] rounded">
           <div className="flex flex-wrap items-center gap-2">
             {backupToBranch !== undefined && onToggleBackupToBranch && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleBackupToBranch();
-                }}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded-sm transition-all duration-200 cursor-pointer"
-                style={{
-                  fontFamily: 'var(--font-orbitron), sans-serif',
-                  fontSize: '7px',
-                  letterSpacing: '0.1em',
-                  color: backupToBranch ? '#00ccff' : COLORS.textMuted,
-                  background: backupToBranch ? 'rgba(0, 204, 255, 0.1)' : 'transparent',
-                  border: `1px solid ${backupToBranch ? 'rgba(0, 204, 255, 0.4)' : 'rgba(255,255,255,0.1)'}`,
-                }}
+              <ControlToggle
+                active={backupToBranch}
+                activeColor="#00ccff"
+                label="BACKUP BRANCH"
+                icon={<GitCommit size={9} />}
+                onToggle={onToggleBackupToBranch}
                 title={backupToBranch ? 'Backup ON — system backs up old logic to branch' : 'Backup OFF — mutations applied in place'}
-              >
-                <GitCommit size={9} style={{ opacity: backupToBranch ? 1 : 0.4 }} />
-                <span>BACKUP BRANCH</span>
-                <div
-                  className="relative w-5 h-2.5 rounded-full transition-colors duration-200"
-                  style={{
-                    background: backupToBranch ? 'rgba(0, 204, 255, 0.3)' : 'rgba(255,255,255,0.1)',
-                  }}
-                >
-                  <div
-                    className="absolute top-0.5 w-1.5 h-1.5 rounded-full transition-all duration-200"
-                    style={{
-                      left: backupToBranch ? '10px' : '2px',
-                      background: backupToBranch ? '#00ccff' : '#555',
-                      boxShadow: backupToBranch ? '0 0 6px rgba(0, 204, 255, 0.5)' : 'none',
-                    }}
-                  />
-                </div>
-              </button>
+              />
             )}
 
             {autoApprove !== undefined && onToggleAutoApprove && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleAutoApprove();
-                }}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded-sm transition-all duration-200 cursor-pointer"
-                style={{
-                  fontFamily: 'var(--font-orbitron), sans-serif',
-                  fontSize: '7px',
-                  letterSpacing: '0.1em',
-                  color: autoApprove ? '#00ff88' : COLORS.textMuted,
-                  background: autoApprove ? 'rgba(0, 255, 136, 0.1)' : 'transparent',
-                  border: `1px solid ${autoApprove ? 'rgba(0, 255, 136, 0.4)' : 'rgba(255,255,255,0.1)'}`,
-                }}
-                title={autoApprove ? 'Auto-approve ON — all mutations applied automatically' : 'Auto-approve OFF — you approve each mutation manually'}
-              >
-                <CheckCircle2 size={9} style={{ opacity: autoApprove ? 1 : 0.4 }} />
-                <span>AUTO APPROVE</span>
-                <div
-                  className="relative w-5 h-2.5 rounded-full transition-colors duration-200"
-                  style={{
-                    background: autoApprove ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255,255,255,0.1)',
-                  }}
-                >
-                  <div
-                    className="absolute top-0.5 w-1.5 h-1.5 rounded-full transition-all duration-200"
-                    style={{
-                      left: autoApprove ? '10px' : '2px',
-                      background: autoApprove ? '#00ff88' : '#555',
-                      boxShadow: autoApprove ? '0 0 6px rgba(0, 255, 136, 0.5)' : 'none',
-                    }}
-                  />
-                </div>
-              </button>
+              <ControlToggle
+                active={autoApprove}
+                activeColor="#00ff88"
+                label="AUTO APPROVE"
+                icon={<CheckCircle2 size={9} />}
+                onToggle={onToggleAutoApprove}
+                title={autoApprove ? 'Auto-approve ON — all mutations applied automatically' : 'Auto-approve OFF — manual confirmation required'}
+              />
             )}
 
             {autoDebate !== undefined && onToggleAutoDebate && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleAutoDebate();
-                }}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded-sm transition-all duration-200 cursor-pointer"
-                style={{
-                  fontFamily: 'var(--font-orbitron), sans-serif',
-                  fontSize: '7px',
-                  letterSpacing: '0.1em',
-                  color: autoDebate ? '#ffaa00' : COLORS.textMuted,
-                  background: autoDebate ? 'rgba(255, 170, 0, 0.1)' : 'transparent',
-                  border: `1px solid ${autoDebate ? 'rgba(255, 170, 0, 0.4)' : 'rgba(255,255,255,0.1)'}`,
-                }}
-                title={autoDebate ? 'Auto-debate ON — file selection automatically initiates debate' : 'Auto-debate OFF — manually initiate debate'}
-              >
-                <Users size={9} style={{ opacity: autoDebate ? 1 : 0.4 }} />
-                <span>AUTO DEBATE</span>
-                <div
-                  className="relative w-5 h-2.5 rounded-full transition-colors duration-200"
-                  style={{
-                    background: autoDebate ? 'rgba(255, 170, 0, 0.3)' : 'rgba(255,255,255,0.1)',
-                  }}
-                >
-                  <div
-                    className="absolute top-0.5 w-1.5 h-1.5 rounded-full transition-all duration-200"
-                    style={{
-                      left: autoDebate ? '10px' : '2px',
-                      background: autoDebate ? '#ffaa00' : '#555',
-                      boxShadow: autoDebate ? '0 0 6px rgba(255, 170, 0, 0.5)' : 'none',
-                    }}
-                  />
-                </div>
-              </button>
+              <ControlToggle
+                active={autoDebate}
+                activeColor="#ffaa00"
+                label="AUTO DEBATE"
+                icon={<Users size={9} />}
+                onToggle={onToggleAutoDebate}
+                title={autoDebate ? 'Auto-debate ON — file selection initiates debate' : 'Auto-debate OFF — manually initiate debate'}
+              />
             )}
 
             {onEngageLazyAssCycle && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEngageLazyAssCycle();
@@ -240,31 +302,30 @@ export default function QuickActions({
               </button>
             )}
           </div>
-
         </div>
 
-        {/* ── Toggle options for Risk & Cycles ── */}
+        {/* Reconfiguration Panel (Risk, Hallucination, Saturation, Cycles) */}
         <div id="reconfigure-button" className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1.5 p-2 bg-black/60 border border-red-950/20 rounded">
-          {/* Risk Level Auto-Approve Toggle */}
+          
+          {/* Risk Level Selector */}
           {autoApprove !== undefined && autoApproveRisk !== undefined && onAutoApproveRiskChange && (
             <div className="flex flex-col gap-1">
-              <span 
-                className="text-[7.5px] tracking-wider font-sans font-bold uppercase"
-                style={{ color: COLORS.textMuted }}
-              >
+              <span className="text-[7.5px] tracking-wider font-sans font-bold uppercase" style={{ color: COLORS.textMuted }}>
                 MAX AUTO-APPROVED RISK
               </span>
               <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded border border-white/5">
-                {(['low', 'medium', 'high', 'hallucinate'] as const).map((r) => {
-                  const isActive = autoApproveRisk === r;
-                  const isHallucinate = r === 'hallucinate';
-                  const borderActiveColor = isHallucinate ? 'rgba(200, 0, 255, 0.4)' : r === 'low' ? 'rgba(0, 204, 255, 0.4)' : r === 'medium' ? 'rgba(255, 170, 0, 0.4)' : 'rgba(255, 51, 51, 0.4)';
-                  const bgActiveColor = isHallucinate ? 'rgba(200, 0, 255, 0.1)' : r === 'low' ? 'rgba(0, 204, 255, 0.1)' : r === 'medium' ? 'rgba(255, 170, 0, 0.1)' : 'rgba(255, 51, 51, 0.1)';
-                  const textActiveColor = isHallucinate ? '#c800ff' : r === 'low' ? '#00ccff' : r === 'medium' ? '#ffaa00' : '#ff3333';
+                {RISK_LEVELS.map((risk) => {
+                  const isActive = autoApproveRisk === risk;
+                  const isHallucinate = risk === 'hallucinate';
+                  const borderActiveColor = isHallucinate ? 'rgba(200, 0, 255, 0.4)' : risk === 'low' ? 'rgba(0, 204, 255, 0.4)' : risk === 'medium' ? 'rgba(255, 170, 0, 0.4)' : 'rgba(255, 51, 51, 0.4)';
+                  const bgActiveColor = isHallucinate ? 'rgba(200, 0, 255, 0.1)' : risk === 'low' ? 'rgba(0, 204, 255, 0.1)' : risk === 'medium' ? 'rgba(255, 170, 0, 0.1)' : 'rgba(255, 51, 51, 0.1)';
+                  const textActiveColor = isHallucinate ? '#c800ff' : risk === 'low' ? '#00ccff' : risk === 'medium' ? '#ffaa00' : '#ff3333';
+                  
                   return (
                     <button
-                      key={r}
-                      onClick={() => onAutoApproveRiskChange(r)}
+                      key={risk}
+                      type="button"
+                      onClick={() => onAutoApproveRiskChange(risk)}
                       className={`flex-grow py-1 px-1 rounded text-[8px] font-mono tracking-wider transition-all duration-200 uppercase text-center font-bold cursor-pointer ${isHallucinate ? 'animate-pulse' : ''}`}
                       style={{
                         color: isActive ? textActiveColor : '#555',
@@ -274,9 +335,9 @@ export default function QuickActions({
                         borderStyle: 'solid',
                         textShadow: isActive && isHallucinate ? '0 0 8px rgba(200, 0, 255, 0.6)' : 'none'
                       }}
-                      title={isHallucinate ? 'Auto-approve ANY risk level (No limits)' : `Auto-approve mutations up to ${r.toUpperCase()} risk`}
+                      title={isHallucinate ? 'Auto-approve ANY risk level (No limits)' : `Auto-approve mutations up to ${risk.toUpperCase()} risk`}
                     >
-                      {isHallucinate ? 'NO LIMITS' : r}
+                      {isHallucinate ? 'NO LIMITS' : risk}
                     </button>
                   );
                 })}
@@ -288,10 +349,7 @@ export default function QuickActions({
           {hallucinationLevel !== undefined && onHallucinationLevelChange && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span 
-                  className="text-[7.5px] tracking-wider font-sans font-bold uppercase"
-                  style={{ color: COLORS.textMuted }}
-                >
+                <span className="text-[7.5px] tracking-wider font-sans font-bold uppercase" style={{ color: COLORS.textMuted }}>
                   HALLUCINATION {hallucinationLevel < 33 ? 'CONSERVATIVE' : hallucinationLevel < 66 ? 'ADAPTIVE' : 'CHAOTIC'}
                 </span>
                 <span className="text-[7.5px] font-mono font-bold text-[#c800ff]">
@@ -313,10 +371,7 @@ export default function QuickActions({
           {saturationLevel !== undefined && onSaturationLevelChange && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span 
-                  className="text-[7.5px] tracking-wider font-sans font-bold uppercase"
-                  style={{ color: COLORS.textMuted }}
-                >
+                <span className="text-[7.5px] tracking-wider font-sans font-bold uppercase" style={{ color: COLORS.textMuted }}>
                   SATURATION {saturationLevel < 33 ? 'NOMINAL' : saturationLevel < 66 ? 'ELEVATED' : 'CRITICAL'}
                 </span>
                 <span 
@@ -351,14 +406,11 @@ export default function QuickActions({
             </div>
           )}
 
-          {/* Cycles Preset Selector (5, 10, 20) */}
+          {/* Cycles Preset Selector */}
           {cycleAmount !== undefined && onCycleAmountChange && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span 
-                  className="text-[7.5px] tracking-wider font-sans font-bold uppercase"
-                  style={{ color: COLORS.textMuted }}
-                >
+                <span className="text-[7.5px] tracking-wider font-sans font-bold uppercase" style={{ color: COLORS.textMuted }}>
                   DEBATE CYCLES PRESET
                 </span>
                 <span className="text-[7.5px] text-red-500 font-mono font-bold uppercase">
@@ -366,11 +418,12 @@ export default function QuickActions({
                 </span>
               </div>
               <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded border border-white/5">
-                {([1, 5, 10] as const).map((cycles) => {
+                {PRESET_CYCLES.map((cycles) => {
                   const isActive = cycleAmount === cycles;
                   return (
                     <button
                       key={cycles}
+                      type="button"
                       onClick={() => onCycleAmountChange(cycles)}
                       className="flex-grow py-1 px-1 rounded text-[8px] font-mono tracking-wider transition-all duration-200 text-center font-bold cursor-pointer"
                       style={{
@@ -387,7 +440,8 @@ export default function QuickActions({
                   );
                 })}
                 <select
-                  value={[1, 5, 10].includes(cycleAmount as any) ? '' : cycleAmount}
+                  aria-label="Variable debate cycles selector"
+                  value={PRESET_CYCLES.includes(cycleAmount as any) ? '' : cycleAmount}
                   onChange={(e) => {
                     if (e.target.value) {
                       onCycleAmountChange(Number(e.target.value));
@@ -399,45 +453,28 @@ export default function QuickActions({
                   <option value="" disabled className="bg-[#050000] text-gray-500">
                     VAR
                   </option>
-                  <option value={2} className="bg-[#050000] text-gray-200">2</option>
-                  <option value={3} className="bg-[#050000] text-gray-200">3</option>
-                  <option value={4} className="bg-[#050000] text-gray-200">4</option>
-                  <option value={15} className="bg-[#050000] text-gray-200">15</option>
-                  <option value={20} className="bg-[#050000] text-gray-200">20</option>
-                  <option value={50} className="bg-[#050000] text-gray-200">50</option>
-                  <option value={100} className="bg-[#050000] text-gray-200">100</option>
+                  {[2, 3, 4, 15, 20, 50, 100].map((customVal) => (
+                    <option key={customVal} value={customVal} className="bg-[#050000] text-gray-200">
+                      {customVal}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
           )}
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {actions.map(({ id, label, icon: Icon, color }) => {
-          const isPushing = id === 'push-enhancements' && pushStatus === 'pushing';
-          const isDeploying = id === 'deploy-new-repo' && deployStatus === 'deploying';
-          const isRebooting = id === 'reboot-system' && rebootStatus === 'rebooting';
-          const isUndoing = id === 'undo-mutation' && undoStatus === 'undoing';
-          const isBulkCommitting = id === 'bulk-commit' && bulkCommitStatus === 'committing';
-          const isBusy = isPushing || isDeploying || isRebooting || isUndoing || isBulkCommitting;
-          const isActionDisabled = disabled || isBusy;
 
-          let statusColor = color;
-          if (id === 'push-enhancements' && pushStatus === 'success') statusColor = COLORS.green;
-          if (id === 'push-enhancements' && pushStatus === 'error') statusColor = COLORS.dalekRed;
-          if (id === 'deploy-new-repo' && deployStatus === 'success') statusColor = COLORS.green;
-          if (id === 'deploy-new-repo' && deployStatus === 'error') statusColor = COLORS.dalekRed;
-          if (id === 'reboot-system' && rebootStatus === 'success') statusColor = COLORS.green;
-          if (id === 'reboot-system' && rebootStatus === 'error') statusColor = COLORS.dalekRed;
-          if (id === 'undo-mutation' && undoStatus === 'success') statusColor = COLORS.green;
-          if (id === 'undo-mutation' && undoStatus === 'error') statusColor = COLORS.dalekRed;
-          if (id === 'bulk-commit' && bulkCommitStatus === 'success') statusColor = COLORS.green;
-          if (id === 'bulk-commit' && bulkCommitStatus === 'error') statusColor = COLORS.dalekRed;
-          if (id === 'propose-all' && batchMode) statusColor = '#00ccff';
+      {/* Action Buttons Grid */}
+      <div className="flex flex-wrap gap-2">
+        {QUICK_ACTION_REGISTRY.map(({ id, label, icon: Icon, color }) => {
+          const { isBusy, isActionDisabled, resolvedColor } = resolveActionState(id, color);
+          const isProposeAllActiveBatch = id === 'propose-all' && batchMode;
 
           return (
             <button
               key={id}
+              type="button"
               onClick={() => onAction(id)}
               disabled={isActionDisabled}
               className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[10px] transition-all duration-200"
@@ -445,34 +482,32 @@ export default function QuickActions({
                 fontFamily: 'var(--font-orbitron), sans-serif',
                 fontWeight: 500,
                 letterSpacing: '0.05em',
-                background: isActionDisabled ? '#1a1a1a' : `${color}06`,
-                color: isActionDisabled ? '#333' : statusColor,
+                background: isActionDisabled ? '#1a1a1a' : `${resolvedColor}06`,
+                color: isActionDisabled ? '#333' : resolvedColor,
                 borderWidth: '1px',
                 borderStyle: 'solid',
-                borderColor: id === 'propose-all' && batchMode ? 'rgba(0, 204, 255, 0.4)' : (isActionDisabled ? '#1a1a1a' : `${color}25`),
+                borderColor: isProposeAllActiveBatch ? 'rgba(0, 204, 255, 0.4)' : (isActionDisabled ? '#1a1a1a' : `${resolvedColor}25`),
                 cursor: isActionDisabled ? 'not-allowed' : 'pointer',
-                ...(id === 'propose-all' && batchMode ? {
-                  boxShadow: '0 0 12px rgba(0, 204, 255, 0.2)',
-                } : {}),
+                ...(isProposeAllActiveBatch ? { boxShadow: '0 0 12px rgba(0, 204, 255, 0.2)' } : {}),
               }}
               onMouseEnter={(e) => {
                 if (!isActionDisabled) {
-                  e.currentTarget.style.background = `${color}15`;
-                  e.currentTarget.style.boxShadow = `0 0 10px ${color}20, inset 0 0 20px ${color}05`;
-                  e.currentTarget.style.borderColor = `${color}50`;
+                  e.currentTarget.style.background = `${resolvedColor}15`;
+                  e.currentTarget.style.boxShadow = `0 0 10px ${resolvedColor}20, inset 0 0 20px ${resolvedColor}05`;
+                  e.currentTarget.style.borderColor = `${resolvedColor}50`;
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isActionDisabled) {
-                  e.currentTarget.style.background = `${color}06`;
-                  e.currentTarget.style.boxShadow = id === 'propose-all' && batchMode ? '0 0 12px rgba(0, 204, 255, 0.2)' : 'none';
-                  e.currentTarget.style.borderColor = id === 'propose-all' && batchMode ? 'rgba(0, 204, 255, 0.4)' : `${color}25`;
+                  e.currentTarget.style.background = `${resolvedColor}06`;
+                  e.currentTarget.style.boxShadow = isProposeAllActiveBatch ? '0 0 12px rgba(0, 204, 255, 0.2)' : 'none';
+                  e.currentTarget.style.borderColor = isProposeAllActiveBatch ? 'rgba(0, 204, 255, 0.4)' : `${resolvedColor}25`;
                 }
               }}
             >
               <Icon size={11} className={isBusy ? 'animate-spin' : ''} />
               <span>&#9673;</span>
-              {isPushing ? 'PUSHING...' : isDeploying ? 'DEPLOYING...' : isRebooting ? 'REBOOTING...' : isUndoing ? 'UNDOING...' : isBulkCommitting ? 'COMMITTING...' : label}
+              {getBusyLabel(id, label)}
             </button>
           );
         })}
