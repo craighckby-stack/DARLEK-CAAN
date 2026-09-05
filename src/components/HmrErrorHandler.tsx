@@ -18,7 +18,7 @@ interface ErrorDetails {
 }
 
 /**
- * Extracts normalized error message and name from an unknown rejection reason.
+ * Extracts a normalized message and name from an unknown rejection reason.
  */
 function parseErrorReason(reason: unknown): ErrorDetails {
   if (typeof reason === 'string') {
@@ -37,22 +37,19 @@ function parseErrorReason(reason: unknown): ErrorDetails {
 }
 
 /**
- * Determines whether an unhandled promise rejection should be suppressed.
+ * Evaluates whether an unhandled promise rejection matches suppression criteria.
  */
 function shouldSuppressError(name?: string, message?: string): boolean {
-  if (name && SUPPRESSED_ERROR_NAMES.has(name)) {
-    return true;
-  }
+  const isSuppressedByName = Boolean(name && SUPPRESSED_ERROR_NAMES.has(name));
+  const isSuppressedByPattern = Boolean(
+    message && SUPPRESSED_ERROR_PATTERNS.some((pattern) => message.includes(pattern))
+  );
 
-  if (message && SUPPRESSED_ERROR_PATTERNS.some((pattern) => message.includes(pattern))) {
-    return true;
-  }
-
-  return false;
+  return isSuppressedByName || isSuppressedByPattern;
 }
 
 /**
- * Client-side utility that suppresses noisy HMR and chunk loading unhandled rejections.
+ * Client-side utility that safely intercepts and suppresses noisy HMR and chunk loading rejections.
  */
 export default function HmrErrorHandler(): null {
   useEffect(() => {
@@ -65,7 +62,7 @@ export default function HmrErrorHandler(): null {
     };
 
     window.addEventListener('unhandledrejection', handleUnhandledRejection, { passive: true });
-    
+
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
     };
