@@ -1,7 +1,7 @@
 {
-  "c": [
+  "chunks": [
     "webpack"
   ],
-  "r": [],
-  "m": []
+  "removed": [],
+  "modules": []
 }
