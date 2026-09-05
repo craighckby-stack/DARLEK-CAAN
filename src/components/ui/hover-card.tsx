@@ -9,6 +9,9 @@ export type HoverCardProps = React.ComponentProps<typeof HoverCardPrimitive.Root
 export type HoverCardTriggerProps = React.ComponentProps<typeof HoverCardPrimitive.Trigger>
 export type HoverCardContentProps = React.ComponentProps<typeof HoverCardPrimitive.Content>
 
+/**
+ * Root container component for managing hover card state and behavior.
+ */
 const HoverCard = React.memo(function HoverCard(
   props: HoverCardProps
 ): React.JSX.Element {
@@ -16,6 +19,9 @@ const HoverCard = React.memo(function HoverCard(
 })
 HoverCard.displayName = "HoverCard"
 
+/**
+ * Interactive element that triggers the display of the hover card.
+ */
 const HoverCardTrigger = React.memo(function HoverCardTrigger(
   props: HoverCardTriggerProps
 ): React.JSX.Element {
@@ -25,6 +31,9 @@ const HoverCardTrigger = React.memo(function HoverCardTrigger(
 })
 HoverCardTrigger.displayName = "HoverCardTrigger"
 
+/**
+ * Popup panel component containing the primary content of the hover card.
+ */
 const HoverCardContent = React.memo(function HoverCardContent({
   className,
   align = "center",
