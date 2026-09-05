@@ -1,13 +1,7 @@
 "use strict";
 
-/**
- * Initializes and registers the Next.js Flight client-side entry chunk 
- * for the API brain route within the global Webpack chunk registry.
- */
 (function initializeWebpackChunk(globalScope) {
-  if (!globalScope || typeof globalScope !== "object") {
-    return;
-  }
+  if (!globalScope) return;
 
   const WEBPACK_CHUNK_KEY = "webpackChunk_N_E";
   const chunkRegistry = (globalScope[WEBPACK_CHUNK_KEY] ??= []);
@@ -17,45 +11,33 @@
 
   const moduleRegistry = Object.freeze(
     Object.assign(Object.create(null), {
-      [CLIENT_LOADER_MODULE_ID]: Object.freeze(function clientEntryStub(
-        _unusedModule,
-        _unusedExports,
-        _webpackRequire
-      ) {
+      [CLIENT_LOADER_MODULE_ID]: Object.freeze(function clientEntryStub() {
         "use strict";
-        // Client-side flight entry point stub - secured execution boundary
       }),
     })
   );
 
-  const runtimeBootstrap = function bootstrapWebpackRuntime(webpackRequire) {
-    if (typeof webpackRequire !== "function") {
-      return undefined;
-    }
+  const MAIN_APP_ARRAY = Object.freeze(["main-app"]);
+  const ROUTE_ARRAY = Object.freeze(["app/api/brain/route"]);
 
-    const executeModule = function executeModuleById(targetId) {
-      if (typeof targetId !== "string" || targetId.length === 0) {
-        return undefined;
-      }
-      return webpackRequire((webpackRequire.s = targetId));
-    };
+  const runtimeBootstrap = function bootstrapWebpackRuntime(webpackRequire) {
+    if (typeof webpackRequire !== "function") return;
 
     if (typeof webpackRequire.O === "function") {
-      webpackRequire.O(0, Object.freeze(["main-app"]), () =>
-        executeModule(CLIENT_LOADER_MODULE_ID)
-      );
+      webpackRequire.O(0, MAIN_APP_ARRAY, () => {
+        webpackRequire.s = CLIENT_LOADER_MODULE_ID;
+        return webpackRequire(CLIENT_LOADER_MODULE_ID);
+      });
       
       const chunkExports = webpackRequire.O();
       globalScope._N_E = chunkExports;
       return chunkExports;
     }
-
-    return undefined;
   };
 
   chunkRegistry.push(
     Object.freeze([
-      Object.freeze(["app/api/brain/route"]),
+      ROUTE_ARRAY,
       moduleRegistry,
       runtimeBootstrap,
     ])
