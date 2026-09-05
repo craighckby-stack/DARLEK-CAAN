@@ -7,22 +7,22 @@ export interface MutationStatusIndicatorProps {
   readonly className?: string;
 }
 
-interface StatusConfigEntry {
-  readonly dot: string;
+interface StatusConfiguration {
+  readonly dotClassName: string;
   readonly label: string;
 }
 
-const STATUS_CONFIG: Record<MutationStatus, StatusConfigEntry> = {
+const MUTATION_STATUS_CONFIGURATIONS: Record<MutationStatus, StatusConfiguration> = {
   pending: {
-    dot: 'bg-yellow-500',
+    dotClassName: 'bg-yellow-500',
     label: 'pending',
   },
   evolving: {
-    dot: 'animate-pulse bg-cyan-500',
+    dotClassName: 'animate-pulse bg-cyan-500',
     label: 'evolving',
   },
   stable: {
-    dot: 'bg-green-500',
+    dotClassName: 'bg-green-500',
     label: 'stable',
   },
 } as const;
@@ -31,7 +31,7 @@ export const MutationStatusIndicator: React.FC<MutationStatusIndicatorProps> = m
   status,
   className = '',
 }) => {
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.stable;
+  const currentStatusConfig = MUTATION_STATUS_CONFIGURATIONS[status] ?? MUTATION_STATUS_CONFIGURATIONS.stable;
 
   return (
     <div 
@@ -40,11 +40,11 @@ export const MutationStatusIndicator: React.FC<MutationStatusIndicatorProps> = m
       aria-label={`Mutation status: ${status}`}
     >
       <div 
-        className={`w-2 h-2 rounded-full ${config.dot}`} 
+        className={`w-2 h-2 rounded-full ${currentStatusConfig.dotClassName}`} 
         aria-hidden="true" 
       />
       <span className="text-[8px] uppercase tracking-widest text-white select-none">
-        {config.label}
+        {currentStatusConfig.label}
       </span>
     </div>
   );
