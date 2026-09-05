@@ -1,5 +1,6 @@
 const https = require('https');
-const fs = require('fs');
+const fs = require('fs/promises');
+const nodeFs = require('fs');
 const path = require('path');
 
 const REPOSITORY_CONFIG = Object.freeze({
@@ -22,6 +23,10 @@ function fetchUrl(url) {
     };
 
     https.get(url, options, (res) => {
+      if (res.statusCode && res.statusCode >= 400) {
+        return reject(new Error(`Request failed with status code ${res.statusCode}`));
+      }
+
       let rawData = '';
       res.on('data', chunk => rawData += chunk);
       res.on('end', () => resolve(rawData));
@@ -38,15 +43,15 @@ async function restoreFile(fileNode) {
   const destinationPath = fileNode.path;
   const targetDir = path.dirname(destinationPath);
   
-  fs.mkdirSync(targetDir, { recursive: true });
+  await fs.mkdir(targetDir, { recursive: true });
 
   const rawFileUrl = `https://raw.githubusercontent.com/${REPOSITORY_CONFIG.owner}/${REPOSITORY_CONFIG.repo}/${REPOSITORY_CONFIG.branch}/${destinationPath}`;
   
   try {
     const fileContent = await fetchUrl(rawFileUrl);
-    fs.writeFileSync(destinationPath, fileContent);
+    await fs.writeFile(destinationPath, fileContent, 'utf8');
   } catch (error) {
-    console.error(`Failed to restore file: ${destinationPath}`, error.message);
+    console.error(`\nFailed to restore file: ${destinationPath}`, error.message);
   }
 }
 
