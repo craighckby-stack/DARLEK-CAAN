@@ -7,12 +7,12 @@ export interface DalekStatusIndicatorProps {
   readonly className?: string;
 }
 
-interface StatusConfigEntry {
+interface StatusConfiguration {
   readonly text: string;
   readonly className: string;
 }
 
-const STATUS_CONFIG: Record<'connected' | 'offline', StatusConfigEntry> = {
+const KNOWN_STATUS_CONFIGS: Record<'connected' | 'offline', StatusConfiguration> = {
   connected: {
     text: '● SECURE',
     className: 'text-green-500',
@@ -23,36 +23,34 @@ const STATUS_CONFIG: Record<'connected' | 'offline', StatusConfigEntry> = {
   },
 } as const;
 
-const FALLBACK_CONFIG: StatusConfigEntry = {
-  text: `○ ${String}`,
-  className: 'text-yellow-500',
-};
+const BASE_INDICATOR_CLASSES = 'text-[10px] uppercase tracking-widest';
 
 export const DalekStatusIndicator: React.FC<DalekStatusIndicatorProps> = memo(({ 
   status, 
   className = '' 
 }) => {
-  const config = useMemo<StatusConfigEntry>(() => {
-    if (status === 'connected') return STATUS_CONFIG.connected;
-    if (status === 'offline') return STATUS_CONFIG.offline;
+  const statusConfig = useMemo<StatusConfiguration>(() => {
+    if (status === 'connected') return KNOWN_STATUS_CONFIGS.connected;
+    if (status === 'offline') return KNOWN_STATUS_CONFIGS.offline;
+    
     return {
       text: `○ ${status.toUpperCase()}`,
       className: 'text-yellow-500',
     };
   }, [status]);
 
-  const computedClassName = useMemo(() => {
-    return `text-[10px] uppercase tracking-widest ${config.className} ${className}`.trim();
-  }, [config.className, className]);
+  const combinedClassName = useMemo(() => {
+    return `${BASE_INDICATOR_CLASSES} ${statusConfig.className} ${className}`.trim();
+  }, [statusConfig.className, className]);
 
   return (
     <div 
-      className={computedClassName}
+      className={combinedClassName}
       role="status"
       aria-live="polite"
       aria-label={`Dalek status: ${status}`}
     >
-      {config.text}
+      {statusConfig.text}
     </div>
   );
 });
