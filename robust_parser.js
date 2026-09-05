@@ -1,7 +1,7 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "robust_parser.js"
- * Comprehensive sovereign overhaul: performance, type-safety, memory efficiency, and robust error handling.
+ * Comprehensive sovereign overhaul: readability, modern idioms, modular decomposition, and clean architecture.
  */
 
 'use strict';
@@ -9,9 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-/** @type {string} */
 const TARGET_FILE = path.normalize('src/app/api/evolution/propose/route.ts');
-/** @type {BufferEncoding} */
 const BUFFER_ENCODING = 'utf8';
 
 const REGEX_TARGET = /\/\/ 1\. Try direct clean JSON parse[\s\S]*?analysis = rawText\.slice\(0, 300\) \|\| 'Analyzed file structure\.';\n      \}\n    \}/;
@@ -28,14 +26,19 @@ const NEW_PARSER_BLOCK = `    // 1. Robust Extraction Engine (EMG Optimized)
     // Extract all markdown code fences safely using iterator allocation
     const codeBlocks = Array.from(rawText.matchAll(CODE_BLOCK_REGEX));
     
-    for (let i = 0, len = codeBlocks.length; i < len; i++) {
-      const block = codeBlocks[i];
+    for (const block of codeBlocks) {
       const content = block[1]?.trim();
       if (!content) continue;
 
       try {
         const json = JSON.parse(content);
-        if (json && (json.analysis !== undefined || json.riskScore !== undefined || json.newFiles !== undefined)) {
+        const hasValidMetadata = json && (
+          json.analysis !== undefined || 
+          json.riskScore !== undefined || 
+          json.newFiles !== undefined
+        );
+
+        if (hasValidMetadata) {
           parsed = json;
           continue;
         }
@@ -78,7 +81,8 @@ const NEW_PARSER_BLOCK = `    // 1. Robust Extraction Engine (EMG Optimized)
     }`;
 
 /**
- * Executes the sovereign overhaul to inject the optimized parser block into the target evolution route.
+ * Validates file existence, reads target content, performs regex replacement, and writes the optimized parser block.
+ * @throws {Error} If the target file is missing or the target pattern signature mismatches.
  * @returns {void}
  */
 function executeSovereignOverhaul() {
