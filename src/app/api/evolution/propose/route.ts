@@ -133,10 +133,10 @@ export interface AgentProfile {
 
 export class AdaptiveOrchestraManager {
   public static calculateNashEquilibrium(votes: number[], weights: number[]): { consensusIndex: number; friction: number } {
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-    const weightedSum = votes.reduce((sum, v, i) => sum + v * (weights[i] / totalWeight), 0);
+    const totalWeight = weights.reduce((accum, val) => accum + val, 0);
+    const weightedSum = votes.reduce((sum, vote, idx) => sum + vote * (weights[idx] / totalWeight), 0);
     
-    const variance = votes.reduce((sum, v, i) => sum + Math.pow(v - weightedSum, 2) * (weights[i] / totalWeight), 0);
+    const variance = votes.reduce((sum, vote, idx) => sum + Math.pow(vote - weightedSum, 2) * (weights[idx] / totalWeight), 0);
     const friction = Math.sqrt(variance);
     
     return {
@@ -167,7 +167,7 @@ export class AdaptiveOrchestraManager {
 export class ZeroLeakSandbox {
   private registries = new WeakMap<object, AbortController>();
 
-  public executeInSandbox(instance: object, fn: () => void, timeoutMs = 5000): void {
+  public executeInSandbox(instance: object, action: () => void, timeoutMs = 5000): void {
     const controller = new AbortController();
     this.registries.set(instance, controller);
 
@@ -177,7 +177,7 @@ export class ZeroLeakSandbox {
     }, timeoutMs);
 
     try {
-      fn();
+      action();
     } finally {
       clearTimeout(timeout);
       this.registries.delete(instance);
@@ -192,45 +192,51 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
     'Accept': 'application/vnd.github.v3+json',
     'User-Agent': 'Darlek-Caan-Engine',
   };
+  
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
   try {
     const repoTarget = 'craighckby-stack/DARLEK-CAAN-Cognitive-Engine';
-    const treeRes = await fetch(`https://api.github.com/repos/${repoTarget}/git/trees/main?recursive=1`, { headers });
-    if (!treeRes.ok) {
-      throw new Error(`Failed to fetch tree: ${treeRes.status}`);
+    const treeResponse = await fetch(`https://api.github.com/repos/${repoTarget}/git/trees/main?recursive=1`, { headers });
+    
+    if (!treeResponse.ok) {
+      throw new Error(`Failed to fetch tree: ${treeResponse.status}`);
     }
-    const treeData = await treeRes.json() as { tree?: GitTreeItem[] };
+    
+    const treeData = await treeResponse.json() as { tree?: GitTreeItem[] };
     if (!treeData.tree || !Array.isArray(treeData.tree)) {
       throw new Error('Invalid tree format');
     }
 
-    const codeFiles = treeData.tree.filter((f: GitTreeItem) => 
-      f.type === 'blob' && 
-      /\.(ts|tsx|js|jsx|py|go|rs|json)$/.test(f.path) &&
-      !f.path.includes('node_modules') &&
-      !f.path.includes('dist') &&
-      !f.path.includes('.next')
+    const codeFiles = treeData.tree.filter((file: GitTreeItem) => 
+      file.type === 'blob' && 
+      /\.(ts|tsx|js|jsx|py|go|rs|json)$/.test(file.path) &&
+      !file.path.includes('node_modules') &&
+      !file.path.includes('dist') &&
+      !file.path.includes('.next')
     );
 
     if (codeFiles.length === 0) {
       return '';
     }
 
-    const preferred = codeFiles.filter((f: GitTreeItem) => {
-      const p = f.path.toLowerCase();
-      return p.includes('core') || p.includes('agent') || p.includes('debate') || p.includes('engine');
+    const preferredFiles = codeFiles.filter((file: GitTreeItem) => {
+      const pathLower = file.path.toLowerCase();
+      return pathLower.includes('core') || pathLower.includes('agent') || pathLower.includes('debate') || pathLower.includes('engine');
     });
-    const filesToFetch = preferred.length > 0 ? preferred.slice(0, 3) : codeFiles.slice(0, 3);
+    
+    const filesToFetch = preferredFiles.length > 0 ? preferredFiles.slice(0, 3) : codeFiles.slice(0, 3);
 
     const siphonPromises = filesToFetch.map(async (file) => {
       try {
-        const contentRes = await fetch(`https://api.github.com/repos/${repoTarget}/contents/${file.path}`, { headers });
-        if (!contentRes.ok) return null;
-        const contentData = await contentRes.json() as { content?: string };
+        const contentResponse = await fetch(`https://api.github.com/repos/${repoTarget}/contents/${file.path}`, { headers });
+        if (!contentResponse.ok) return null;
+        
+        const contentData = await contentResponse.json() as { content?: string };
         if (!contentData.content) return null;
+        
         const rawCode = Buffer.from(contentData.content, 'base64').toString('utf8');
         return `\n\n--- SIPHONED SOURCE: ${repoTarget} | File: ${file.path} ---\n${rawCode.slice(0, 5000)}\n------------------------------------------------\n`;
       } catch {
@@ -240,8 +246,8 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
 
     const results = await Promise.all(siphonPromises);
     return results.filter(Boolean).join('');
-  } catch (err) {
-    console.warn('[Siphon Fetch] Failed to fetch live repo code:', err);
+  } catch (error) {
+    console.warn('[Siphon Fetch] Failed to fetch live repo code:', error);
     return '';
   }
 }
@@ -254,17 +260,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await safeReqJson<ExtendedProposeBody>(req, {} as ExtendedProposeBody);
     
-    const { fileContent, filePath, apiKeys, rejectionMemory } = body;
-    const sessionId = body.sessionId;
+    const { fileContent, filePath, apiKeys, rejectionMemory, sessionId } = body;
 
     if (!fileContent || !filePath) {
       return NextResponse.json({ error: 'File content and path are required.' }, { status: 400 });
     }
 
     const lowerPath = filePath.toLowerCase();
-    const isKnownTextExt = ['.md', '.txt', '.raw', '.config', '.json', '.yml', '.yaml'].some((ext) => lowerPath.endsWith(ext));
+    const isKnownTextExtension = ['.md', '.txt', '.raw', '.config', '.json', '.yml', '.yaml'].some((ext) => lowerPath.endsWith(ext));
 
-    if (!isKnownTextExt) {
+    if (!isKnownTextExtension) {
       const nonCodeCheck = isNonCodeContent(fileContent);
       if (nonCodeCheck.isNonCode) {
         return NextResponse.json({
@@ -281,7 +286,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const rejectionContext = rejectionMemory && rejectionMemory.length > 0
-      ? `\n\nPREVIOUS REJECTIONS (learn from these — avoid repeating mistakes):\n${rejectionMemory.slice(0, 5).map((r: RejectionMemoryItem) => `  - File: ${r.filePath} | Risk: ${r.riskScore}/10 | Reason: ${r.reason} | Analysis: ${r.analysis.slice(0, 100)}`).join('\n')}\n\nIMPORTANT: If you are proposing changes to a file that was previously rejected, take a MORE CONSERVATIVE approach. Focus on smaller, safer improvements.`
+      ? `\n\nPREVIOUS REJECTIONS (learn from these — avoid repeating mistakes):\n${rejectionMemory.slice(0, 5).map((item: RejectionMemoryItem) => `  - File: ${item.filePath} | Risk: ${item.riskScore}/10 | Reason: ${item.reason} | Analysis: ${item.analysis.slice(0, 100)}`).join('\n')}\n\nIMPORTANT: If you are proposing changes to a file that was previously rejected, take a MORE CONSERVATIVE approach. Focus on smaller, safer improvements.`
       : '';
 
     let appliedMutationsContext = '';
@@ -293,17 +298,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           take: 5,
           select: { filePath: true, analysis: true }
         });
+        
         if (recentMutations.length > 0) {
-          appliedMutationsContext = `\n\nRECENT SYSTEM MUTATIONS (Context of what you have done so far in this session to help you integrate and align future mutations):\n${recentMutations.map((m) => `  - File: ${m.filePath} | Analysis: ${m.analysis}`).join('\n')}`;
+          appliedMutationsContext = `\n\nRECENT SYSTEM MUTATIONS (Context of what you have done so far in this session to help you integrate and align future mutations):\n${recentMutations.map((mutation) => `  - File: ${mutation.filePath} | Analysis: ${mutation.analysis}`).join('\n')}`;
         }
-      } catch (err) {
-        console.error('Error fetching mutation history:', err);
+      } catch (error) {
+        console.error('Error fetching mutation history:', error);
       }
     }
 
     const userRepos = body.userReposContext;
     const userReposContextStr = userRepos && userRepos.length > 0
-      ? `\n\nUSER'S PORTFOLIO & GLOBAL SIPHON CONTEXT:\n${userRepos.slice(0, 100).map((r: UserRepoItem) => `  - [${r.isGlobalSiphon ? 'GLOBAL' : 'USER'}] ${r.fullName || r.name}: ${r.description || 'No description'} (${r.language || 'Unknown language'})`).join('\n')}\n`
+      ? `\n\nUSER'S PORTFOLIO & GLOBAL SIPHON CONTEXT:\n${userRepos.slice(0, 100).map((repo: UserRepoItem) => `  - [${repo.isGlobalSiphon ? 'GLOBAL' : 'USER'}] ${repo.fullName || repo.name}: ${repo.description || 'No description'} (${repo.language || 'Unknown language'})`).join('\n')}\n`
       : '';
 
     const isArchitecturalGenesis = body.isArchitecturalGenesis === true;
@@ -359,6 +365,7 @@ File path: ${filePath}`;
 
     const githubToken = apiKeys?.github;
     let siphonedCodeContext = await fetchAIProjectSiphon(githubToken);
+    
     if (!siphonedCodeContext) {
       siphonedCodeContext = AI_PROJECT_FALLBACK_SIPHON;
     }
@@ -377,7 +384,7 @@ ${fileContent.slice(0, 35000)}
     const hallucinationLevel = body.hallucinationLevel;
     const temperature = hallucinationLevel !== undefined ? hallucinationLevel / 100 : 0.3;
 
-    const result = await callLlm({
+    const llmResult = await callLlm({
       systemPrompt: proposeSystemPrompt,
       userPrompt,
       geminiApiKey: geminiKey,
@@ -385,7 +392,7 @@ ${fileContent.slice(0, 35000)}
       temperature,
     });
 
-    if (!result.text) {
+    if (!llmResult.text) {
       return NextResponse.json({
         analysis: 'LLM analysis failed. All providers unreachable.',
         proposedCode: fileContent,
@@ -397,10 +404,10 @@ ${fileContent.slice(0, 35000)}
       });
     }
 
-    console.log(`[Propose] Mutation analysis completed using: ${result.provider}`);
+    console.log(`[Propose] Mutation analysis completed using: ${llmResult.provider}`);
 
-    let parsed: ParsedMutationResponse | null = null;
-    const rawText = result.text.trim();
+    let parsedResponse: ParsedMutationResponse | null = null;
+    const rawText = llmResult.text.trim();
 
     let proposedCode = '';
     let analysis = 'Analysis complete.';
@@ -412,11 +419,11 @@ ${fileContent.slice(0, 35000)}
       try {
         const json = JSON.parse(content) as ParsedMutationResponse;
         if (json.analysis || json.riskScore !== undefined || json.newFiles) {
-          parsed = json;
+          parsedResponse = json;
           continue;
         }
       } catch {
-        // Ignore JSON parse errors for non-JSON blocks
+        // Ignore JSON parse errors for non-JSON code blocks
       }
       
       if (!proposedCode && content.length > 10) {
@@ -424,21 +431,21 @@ ${fileContent.slice(0, 35000)}
       }
     }
     
-    if (!parsed) {
+    if (!parsedResponse) {
       try {
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          parsed = JSON.parse(jsonMatch[0].replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')) as ParsedMutationResponse;
+          parsedResponse = JSON.parse(jsonMatch[0].replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')) as ParsedMutationResponse;
         }
       } catch {
         // Ignore fallback JSON extraction failures
       }
     }
     
-    if (parsed) {
-      analysis = parsed.analysis || analysis;
-      if (parsed.proposedCode && !proposedCode) {
-        proposedCode = parsed.proposedCode;
+    if (parsedResponse) {
+      analysis = parsedResponse.analysis || analysis;
+      if (parsedResponse.proposedCode && !proposedCode) {
+        proposedCode = parsedResponse.proposedCode;
       }
     }
     
@@ -449,32 +456,32 @@ ${fileContent.slice(0, 35000)}
     if (proposedCode === fileContent) {
       const isHeaderableExt = /\.(ts|tsx|js|jsx|css|scss)$/i.test(filePath);
       if (isHeaderableExt && !proposedCode.trim().startsWith('/**')) {
-        const header = `/**\n * DARLEK CANN ARCHITECTURAL HEADER\n * File: ${filePath}\n * Role: Core system component participating in autonomous cognitive evolution cycles.\n * Architecture: Type-safe modular unit with resilient state interfaces.\n */\n\n`;
-        proposedCode = header + proposedCode;
+        const architecturalHeader = `/**\n * DARLEK CANN ARCHITECTURAL HEADER\n * File: ${filePath}\n * Role: Core system component participating in autonomous cognitive evolution cycles.\n * Architecture: Type-safe modular unit with resilient state interfaces.\n */\n\n`;
+        proposedCode = architecturalHeader + proposedCode;
         analysis = `Enhanced ${filePath} by adding a comprehensive architectural JSDoc header and validating module structure.`;
       }
     }
 
-    const newFiles: NewFilePayload[] = Array.isArray(parsed?.newFiles) ? parsed.newFiles : [];
+    const newFiles: NewFilePayload[] = Array.isArray(parsedResponse?.newFiles) ? parsedResponse.newFiles : [];
     const repoFiles = Array.isArray(body.repoFiles) ? body.repoFiles : [];
     
     const sanityCheck = await mainWorker.validateSanity(fileContent, proposedCode, filePath, repoFiles, newFiles);
 
-    let finalRiskScore = Math.min(10, Math.max(1, parsed?.riskScore || 3));
+    let finalRiskScore = Math.min(10, Math.max(1, parsedResponse?.riskScore || 3));
     let finalAnalysis = analysis || 'Analysis complete.';
 
     if (!sanityCheck.passed) {
       finalRiskScore = Math.max(finalRiskScore, 9);
-      const violationMsgs = sanityCheck.violations.map((v: SanityViolation) => `[${v.severity.toUpperCase()}] ${v.message}`).join('\n');
-      finalAnalysis = `⚠️ STRUCTURAL SANITY GUARD WARNING:\n${violationMsgs}\n\nORIGINAL ANALYSIS:\n${finalAnalysis}`;
+      const violationMessages = sanityCheck.violations.map((v: SanityViolation) => `[${v.severity.toUpperCase()}] ${v.message}`).join('\n');
+      finalAnalysis = `⚠️ STRUCTURAL SANITY GUARD WARNING:\n${violationMessages}\n\nORIGINAL ANALYSIS:\n${finalAnalysis}`;
     }
 
     return NextResponse.json({
       analysis: finalAnalysis,
-      proposedCode: proposedCode,
+      proposedCode,
       riskScore: finalRiskScore,
-      affectedFiles: Array.isArray(parsed?.affectedFiles) ? parsed.affectedFiles : [],
-      newFiles: newFiles,
+      affectedFiles: Array.isArray(parsedResponse?.affectedFiles) ? parsedResponse.affectedFiles : [],
+      newFiles,
       structuralSanity: {
         passed: sanityCheck.passed,
         score: sanityCheck.score,
@@ -483,7 +490,7 @@ ${fileContent.slice(0, 35000)}
         hallucinatedImports: sanityCheck.hallucinatedImports,
       },
       success: true,
-      provider: result.provider,
+      provider: llmResult.provider,
     });
   } catch (error) {
     console.error('Propose mutation error:', error);
