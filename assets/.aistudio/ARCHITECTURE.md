@@ -1,7 +1,7 @@
 # DARLEK CANN v3.0: Architectural Blueprint
 
 ## 1. System Overview
-This repository serves as the core evolution engine for the DARLEK CANN/OMEGA-CORE system. It integrates multi-tier LLM fallbacks, agent swarm orchestration, and quantum-state memory persistence.
+This repository serves as the core evolution engine for the DARLEK CANN/OMEGA-CORE system. It integrates multi-tier Large Language Model (LLM) fallbacks, agent swarm orchestration, and quantum-state memory persistence.
 
 ## 2. Integration Schema
 - **unitary-core**: Handles quantum data processing and multi-dimensional analysis.
