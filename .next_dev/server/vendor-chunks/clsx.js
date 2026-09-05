@@ -15,30 +15,28 @@ exports.modules = {
     });
 
     const MAX_RECURSION_DEPTH = 32;
-    const hasOwn = Object.prototype.hasOwnProperty;
-    const FORBIDDEN_OBJECT_KEYS = {
+    const hasOwnProperty = Object.prototype.hasOwnProperty;
+    const FORBIDDEN_OBJECT_KEYS = Object.freeze({
       __proto__: true,
       prototype: true,
       constructor: true
-    };
+    });
 
     /**
      * Appends a class string to an accumulator with a space separator if needed.
-     * Optimized to avoid string allocations when either string is empty.
-     *
+     * 
      * @param {string} accumulator - The current accumulated class string
      * @param {string} nextValue - The class string to append
      * @returns {string} The updated accumulator string
      */
     function appendClass(accumulator, nextValue) {
       if (!nextValue) return accumulator;
-      return accumulator ? accumulator + " " + nextValue : nextValue;
+      return accumulator ? `${accumulator} ${nextValue}` : nextValue;
     }
 
     /**
-     * Parses array-type class values recursively.
-     * Uses manual loop unrolling for higher execution speed and reduced overhead.
-     *
+     * Recursively parses array-type class values with unrolled iteration.
+     * 
      * @param {Array<unknown>} array - The array of class tokens
      * @param {number} depth - Current recursion depth
      * @param {Set<object>} visited - Tracked reference set for cycle detection
@@ -49,7 +47,6 @@ exports.modules = {
       const len = array.length;
       let i = 0;
 
-      // Loop unrolling for performance enhancement
       while (i < len - 3) {
         const item0 = array[i];
         const item1 = array[i + 1];
@@ -77,8 +74,7 @@ exports.modules = {
 
     /**
      * Parses object-type class values with safety guards against prototype pollution.
-     * Uses direct object property lookup instead of Set iteration for maximum speed.
-     *
+     * 
      * @param {Record<string, unknown>} obj - The dictionary of class toggles
      * @returns {string} Sanitized and joined class string
      */
@@ -88,10 +84,10 @@ exports.modules = {
       const len = keys.length;
 
       for (let i = 0; i < len; i++) {
-        const key = keys.name || keys[i];
+        const key = keys[i];
         if (
           !FORBIDDEN_OBJECT_KEYS[key] &&
-          hasOwn.call(obj, key) &&
+          hasOwnProperty.call(obj, key) &&
           obj[key]
         ) {
           result = appendClass(result, key);
@@ -102,9 +98,8 @@ exports.modules = {
     }
 
     /**
-     * Defensively processes nested class values with depth boundaries, cyclic reference guards,
-     * and prototype pollution mitigation.
-     *
+     * Processes nested class values with depth boundaries, cyclic guards, and type checks.
+     * 
      * @param {unknown} value - Candidate class token, array, or object
      * @param {number} [depth=0] - Current recursion depth
      * @param {Set<object>} [visited] - Tracked reference set for cycle detection
@@ -115,30 +110,32 @@ exports.modules = {
         return "";
       }
 
-      const valType = typeof value;
+      const valueType = typeof value;
 
-      if (valType === "string") {
+      if (valueType === "string") {
         return /** @type {string} */ (value);
       }
 
-      if (valType === "number") {
-        return Number.isFinite(value) ? "" + value : "";
+      if (valueType === "number") {
+        return Number.isFinite(value) ? String(value) : "";
       }
 
-      if (valType === "bigint") {
+      if (valueType === "bigint") {
         return value.toString();
       }
 
-      if (valType !== "object") {
+      if (valueType !== "object") {
         return "";
       }
 
       const activeVisited = visited ?? new Set();
-      if (activeVisited.has(/** @type {object} */ (value))) {
+      const targetObj = /** @type {object} */ (value);
+
+      if (activeVisited.has(targetObj)) {
         return "";
       }
 
-      activeVisited.add(/** @type {object} */ (value));
+      activeVisited.add(targetObj);
 
       try {
         if (Array.isArray(value)) {
@@ -146,14 +143,13 @@ exports.modules = {
         }
         return parseObjectValue(/** @type {Record<string, unknown>} */ (value));
       } finally {
-        activeVisited.delete(/** @type {object} */ (value));
+        activeVisited.delete(targetObj);
       }
     }
 
     /**
-     * Constructs concatenated class names with defensive input validation.
-     * Optimized entry point utilizing manual unrolling for arguments processing.
-     *
+     * Constructs concatenated class names from variable arguments.
+     * 
      * @params {...unknown} args - Candidate class tokens, arrays, or objects
      * @returns {string} Joined class name string
      */
