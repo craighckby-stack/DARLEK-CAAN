@@ -79,19 +79,21 @@ export default function DashboardPanel({
       const timer = setTimeout(() => setStagedMutations([]), 0);
       return () => clearTimeout(timer);
     }
-    let cancelled = false;
+    
+    let isCancelled = false;
 
     const fetchMutationHistory = async () => {
       try {
-        const res = await fetch('/api/brain', {
+        const response = await fetch('/api/brain', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'get-mutation-history', sessionId: brainSessionId, limit: 100 }),
         });
-        const data = await safeResponseJson<{ success?: boolean; mutations?: StagedMutation[] }>(res, {});
-        if (!cancelled && data.success && Array.isArray(data.mutations)) {
-          const approved = data.mutations.filter((m) => m?.status === 'approved');
-          setStagedMutations(approved);
+        const data = await safeResponseJson<{ success?: boolean; mutations?: StagedMutation[] }>(response, {});
+        
+        if (!isCancelled && data.success && Array.isArray(data.mutations)) {
+          const approvedMutations = data.mutations.filter((mutation) => mutation?.status === 'approved');
+          setStagedMutations(approvedMutations);
         }
       } catch {
         // Suppress network/parsing errors gracefully in production monitoring loop
@@ -101,7 +103,7 @@ export default function DashboardPanel({
     fetchMutationHistory();
 
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
   }, [brainSessionId, historyRefreshTrigger, bulkCommitStatus]);
 
@@ -111,9 +113,10 @@ export default function DashboardPanel({
     return '#33ffaa';
   }, [bulkCommitStatus]);
 
-  const isActionDisabled = useMemo(() => {
-    return isLoading || batchMode || bulkCommitStatus === 'committing' || stagedMutations.length === 0;
-  }, [isLoading, batchMode, bulkCommitStatus, stagedMutations.length]);
+  const isActionDisabled = useMemo(
+    () => isLoading || batchMode || bulkCommitStatus === 'committing' || stagedMutations.length === 0,
+    [isLoading, batchMode, bulkCommitStatus, stagedMutations.length]
+  );
 
   const handleBulkCommitClick = useCallback(() => {
     if (onBulkCommit && !isActionDisabled) {
@@ -121,13 +124,15 @@ export default function DashboardPanel({
     }
   }, [onBulkCommit, isActionDisabled]);
 
-  const batchPercent = useMemo(() => {
-    return batchQueueLength > 0 ? Math.round((batchProgress / batchQueueLength) * 100) : 0;
-  }, [batchProgress, batchQueueLength]);
+  const batchPercent = useMemo(
+    () => (batchQueueLength > 0 ? Math.round((batchProgress / batchQueueLength) * 100) : 0),
+    [batchProgress, batchQueueLength]
+  );
 
-  const fileName = useMemo(() => {
-    return activeFilePath ? activeFilePath.split('/').pop() : null;
-  }, [activeFilePath]);
+  const fileName = useMemo(
+    () => (activeFilePath ? activeFilePath.split('/').pop() : null),
+    [activeFilePath]
+  );
 
   return (
     <div className="flex flex-col gap-3 lg:gap-4 lg:h-full overflow-y-auto dalek-scrollbar p-2 custom-scrollbar">
@@ -152,7 +157,7 @@ export default function DashboardPanel({
             style={{
               background: batchMode ? 'rgba(0,255,204,0.1)' : 'rgba(255,170,0,0.1)',
               color: batchMode ? COLORS.cyan : COLORS.gold,
-              border: `1px solid ${batchMode ? COLORS.cyan : COLORS.gold}30`
+              border: `1px solid ${batchMode ? COLORS.cyan : COLORS.gold}30`,
             }}
           >
             {batchMode ? 'BATCH CYCLE ONLINE' : isLoading ? 'THINKING' : 'STANDBY'}
@@ -171,9 +176,7 @@ export default function DashboardPanel({
               <div className="w-full h-1.5 rounded-full bg-[#111] overflow-hidden border border-white/[0.03]">
                 <div
                   className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-[#00ccff] to-[#00ffcc]"
-                  style={{
-                    width: `${batchPercent}%`,
-                  }}
+                  style={{ width: `${batchPercent}%` }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/[0.02]">
@@ -232,7 +235,7 @@ export default function DashboardPanel({
             style={{
               background: stagedMutations.length > 0 ? 'rgba(51,255,170,0.1)' : 'rgba(255,255,255,0.03)',
               color: stagedMutations.length > 0 ? '#33ffaa' : COLORS.textMuted,
-              border: `1px solid ${stagedMutations.length > 0 ? '#33ffaa' : COLORS.textMuted}30`
+              border: `1px solid ${stagedMutations.length > 0 ? '#33ffaa' : COLORS.textMuted}30`,
             }}
           >
             {stagedMutations.length} STAGED
@@ -246,11 +249,11 @@ export default function DashboardPanel({
                 Approved and pending deployment:
               </div>
               <div className="space-y-1 pl-1">
-                {stagedMutations.slice(0, 3).map((m) => (
-                  <div key={m.id} className="flex items-center gap-2 text-[10px] font-mono text-gray-300">
+                {stagedMutations.slice(0, 3).map((mutation) => (
+                  <div key={mutation.id} className="flex items-center gap-2 text-[10px] font-mono text-gray-300">
                     <CheckCircle2 size={11} className="text-[#33ffaa] flex-shrink-0" />
-                    <span className="truncate" title={m.filePath}>
-                      {m.filePath.split('/').pop()}
+                    <span className="truncate" title={mutation.filePath}>
+                      {mutation.filePath.split('/').pop()}
                     </span>
                   </div>
                 ))}
@@ -281,22 +284,24 @@ export default function DashboardPanel({
                 color: isActionDisabled ? '#444' : commitColor,
                 border: `1px solid ${isActionDisabled ? 'rgba(255,255,255,0.05)' : `${commitColor}35`}`,
                 cursor: isActionDisabled ? 'not-allowed' : 'pointer',
-                ...(stagedMutations.length > 0 && !isActionDisabled ? {
-                  boxShadow: `0 0 10px ${commitColor}15`,
-                } : {}),
+                ...(stagedMutations.length > 0 && !isActionDisabled
+                  ? {
+                      boxShadow: `0 0 10px ${commitColor}15`,
+                    }
+                  : {}),
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={(event) => {
                 if (!isActionDisabled) {
-                  e.currentTarget.style.background = `${commitColor}20`;
-                  e.currentTarget.style.boxShadow = `0 0 12px ${commitColor}30, inset 0 0 20px ${commitColor}08`;
-                  e.currentTarget.style.borderColor = `${commitColor}60`;
+                  event.currentTarget.style.background = `${commitColor}20`;
+                  event.currentTarget.style.boxShadow = `0 0 12px ${commitColor}30, inset 0 0 20px ${commitColor}08`;
+                  event.currentTarget.style.borderColor = `${commitColor}60`;
                 }
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={(event) => {
                 if (!isActionDisabled) {
-                  e.currentTarget.style.background = `${commitColor}10`;
-                  e.currentTarget.style.boxShadow = `0 0 10px ${commitColor}15`;
-                  e.currentTarget.style.borderColor = `${commitColor}35`;
+                  event.currentTarget.style.background = `${commitColor}10`;
+                  event.currentTarget.style.boxShadow = `0 0 10px ${commitColor}15`;
+                  event.currentTarget.style.borderColor = `${commitColor}35`;
                 }
               }}
             >
