@@ -7,40 +7,49 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
-// Enforce strict bounds and path normalization to prevent path traversal vulnerabilities
-const TARGET_FILE_RELATIVE = 'src/app/api/evolution/propose/route.ts';
-const resolvedPath = path.resolve(process.cwd(), TARGET_FILE_RELATIVE);
-const expectedBaseDir = path.resolve(process.cwd(), 'src/app/api/evolution/propose');
+/**
+ * Validates path traversal boundaries and file system integrity.
+ * 
+ * @param {string} targetRelativePath - The relative path to the target file.
+ * @returns {string} The fully resolved and validated absolute file path.
+ * @throws {Error} If path traversal or file validation fails.
+ */
+function getValidatedFilePath(targetRelativePath) {
+  const currentWorkingDirectory = process.cwd();
+  const resolvedPath = path.resolve(currentWorkingDirectory, targetRelativePath);
+  const expectedBaseDir = path.resolve(currentWorkingDirectory, 'src/app/api/evolution/propose');
+  const allowedSourceDir = path.resolve(currentWorkingDirectory, 'src');
 
-// Defensive validation: Ensure the resolved path stays strictly inside expected boundaries
-if (!resolvedPath.startsWith(expectedBaseDir) && !resolvedPath.startsWith(path.resolve(process.cwd(), 'src'))) {
-  throw new Error('SECURITY_VIOLATION: Access denied to target file path.');
+  const isWithinBounds = 
+    resolvedPath.startsWith(expectedBaseDir) || 
+    resolvedPath.startsWith(allowedSourceDir);
+
+  if (!isWithinBounds) {
+    throw new Error('SECURITY_VIOLATION: Access denied to target file path.');
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(`SECURITY_VIOLATION: Target file does not exist: ${targetRelativePath}`);
+  }
+
+  const fileStats = fs.statSync(resolvedPath);
+  if (!fileStats.isFile()) {
+    throw new Error('SECURITY_VIOLATION: Target path is not a valid regular file.');
+  }
+
+  return resolvedPath;
 }
 
-// Defensive file existence and type validation
-if (!fs.existsSync(resolvedPath)) {
-  throw new Error(`SECURITY_VIOLATION: Target file does not exist: ${TARGET_FILE_RELATIVE}`);
-}
-
-const stats = fs.statSync(resolvedPath);
-if (!stats.isFile()) {
-  throw new Error('SECURITY_VIOLATION: Target path is not a valid regular file.');
-}
-
-// Safe synchronous read with strict encoding
-const code = fs.readFileSync(resolvedPath, 'utf8');
-
-// Bounded string matching and replacement
-const regexToReplace = /Format your response exactly like this:.*?\`\`\`Risk scoring guidelines:/s;
-
-if (!regexToReplace.test(code)) {
-  throw new Error('SECURITY_VIOLATION: Target injection signature not found within expected bounds.');
-}
-
-const replacementStr = `Format your response exactly like this:
+/**
+ * Constructs the structured replacement block for the evolution prompt formatting guidelines.
+ * 
+ * @returns {string} The formatted replacement string.
+ */
+function buildReplacementContent() {
+  return `Format your response exactly like this:
 \\\`\\\`\\\`json
 {
   "analysis": "Specific analysis of what dead-weight or bugs were fixed...",
@@ -61,8 +70,36 @@ const replacementStr = `Format your response exactly like this:
 \\\`\\\`\\\`
 
 Risk scoring guidelines:`;
+}
 
-const updatedCode = code.replace(regexToReplace, replacementStr);
+/**
+ * Executes the targeted string replacement within the file contents.
+ * 
+ * @param {string} sourceCode - Original file content.
+ * @returns {string} Updated file content.
+ * @throws {Error} If the injection signature is missing.
+ */
+function applyPromptPatch(sourceCode) {
+  const targetPattern = /Format your response exactly like this:.*?\`\`\`Risk scoring guidelines:/s;
 
-// Atomic-like secure write with explicit UTF-8 encoding
-fs.writeFileSync(resolvedPath, updatedCode, { encoding: 'utf8', mode: 0o600 });
+  if (!targetPattern.test(sourceCode)) {
+    throw new Error('SECURITY_VIOLATION: Target injection signature not found within expected bounds.');
+  }
+
+  return sourceCode.replace(targetPattern, buildReplacementContent());
+}
+
+/**
+ * Main execution routine for file transformation.
+ */
+function main() {
+  const TARGET_FILE_RELATIVE = 'src/app/api/evolution/propose/route.ts';
+  const targetFilePath = getValidatedFilePath(TARGET_FILE_RELATIVE);
+
+  const sourceCode = fs.readFileSync(targetFilePath, 'utf8');
+  const updatedCode = applyPromptPatch(sourceCode);
+
+  fs.writeFileSync(targetFilePath, updatedCode, { encoding: 'utf8', mode: 0o600 });
+}
+
+main();
