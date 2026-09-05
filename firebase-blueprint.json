@@ -1,62 +1,66 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EMG Core v49 Neural Substrate Firebase Blueprint",
-  "description": "Optimized, type-safe, and resilient schema definition for distributed autonomous agents and substrate state.",
+  "description": "Optimized, type-safe, and resilient schema definition for distributed autonomous agents and substrate state with rigorous defense-in-depth bounds checking.",
   "definitions": {
     "AgentState": {
       "title": "Agent State",
-      "description": "Represents the current state and telemetry of an agent in the substrate with strict bounds.",
+      "description": "Represents the current state and telemetry of an agent in the substrate with strict defensive bounds.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "id": { 
           "type": "string", 
-          "pattern": "^[A-Z0-9_]+$",
-          "description": "Unique immutable Agent identifier (e.g., DARLEK_CAAN, JESUS_AGENT)" 
+          "pattern": "^[A-Z0-9_]{1,64}$",
+          "maxLength": 64,
+          "description": "Unique immutable Agent identifier with strict length and character boundaries." 
         },
         "objective": { 
           "type": "string", 
           "minLength": 1,
           "maxLength": 1024,
-          "description": "The current primary objective function." 
+          "description": "The current primary objective function bounded against buffer overflow injection vectors." 
         },
         "resources": { 
           "type": "number", 
           "minimum": 0,
-          "description": "Available resource units." 
+          "maximum": 9007199254740991,
+          "description": "Available resource units bounded to safe numerical limits." 
         },
         "energy": { 
           "type": "number", 
           "minimum": 0.0,
           "maximum": 100.0,
-          "description": "Normalized energetic reserve percentage." 
+          "description": "Normalized energetic reserve percentage strictly capped between 0 and 100." 
         },
         "knowledge": { 
           "type": "number", 
           "minimum": 0,
-          "description": "Quantified substrate knowledge metric." 
+          "maximum": 9007199254740991,
+          "description": "Quantified substrate knowledge metric with safe bounds." 
         },
         "cycleCount": { 
           "type": "integer", 
           "minimum": 0,
-          "description": "Total execution loops processed." 
+          "maximum": 9007199254740991,
+          "description": "Total execution loops processed, guarded against overflow." 
         },
         "lastAction": { 
           "type": "string", 
           "maxLength": 256,
-          "description": "Mnemonic of the most recent executed operation." 
+          "description": "Mnemonic of the most recent executed operation with explicit length limits." 
         },
         "status": { 
           "type": "string", 
           "enum": ["active", "idle", "blocked"],
-          "description": "Current lifecycle status indicator." 
+          "description": "Current lifecycle status indicator restricted to an explicit whitelist." 
         }
       },
       "required": ["id", "objective", "cycleCount", "status"]
     },
     "WorldState": {
       "title": "World State",
-      "description": "The shared substrate variables accessible to all autonomous agents with cryptographic integrity tracking.",
+      "description": "The shared substrate variables accessible to all autonomous agents with cryptographic integrity tracking and strict type validation.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -64,22 +68,27 @@
           "type": "number", 
           "minimum": 0.0,
           "maximum": 1.0,
-          "description": "Substrate disorder metric." 
+          "description": "Substrate disorder metric strictly normalized between 0.0 and 1.0." 
         },
         "structuralCoherence": { 
           "type": "number", 
           "minimum": 0.0,
           "maximum": 1.0,
-          "description": "Substrate integrity metric." 
+          "description": "Substrate integrity metric strictly normalized between 0.0 and 1.0." 
         },
         "globalVariables": { 
           "type": "object", 
-          "additionalProperties": true,
-          "description": "Extensible namespace for global context parameters." 
+          "additionalProperties": {
+            "type": ["string", "number", "boolean"]
+          },
+          "maxProperties": 64,
+          "description": "Extensible namespace for global context parameters constrained against arbitrary payload injection." 
         },
         "lastModifiedBy": { 
           "type": "string", 
-          "description": "Agent identifier responsible for the last state mutation." 
+          "pattern": "^[A-Z0-9_]{1,64}$",
+          "maxLength": 64,
+          "description": "Agent identifier responsible for the last state mutation with verified format." 
         },
         "lastModifiedAt": { 
           "type": "string", 
@@ -96,7 +105,7 @@
     },
     "AuditLog": {
       "title": "Audit Log",
-      "description": "A cryptographic-style immutable ledger of all agentic interactions and state mutations.",
+      "description": "A cryptographic-style immutable ledger of all agentic interactions and state mutations with defensive validation.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -107,16 +116,20 @@
         },
         "agentId": { 
           "type": "string", 
-          "description": "Originating agent identifier." 
+          "pattern": "^[A-Z0-9_]{1,64}$",
+          "maxLength": 64,
+          "description": "Originating agent identifier with strict bounds." 
         },
         "modelCallId": { 
           "type": "string", 
+          "maxLength": 128,
           "description": "Associated LLM or neural execution session identifier." 
         },
         "action": { 
           "type": "string", 
           "minLength": 1,
-          "description": "Action intent descriptor." 
+          "maxLength": 256,
+          "description": "Action intent descriptor with enforced size constraints." 
         },
         "preStateHash": { 
           "type": "string", 
@@ -130,18 +143,22 @@
         },
         "delta": { 
           "type": "object", 
-          "additionalProperties": true,
-          "description": "Computed state change differential payload." 
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "null"]
+          },
+          "maxProperties": 32,
+          "description": "Computed state change differential payload with type constraints." 
         },
         "outcome": { 
           "type": "string", 
+          "maxLength": 512,
           "description": "Resulting execution status narrative or code." 
         },
         "harmScore": { 
           "type": "number", 
           "minimum": 0.0,
           "maximum": 1.0,
-          "description": "Safety gate calculated risk metric." 
+          "description": "Safety gate calculated risk metric strictly bounded." 
         },
         "allowedByCommitGate": { 
           "type": "boolean", 
