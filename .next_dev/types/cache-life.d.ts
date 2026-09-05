@@ -12,128 +12,34 @@ declare module 'next/cache' {
 
   export interface CacheLifeConfig {
     /**
-     * This cache may be stale on clients for ... seconds before checking with the server.
+     * Duration in seconds the cache may remain stale on clients before re-verifying with the server.
      */
     readonly stale?: number
+
     /**
-     * If the server receives a new request after ... seconds, start revalidating new values in the background.
+     * Duration in seconds after which a subsequent request triggers background value revalidation.
      */
     readonly revalidate?: number
+
     /**
-     * If this entry has no traffic for ... seconds it will expire. The next request will recompute it.
+     * Duration of inactivity in seconds before the cache entry expires and requires recomputation.
      */
     readonly expire?: number
   }
 
-  /**
-   * Cache this `"use cache"` for a timespan defined by the `"default"` profile.
-   * ```
-   *   stale:      300 seconds (5 minutes)
-   *   revalidate: 900 seconds (15 minutes)
-   *   expire:     never
-   * ```
-   * 
-   * This cache may be stale on clients for 5 minutes before checking with the server.
-   * If the server receives a new request after 15 minutes, start revalidating new values in the background.
-   * It lives for the maximum age of the server cache. If this entry has no traffic for a while, it may serve an old value the next request.
-   */
-  export function unstable_cacheLife(profile: 'default'): void
+  type CacheProfile = 'default' | 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'max'
 
   /**
-   * Cache this `"use cache"` for a timespan defined by the `"seconds"` profile.
-   * ```
-   *   stale:      0 seconds
-   *   revalidate: 1 seconds
-   *   expire:     60 seconds (1 minute)
-   * ```
-   * 
-   * This cache may be stale on clients for 0 seconds before checking with the server.
-   * If the server receives a new request after 1 seconds, start revalidating new values in the background.
-   * If this entry has no traffic for 1 minute it will expire. The next request will recompute it.
+   * Applies a predefined caching profile to `"use cache"` directives.
    */
-  export function unstable_cacheLife(profile: 'seconds'): void
+  export function unstable_cacheLife(profile: CacheProfile): void
 
   /**
-   * Cache this `"use cache"` for a timespan defined by the `"minutes"` profile.
-   * ```
-   *   stale:      300 seconds (5 minutes)
-   *   revalidate: 60 seconds (1 minute)
-   *   expire:     3600 seconds (1 hour)
-   * ```
+   * Applies a custom caching configuration span to `"use cache"` directives.
    * 
-   * This cache may be stale on clients for 5 minutes before checking with the server.
-   * If the server receives a new request after 1 minute, start revalidating new values in the background.
-   * If this entry has no traffic for 1 hour it will expire. The next request will recompute it.
-   */
-  export function unstable_cacheLife(profile: 'minutes'): void
-
-  /**
-   * Cache this `"use cache"` for a timespan defined by the `"hours"` profile.
-   * ```
-   *   stale:      300 seconds (5 minutes)
-   *   revalidate: 3600 seconds (1 hour)
-   *   expire:     86400 seconds (1 day)
-   * ```
+   * Maps conceptually to: `Cache-Control: max-age=stale, s-maxage=revalidate, stale-while-revalidate=expire-revalidate`
    * 
-   * This cache may be stale on clients for 5 minutes before checking with the server.
-   * If the server receives a new request after 1 hour, start revalidating new values in the background.
-   * If this entry has no traffic for 1 day it will expire. The next request will recompute it.
-   */
-  export function unstable_cacheLife(profile: 'hours'): void
-
-  /**
-   * Cache this `"use cache"` for a timespan defined by the `"days"` profile.
-   * ```
-   *   stale:      300 seconds (5 minutes)
-   *   revalidate: 86400 seconds (1 day)
-   *   expire:     604800 seconds (1 week)
-   * ```
-   * 
-   * This cache may be stale on clients for 5 minutes before checking with the server.
-   * If the server receives a new request after 1 day, start revalidating new values in the background.
-   * If this entry has no traffic for 1 week it will expire. The next request will recompute it.
-   */
-  export function unstable_cacheLife(profile: 'days'): void
-
-  /**
-   * Cache this `"use cache"` for a timespan defined by the `"weeks"` profile.
-   * ```
-   *   stale:      300 seconds (5 minutes)
-   *   revalidate: 604800 seconds (1 week)
-   *   expire:     2592000 seconds (30 days)
-   * ```
-   * 
-   * This cache may be stale on clients for 5 minutes before checking with the server.
-   * If the server receives a new request after 1 week, start revalidating new values in the background.
-   * If this entry has no traffic for 30 days it will expire. The next request will recompute it.
-   */
-  export function unstable_cacheLife(profile: 'weeks'): void
-
-  /**
-   * Cache this `"use cache"` for a timespan defined by the `"max"` profile.
-   * ```
-   *   stale:      300 seconds (5 minutes)
-   *   revalidate: 2592000 seconds (30 days)
-   *   expire:     never
-   * ```
-   * 
-   * This cache may be stale on clients for 5 minutes before checking with the server.
-   * If the server receives a new request after 30 days, start revalidating new values in the background.
-   * It lives for the maximum age of the server cache. If this entry has no traffic for a while, it may serve an old value the next request.
-   */
-  export function unstable_cacheLife(profile: 'max'): void
-
-  /**
-   * Cache this `"use cache"` using a custom timespan.
-   * ```
-   *   stale: ... // seconds 
-   *   revalidate: ... // seconds
-   *   expire: ... // seconds
-   * ```
-   * 
-   * This is similar to Cache-Control: max-age=`stale`,s-max-age=`revalidate`,stale-while-revalidate=`expire-revalidate`
-   * 
-   * If a value is left out, the lowest of other cacheLife() calls or the default, is used instead.
+   * Omitted properties inherit values from fallback profiles or previous cascaded settings.
    */
   export function unstable_cacheLife(profile: Readonly<CacheLifeConfig>): void
 
