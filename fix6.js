@@ -8,24 +8,42 @@
 const fs = require('fs');
 const path = require('path');
 
-// Enforce strict path validation and bounds checking to prevent directory traversal / injection
-const TARGET_PATH = path.resolve('src/app/api/evolution/propose/route.ts');
-const ALLOWED_BASE = path.resolve('src');
+const TARGET_FILE_PATH = path.resolve('src/app/api/evolution/propose/route.ts');
+const ALLOWED_BASE_DIRECTORY = path.resolve('src');
 
-if (!TARGET_PATH.startsWith(ALLOWED_BASE)) {
-    throw new Error('SECURITY VIOLATION: Target path escapes allowed base directory.');
+function validatePathSecurity(targetPath, allowedBase) {
+    if (!targetPath.startsWith(allowedBase)) {
+        throw new Error('SECURITY VIOLATION: Target path escapes allowed base directory.');
+    }
 }
 
-// Read file with explicit UTF-8 encoding and bounded memory safety checks
-let code = fs.readFileSync(TARGET_PATH, { encoding: 'utf8', flag: 'r' });
-
-if (typeof code !== 'string') {
-    throw new TypeError('FATAL: File stream did not resolve to a valid string primitive.');
+function readEvolutionRouteSource(filePath) {
+    const fileContent = fs.readFileSync(filePath, { encoding: 'utf8', flag: 'r' });
+    
+    if (typeof fileContent !== 'string') {
+        throw new TypeError('FATAL: File stream did not resolve to a valid string primitive.');
+    }
+    
+    return fileContent;
 }
 
-// Apply deterministic string replacements using safe regex patterns
-code = code.replace(/siphonedCodeContext\}\r?\n```\r?\n\$\{fileContent/g, "siphonedCodeContext}\n\\`\\`\\`\n${fileContent");
-code = code.replace(/```\$\{fileContent/g, "\\`\\`\\`${fileContent");
+function applyTemplateEscapingTransformations(sourceCode) {
+    return sourceCode
+        .replace(/siphonedCodeContext\}\r?\n```\r?\n\$\{fileContent/g, "siphonedCodeContext}\n\\`\\`\\`\n${fileContent")
+        .replace(/```\$\{fileContent/g, "\\`\\`\\`${fileContent");
+}
 
-// Safely write back with strict synchronous disk operations
-fs.writeFileSync(TARGET_PATH, code, { encoding: 'utf8', mode: 0o600 });
+function saveEvolutionRouteSource(filePath, sourceCode) {
+    fs.writeFileSync(filePath, sourceCode, { encoding: 'utf8', mode: 0o600 });
+}
+
+function executeEvolutionCodeRepair() {
+    validatePathSecurity(TARGET_FILE_PATH, ALLOWED_BASE_DIRECTORY);
+    
+    const originalCode = readEvolutionRouteSource(TARGET_FILE_PATH);
+    const optimizedCode = applyTemplateEscapingTransformations(originalCode);
+    
+    saveEvolutionRouteSource(TARGET_FILE_PATH, optimizedCode);
+}
+
+executeEvolutionCodeRepair();
