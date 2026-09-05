@@ -5,13 +5,11 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-const fs = require('fs');
-const file = 'src/app/api/evolution/propose/route.ts';
-let code = fs.readFileSync(file, 'utf8');
+const { readFileSync, writeFileSync } = require('node:fs');
 
-const regexToReplace = /Format your response exactly like this:[\s\S]*?Risk scoring guidelines:/;
+const TARGET_FILE_PATH = 'src/app/api/evolution/propose/route.ts';
 
-const replacementStr = `Format your response exactly like this:
+const PROMPT_FORMAT_TEMPLATE = `Format your response exactly like this:
 \\\`\\\`\\\`json
 {
   "analysis": "Specific analysis of what dead-weight or bugs were fixed...",
@@ -33,5 +31,21 @@ const replacementStr = `Format your response exactly like this:
 
 Risk scoring guidelines:`;
 
-code = code.replace(regexToReplace, replacementStr);
-fs.writeFileSync(file, code);
+const TARGET_PATTERN = /Format your response exactly like this:[\s\S]*?Risk scoring guidelines:/;
+
+/**
+ * Updates the evolution prompt instructions within the target API route file.
+ */
+function updateEvolutionPrompt() {
+  const currentSourceCode = readFileSync(TARGET_FILE_PATH, 'utf8');
+
+  if (!TARGET_PATTERN.test(currentSourceCode)) {
+    throw new Error(`Target pattern not found in file: ${TARGET_FILE_PATH}`);
+  }
+
+  const updatedSourceCode = currentSourceCode.replace(TARGET_PATTERN, PROMPT_FORMAT_TEMPLATE);
+  
+  writeFileSync(TARGET_FILE_PATH, updatedSourceCode, 'utf8');
+}
+
+updateEvolutionPrompt();
