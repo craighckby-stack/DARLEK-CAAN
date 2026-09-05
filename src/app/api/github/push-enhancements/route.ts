@@ -7,7 +7,7 @@ import { sanitizeContent } from '@/lib/scanner';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-// List of enhancement files to push to the repository
+/** Core system enhancement files targeted for automated repository synchronization. */
 const ENHANCEMENT_FILES = [
   // API routes
   'src/app/api/chat/route.ts',
@@ -78,6 +78,177 @@ interface GitTreeItem {
   content: string;
 }
 
+/** Builds standardized request headers for GitHub API interactions. */
+function createGitHubHeaders(token: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json',
+  };
+}
+
+/** Verifies repository existence and provisions it automatically if missing. */
+async function ensureRepositoryExists(owner: string, repo: string, headers: Record<string, string>): Promise<NextResponse | null> {
+  const verifyResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
+
+  if (verifyResponse.status === 404) {
+    const createResponse = await fetch('https://api.github.com/user/repos', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        name: repo,
+        private: false,
+        auto_init: true,
+      }),
+    });
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      return NextResponse.json(
+        { error: `Failed to auto-create missing repository ${repo}: ${errorText}` },
+        { status: 400 }
+      );
+    }
+
+    await new Promise<void>((resolveTimer) => setTimeout(resolveTimer, 3000));
+  }
+
+  return null;
+}
+
+/** Resolves the target branch SHA, creating the branch from main if necessary. */
+async function resolveBranchSha(
+  owner: string,
+  repo: string,
+  branch: string,
+  headers: Record<string, string>
+): Promise<string | null> {
+  const refUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branch}`;
+  const refResponse = await fetch(refUrl, { headers });
+
+  if (refResponse.ok) {
+    const refData = await refResponse.json();
+    return refData.object?.sha ?? null;
+  }
+
+  if (refResponse.status === 404) {
+    const mainRefUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/main`;
+    const mainRefResponse = await fetch(mainRefUrl, { headers });
+
+    if (mainRefResponse.ok) {
+      const mainRefData = await mainRefResponse.json();
+      const mainSha: string | undefined = mainRefData.object?.sha;
+
+      if (mainSha) {
+        const createRefResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            ref: `refs/heads/${branch}`,
+            sha: mainSha,
+          }),
+        });
+
+        if (createRefResponse.ok) {
+          return mainSha;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/** Resolves the base tree SHA corresponding to a specific commit SHA. */
+async function resolveBaseTreeSha(
+  owner: string,
+  repo: string,
+  refSha: string | null,
+  headers: Record<string, string>
+): Promise<string | null> {
+  if (!refSha) return null;
+
+  const commitUrl = `https://api.github.com/repos/${owner}/${repo}/git/commits/${refSha}`;
+  const commitResponse = await fetch(commitUrl, { headers });
+
+  if (commitResponse.ok) {
+    const commitData = await commitResponse.json();
+    return commitData.tree?.sha ?? null;
+  }
+
+  return null;
+}
+
+/** Collects, sanitizes, and writes dynamic custom files and standard enhancement files. */
+function collectTreeItemsAndDetails(
+  files: CustomFilePayload[] | undefined,
+  projectRoot: string
+): { treeItemsMap: Map<string, GitTreeItem>; pushDetails: PushDetail[] } {
+  const treeItemsMap = new Map<string, GitTreeItem>();
+  const pushDetails: PushDetail[] = [];
+
+  // 1. Process explicit dynamic files payload if provided
+  if (Array.isArray(files)) {
+    for (const customFile of files) {
+      if (!customFile?.path || typeof customFile.content !== 'string') continue;
+      const cleanPath = customFile.path.replace(/^\/+|\/+$/g, '');
+      const { sanitized: safeContent } = sanitizeContent(customFile.content);
+
+      try {
+        const localPath = resolve(projectRoot, cleanPath);
+        if (localPath.startsWith(projectRoot)) {
+          const parentDir = dirname(localPath);
+          if (!existsSync(parentDir)) {
+            mkdirSync(parentDir, { recursive: true });
+          }
+          writeFileSync(localPath, safeContent, 'utf-8');
+        }
+      } catch (diskError) {
+        console.warn(`[Push Enhancements] Local disk write warning for ${cleanPath}:`, diskError);
+      }
+
+      treeItemsMap.set(cleanPath, {
+        path: cleanPath,
+        mode: '100644',
+        type: 'blob',
+        content: safeContent,
+      });
+      pushDetails.push({ file: cleanPath, success: true });
+    }
+  }
+
+  // 2. Process standard local enhancement files
+  for (const filePath of ENHANCEMENT_FILES) {
+    const localPath = join(projectRoot, filePath);
+    if (!existsSync(localPath)) {
+      if (!treeItemsMap.has(filePath)) {
+        pushDetails.push({ file: filePath, success: false, error: 'File not found locally' });
+      }
+      continue;
+    }
+
+    try {
+      const content = readFileSync(localPath, 'utf-8');
+      const { sanitized: safeContent } = sanitizeContent(content);
+
+      treeItemsMap.set(filePath, {
+        path: filePath,
+        mode: '100644',
+        type: 'blob',
+        content: safeContent,
+      });
+      pushDetails.push({ file: filePath, success: true });
+    } catch (readError: unknown) {
+      const errorMsg = readError instanceof Error ? readError.message : 'Read failure';
+      if (!treeItemsMap.has(filePath)) {
+        pushDetails.push({ file: filePath, success: false, error: errorMsg });
+      }
+    }
+  }
+
+  return { treeItemsMap, pushDetails };
+}
+
 export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ status: 'online', service: 'GITHUB_PUSH_ENHANCEMENTS_API' });
 }
@@ -94,144 +265,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const headers: Record<string, string> = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'Content-Type': 'application/json',
-    };
+    const headers = createGitHubHeaders(token);
 
-    // Verify repository exists; auto-create if missing (404)
-    const verifyRepoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
-
-    if (verifyRepoRes.status === 404) {
-      const createRes = await fetch('https://api.github.com/user/repos', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: repo,
-          private: false,
-          auto_init: true,
-        }),
-      });
-      if (!createRes.ok) {
-        const createErr = await createRes.text();
-        return NextResponse.json(
-          { error: `Failed to auto-create missing repository ${repo}: ${createErr}` },
-          { status: 400 }
-        );
-      }
-      await new Promise<void>((resolveTimer) => setTimeout(resolveTimer, 3000));
+    const repoErrorResponse = await ensureRepositoryExists(owner, repo, headers);
+    if (repoErrorResponse) {
+      return repoErrorResponse;
     }
 
-    // Resolve branch reference commit SHA
-    let refSha: string | null = null;
-    const refUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branch}`;
-    const refRes = await fetch(refUrl, { headers });
+    const refSha = await resolveBranchSha(owner, repo, branch, headers);
+    const baseTreeSha = await resolveBaseTreeSha(owner, repo, refSha, headers);
 
-    if (refRes.ok) {
-      const refData = await refRes.json();
-      refSha = refData.object?.sha ?? null;
-    } else if (refRes.status === 404) {
-      const mainRefUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/main`;
-      const mainRefRes = await fetch(mainRefUrl, { headers });
-
-      if (mainRefRes.ok) {
-        const mainRefData = await mainRefRes.json();
-        const mainSha: string | undefined = mainRefData.object?.sha;
-
-        if (mainSha) {
-          const createRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              ref: `refs/heads/${branch}`,
-              sha: mainSha,
-            }),
-          });
-          if (createRefRes.ok) {
-            refSha = mainSha;
-          }
-        }
-      }
-    }
-
-    let baseTreeSha: string | null = null;
-    if (refSha) {
-      const commitUrl = `https://api.github.com/repos/${owner}/${repo}/git/commits/${refSha}`;
-      const commitRes = await fetch(commitUrl, { headers });
-      if (commitRes.ok) {
-        const commitData = await commitRes.json();
-        baseTreeSha = commitData.tree?.sha ?? null;
-      }
-    }
-
-    // Collect files
     const projectRoot = resolve(process.cwd());
-    const treeItemsMap = new Map<string, GitTreeItem>();
-    const pushDetails: PushDetail[] = [];
-
-    // 1. Process explicit dynamic files payload if provided
-    if (Array.isArray(files) && files.length > 0) {
-      for (const customFile of files) {
-        if (!customFile?.path || typeof customFile.content !== 'string') continue;
-        const cleanPath = customFile.path.replace(/^\/+|\/+$/g, '');
-
-        // Sanitize secret tokens/keys before write
-        const { sanitized: safeContent } = sanitizeContent(customFile.content);
-
-        // Write locally if path is safely inside project root
-        try {
-          const localPath = resolve(projectRoot, cleanPath);
-          if (localPath.startsWith(projectRoot)) {
-            const parentDir = dirname(localPath);
-            if (!existsSync(parentDir)) {
-              mkdirSync(parentDir, { recursive: true });
-            }
-            writeFileSync(localPath, safeContent, 'utf-8');
-          }
-        } catch (diskErr) {
-          console.warn(`[Push Enhancements] Local disk write warn for ${cleanPath}:`, diskErr);
-        }
-
-        treeItemsMap.set(cleanPath, {
-          path: cleanPath,
-          mode: '100644',
-          type: 'blob',
-          content: safeContent,
-        });
-        pushDetails.push({ file: cleanPath, success: true });
-      }
-    }
-
-    // 2. Process standard local enhancement files
-    for (const filePath of ENHANCEMENT_FILES) {
-      const localPath = join(projectRoot, filePath);
-      if (!existsSync(localPath)) {
-        if (!treeItemsMap.has(filePath)) {
-          pushDetails.push({ file: filePath, success: false, error: 'File not found locally' });
-        }
-        continue;
-      }
-
-      try {
-        const content = readFileSync(localPath, 'utf-8');
-        const { sanitized: safeContent } = sanitizeContent(content);
-
-        treeItemsMap.set(filePath, {
-          path: filePath,
-          mode: '100644',
-          type: 'blob',
-          content: safeContent,
-        });
-        pushDetails.push({ file: filePath, success: true });
-      } catch (readErr: unknown) {
-        const errorMsg = readErr instanceof Error ? readErr.message : 'Read failure';
-        if (!treeItemsMap.has(filePath)) {
-          pushDetails.push({ file: filePath, success: false, error: errorMsg });
-        }
-      }
-    }
-
+    const { treeItemsMap, pushDetails } = collectTreeItemsAndDetails(files, projectRoot);
     const treeItems = Array.from(treeItemsMap.values());
 
     if (treeItems.length === 0) {
@@ -239,25 +284,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // Create a new git tree in a single request
-    const treeBody: Record<string, unknown> = {
-      tree: treeItems,
-    };
+    const treeBody: Record<string, unknown> = { tree: treeItems };
     if (baseTreeSha) {
       treeBody.base_tree = baseTreeSha;
     }
 
-    const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
+    const treeResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
       method: 'POST',
       headers,
       body: JSON.stringify(treeBody),
     });
 
-    if (!treeRes.ok) {
-      const errMsg = await treeRes.text();
-      return NextResponse.json({ error: `Failed to create active git tree: ${errMsg}` }, { status: treeRes.status });
+    if (!treeResponse.ok) {
+      const errorMsg = await treeResponse.text();
+      return NextResponse.json({ error: `Failed to create active git tree: ${errorMsg}` }, { status: treeResponse.status });
     }
 
-    const treeData = await treeRes.json();
+    const treeData = await treeResponse.json();
     const newTreeSha: string = treeData.sha;
 
     // Create commit
@@ -268,47 +311,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       parents: refSha ? [refSha] : [],
     };
 
-    const createCommitRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
+    const createCommitResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
       method: 'POST',
       headers,
       body: JSON.stringify(commitBody),
     });
 
-    if (!createCommitRes.ok) {
-      const errMsg = await createCommitRes.text();
-      return NextResponse.json({ error: `Failed to synthesize git commit: ${errMsg}` }, { status: createCommitRes.status });
+    if (!createCommitResponse.ok) {
+      const errorMsg = await createCommitResponse.text();
+      return NextResponse.json({ error: `Failed to synthesize git commit: ${errorMsg}` }, { status: createCommitResponse.status });
     }
 
-    const createdCommitData = await createCommitRes.json();
+    const createdCommitData = await createCommitResponse.json();
     const newCommitSha: string = createdCommitData.sha;
 
     // Update branch head reference
-    let updateRefRes: Response;
-    if (refSha) {
-      updateRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({
-          sha: newCommitSha,
-          force: true,
-        }),
-      });
-    } else {
-      updateRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          ref: `refs/heads/${branch}`,
-          sha: newCommitSha,
-        }),
-      });
-    }
+    const updateRefResponse = refSha
+      ? await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ sha: newCommitSha, force: true }),
+        })
+      : await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: newCommitSha }),
+        });
 
-    if (!updateRefRes.ok) {
-      const errMsg = await updateRefRes.text();
+    if (!updateRefResponse.ok) {
+      const errorMsg = await updateRefResponse.text();
       return NextResponse.json(
-        { error: `Failed to update head reference of branch ${branch}: ${errMsg}` },
-        { status: updateRefRes.status }
+        { error: `Failed to update head reference of branch ${branch}: ${errorMsg}` },
+        { status: updateRefResponse.status }
       );
     }
 
