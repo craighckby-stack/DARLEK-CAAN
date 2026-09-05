@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const fsPromises = require('node:fs/promises');
 const https = require('node:https');
 const path = require('node:path');
+const { URL } = require('node:url');
 
 /**
  * @typedef {Object} RemoteBlob
@@ -21,6 +22,7 @@ const path = require('node:path');
 const REPOSITORY_BASE_URL = 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/';
 const USER_AGENT = 'EMG-Core-v49-Neural-Code-Optimizer';
 const HTTP_TIMEOUT_MS = 15000;
+const MAX_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB bounds limit for memory safety
 
 /**
  * Safely loads and parses the remote blobs inventory with robust validation.
@@ -48,14 +50,26 @@ function loadRemoteBlobs() {
 }
 
 /**
- * Fetches remote file content via HTTPS with strict error handling, memory-efficient buffering, and request timeouts.
+ * Fetches remote file content via HTTPS with strict error handling, memory-efficient buffering, bounds checking, and request timeouts.
  * @param {string} url - Target URL to fetch content from.
  * @returns {Promise<string>} Resolved string content from remote response.
  */
 function fetchRemoteContent(url) {
   return new Promise((resolve, reject) => {
+    // Strict URL validation against SSRF and injection
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch (err) {
+      return reject(new Error(`Invalid URL provided: ${url}`));
+    }
+
+    if (parsedUrl.protocol !== 'https:') {
+      return reject(new Error('Insecure protocol blocked; HTTPS required.'));
+    }
+
     const req = https.get(
-      url,
+      parsedUrl,
       {
         headers: { 'User-Agent': USER_AGENT },
         timeout: HTTP_TIMEOUT_MS,
@@ -66,10 +80,36 @@ function fetchRemoteContent(url) {
           return reject(new Error(`HTTP Status Code: ${res.statusCode}`));
         }
 
+        const contentLengthHeader = res.headers['content-length'];
+        if (contentLengthHeader) {
+          const contentLength = parseInt(contentLengthHeader, 10);
+          if (!isNaN(contentLength) && contentLength > MAX_CONTENT_LENGTH) {
+            res.resume();
+            return reject(new Error(`Response exceeds maximum allowed size bounds: ${contentLength} bytes`));
+          }
+        }
+
         /** @type {Buffer[]} */
         const chunks = [];
-        res.on('data', (chunk) => chunks.push(chunk));
-        res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+        let totalBytes = 0;
+
+        res.on('data', (chunk) => {
+          totalBytes += chunk.length;
+          if (totalBytes > MAX_CONTENT_LENGTH) {
+            res.destroy(new Error('Response body exceeded maximum allowed memory buffer size bounds.'));
+            return;
+          }
+          chunks.push(chunk);
+        });
+
+        res.on('end', () => {
+          try {
+            resolve(Buffer.concat(chunks).toString('utf8'));
+          } catch (err) {
+            reject(err);
+          }
+        });
+
         res.on('error', (err) => reject(err));
       }
     );
@@ -84,7 +124,7 @@ function fetchRemoteContent(url) {
 }
 
 /**
- * Asynchronously processes remote blobs, detects modifications, synchronizes files, and outputs results.
+ * Asynchronously processes remote blobs, detects modifications, synchronizes files securely, and outputs results.
  * @returns {Promise<void>}
  */
 async function processBlobsSequentially() {
@@ -97,36 +137,39 @@ async function processBlobsSequentially() {
       continue;
     }
 
-    // Secure path traversal protection
-    const normalizedPath = path.normalize(fileObj.path);
-    if (normalizedPath.startsWith('..') || path.isAbsolute(normalizedPath)) {
-      console.warn(`Warning: Skipped unsafe file path detected: "${fileObj.path}"`);
+    // Strict path normalization and traversal protection
+    const sanitizedPath = path.normalize(fileObj.path).replace(/^(\.\.(\/|\\))+/, '');
+    if (path.isAbsolute(sanitizedPath) || sanitizedPath.startsWith('..') || sanitizedPath.includes('\0')) {
+      console.warn(`Warning: Skipped unsafe or malformed file path detected: "${fileObj.path}"`);
       continue;
     }
 
-    if (!fileObj.path.startsWith('src/')) {
+    if (!sanitizedPath.startsWith('src/')) {
       continue;
     }
 
     try {
       let fileExists = false;
       try {
-        await fsPromises.access(fileObj.path, fs.constants.F_OK);
+        await fsPromises.access(sanitizedPath, fs.constants.F_OK);
         fileExists = true;
       } catch {
         fileExists = false;
       }
 
       if (fileExists) {
-        const localContent = await fsPromises.readFile(fileObj.path, 'utf8');
-        const remoteUrl = REPOSITORY_BASE_URL + fileObj.path;
+        const localContent = await fsPromises.readFile(sanitizedPath, 'utf8');
+        
+        // Construct and validate absolute repository target URL cleanly
+        const base = new URL(REPOSITORY_BASE_URL);
+        const remoteUrl = new URL(sanitizedPath, base).toString();
 
         const remoteContent = await fetchRemoteContent(remoteUrl);
 
         if (remoteContent !== localContent) {
-          console.log(`Changed: ${fileObj.path}`);
+          console.log(`Changed: ${sanitizedPath}`);
           changed.push(fileObj);
-          await fsPromises.writeFile(fileObj.path, remoteContent, 'utf8');
+          await fsPromises.writeFile(sanitizedPath, remoteContent, 'utf8');
         }
       }
     } catch (error) {
