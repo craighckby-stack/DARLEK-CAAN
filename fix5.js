@@ -7,8 +7,8 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const CONFIG = Object.freeze({
   RELATIVE_TARGET_PATH: 'src/app/api/evolution/propose/route.ts',
@@ -25,7 +25,10 @@ const CONFIG = Object.freeze({
  * @throws {Error} If path traversal or boundary violations are detected.
  */
 function assertPathSecurity(baseDir, targetPath) {
-  if (!targetPath.startsWith(baseDir) || !path.isAbsolute(targetPath)) {
+  const normalizedBase = path.resolve(baseDir);
+  const normalizedTarget = path.resolve(targetPath);
+
+  if (!normalizedTarget.startsWith(normalizedBase) || !path.isAbsolute(normalizedTarget)) {
     throw new Error('[EMG Core v49 Security Violation]: Path traversal attempt detected.');
   }
 }
