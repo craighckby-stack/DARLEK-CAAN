@@ -71,7 +71,12 @@ const METRIC_CONFIGS: readonly MetricConfig[] = [
   },
 ] as const;
 
-function resolveMetricColor(value: number, warning: number, critical: number, inverted?: boolean): string {
+function resolveMetricColor(
+  value: number,
+  warning: number,
+  critical: number,
+  inverted?: boolean
+): string {
   const safeValue = Number.isFinite(value) ? value : 0;
   
   if (inverted) {
@@ -85,7 +90,12 @@ function resolveMetricColor(value: number, warning: number, critical: number, in
   return COLORS.cyan;
 }
 
-function resolveStatusLabel(value: number, warning: number, critical: number, inverted?: boolean): string {
+function resolveStatusLabel(
+  value: number,
+  warning: number,
+  critical: number,
+  inverted?: boolean
+): string {
   const safeValue = Number.isFinite(value) ? value : 0;
   
   if (inverted) {
