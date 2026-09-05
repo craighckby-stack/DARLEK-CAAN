@@ -1,18 +1,37 @@
 "use strict";
-/*
- * ATTENTION: An "eval-source-map" devtool has been used.
- * This devtool is neither made for production nor for readable output files.
- * It uses "eval()" calls to create a separate source file with attached SourceMaps in the browser devtools.
- * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
- * or disable the default devtool with "devtool: false".
- * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
+/**
+ * Hardened Webpack HMR Runtime Module
+ * Enforces defensive runtime bounds, context verification, and property tamper-proofing.
  */
-self["webpackHotUpdate_N_E"]("webpack",{},
-/******/ function(__webpack_require__) { // webpackRuntimeModules
-/******/ /* webpack/runtime/getFullHash */
-/******/ (() => {
-/******/ 	__webpack_require__.h = () => ("d235413fa0cd6b0a")
-/******/ })();
-/******/ 
-/******/ }
-);
+(function(globalContext) {
+  const targetGlobal = typeof globalThis !== "undefined" 
+    ? globalThis 
+    : typeof self !== "undefined" 
+      ? self 
+      : globalContext;
+
+  if (targetGlobal && typeof targetGlobal["webpackHotUpdate_N_E"] === "function") {
+    targetGlobal["webpackHotUpdate_N_E"](
+      "webpack",
+      Object.freeze(Object.create(null)),
+      function(__webpack_require__) {
+        if (!__webpack_require__ || (typeof __webpack_require__ !== "function" && typeof __webpack_require__ !== "object")) {
+          return;
+        }
+        
+        const HASH_VALUE = "d235413fa0cd6b0a";
+        
+        try {
+          Object.defineProperty(__webpack_require__, "h", {
+            value: () => HASH_VALUE,
+            writable: false,
+            enumerable: true,
+            configurable: false
+          });
+        } catch {
+          __webpack_require__.h = () => HASH_VALUE;
+        }
+      }
+    );
+  }
+})(typeof window !== "undefined" ? window : globalThis);
