@@ -1,106 +1,161 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
 import type { WriteFileBody } from '@/lib/types';
 import { sanitizeContent } from '@/lib/scanner';
 import { safeResponseJson, safeReqJson } from '@/lib/safe-json';
 
 export const dynamic = 'force-dynamic';
 
+const GITHUB_API_BASE = 'https://api.github.com';
+const GITHUB_API_VERSION = 'application/vnd.github.v3+json';
+
 interface GitHubHeaders extends Record<string, string> {
-  'Authorization': string;
-  'Accept': string;
+  Authorization: string;
+  Accept: string;
   'Content-Type': string;
 }
 
-const getGitHubHeaders = (token: string): GitHubHeaders => ({
-  'Authorization': `Bearer ${token}`,
-  'Accept': 'application/vnd.github.v3+json',
-  'Content-Type': 'application/json',
-});
+/**
+ * Generates standard HTTP headers for GitHub API requests.
+ */
+function createGitHubHeaders(token: string): GitHubHeaders {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: GITHUB_API_VERSION,
+    'Content-Type': 'application/json',
+  };
+}
 
-// Helper to ensure target repository exists on GitHub
+/**
+ * Normalizes file paths by stripping leading and trailing slashes.
+ */
+function normalizePath(filePath: string): string {
+  return filePath.replace(/^\/+|\/+$/g, '');
+}
+
+/**
+ * Ensures the target GitHub repository exists, creating it automatically if missing.
+ */
 async function ensureRepoExists(token: string, owner: string, repo: string): Promise<boolean> {
   try {
-    const headers = getGitHubHeaders(token);
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
-    if (res.ok) return true;
-    if (res.status === 404) {
-      const createRes = await fetch(`https://api.github.com/user/repos`, {
+    const headers = createGitHubHeaders(token);
+    const repoResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}`, { headers });
+    
+    if (repoResponse.ok) return true;
+
+    if (repoResponse.status === 404) {
+      const createResponse = await fetch(`${GITHUB_API_BASE}/user/repos`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ name: repo, private: false, auto_init: true }),
       });
-      if (createRes.ok) {
-        await new Promise((r) => setTimeout(r, 2000));
+
+      if (createResponse.ok) {
+        await new Promise((resolveTimer) => setTimeout(resolveTimer, 2000));
         return true;
       }
     }
+
     return false;
   } catch {
     return false;
   }
 }
 
-// Helper to fetch the actual file SHA from GitHub if not provided or to ensure it is accurate
-async function getFileSha(token: string, owner: string, repo: string, branch: string, filePath: string): Promise<string | null> {
+/**
+ * Fetches the active file SHA from GitHub to prevent stale reference conflicts.
+ */
+async function getFileSha(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  filePath: string
+): Promise<string | null> {
   try {
-    const cleanPath = filePath.replace(/^\/+|\/+$/g, '');
+    const cleanPath = normalizePath(filePath);
     const encodedPath = cleanPath.split('/').map(encodeURIComponent).join('/');
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`;
-    const res = await fetch(url, {
+    const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`;
+    
+    const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: GITHUB_API_VERSION,
       },
     });
-    if (res.ok) {
-      const data = await safeResponseJson(res);
-      return (data as Record<string, unknown>)?.sha as string || null;
+
+    if (response.ok) {
+      const data = (await safeResponseJson(response)) as Record<string, unknown>;
+      return (data?.sha as string) ?? null;
     }
+
     return null;
   } catch {
     return null;
   }
 }
 
-// Helper to ensure target branch exists on GitHub, creating it from default branch if needed
+/**
+ * Ensures the target branch exists, branching off the default branch if necessary.
+ */
 async function ensureBranchExists(token: string, owner: string, repo: string, branch: string): Promise<boolean> {
   try {
-    const headers = getGitHubHeaders(token);
+    const headers = createGitHubHeaders(token);
+    const refUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`;
+    const refResponse = await fetch(refUrl, { headers });
 
-    const refUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`;
-    const refRes = await fetch(refUrl, { headers });
-    if (refRes.ok) return true;
+    if (refResponse.ok) return true;
 
-    // Branch not found, fetch repo info for default_branch
-    const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
-    if (!repoRes.ok) return false;
+    const repoResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}`, { headers });
+    if (!repoResponse.ok) return false;
 
-    const repoData = await safeResponseJson(repoRes);
-    const defaultBranch = (repoData as Record<string, unknown>)?.default_branch as string || 'main';
+    const repoData = (await safeResponseJson(repoResponse)) as Record<string, unknown>;
+    const defaultBranch = (repoData?.default_branch as string) ?? 'main';
 
-    const defRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(defaultBranch)}`, { headers });
-    if (!defRefRes.ok) return false;
+    const defaultRefUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(defaultBranch)}`;
+    const defaultRefResponse = await fetch(defaultRefUrl, { headers });
+    if (!defaultRefResponse.ok) return false;
 
-    const defRefData = await safeResponseJson(defRefRes);
-    const defaultSha = (defRefData as Record<string, unknown>)?.object as Record<string, unknown> | undefined;
-    const shaValue = defaultSha?.sha as string | undefined;
-    if (!shaValue) return false;
+    const defaultRefData = (await safeResponseJson(defaultRefResponse)) as Record<string, unknown>;
+    const defaultObject = defaultRefData?.object as Record<string, unknown> | undefined;
+    const defaultSha = defaultObject?.sha as string | undefined;
 
-    // Create branch
-    const createRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+    if (!defaultSha) return false;
+
+    const createBranchResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         ref: `refs/heads/${branch}`,
-        sha: shaValue,
+        sha: defaultSha,
       }),
     });
 
-    return createRes.ok;
+    return createBranchResponse.ok;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Writes content to the local disk workspace safely if within project bounds.
+ */
+function writeToLocalDisk(cleanPath: string, content: string): void {
+  try {
+    const projectRoot = resolve(process.cwd());
+    const localFilePath = resolve(projectRoot, cleanPath);
+
+    if (localFilePath.startsWith(projectRoot)) {
+      const parentDir = dirname(localFilePath);
+      if (!existsSync(parentDir)) {
+        mkdirSync(parentDir, { recursive: true });
+      }
+      writeFileSync(localFilePath, content, 'utf-8');
+      console.log(`[Write File] Local disk file updated: ${cleanPath.replace(/error/gi, 'err')}`);
+    }
+  } catch (diskError) {
+    console.warn(`[Write File] Local disk write warning for ${cleanPath}:`, diskError);
   }
 }
 
@@ -120,40 +175,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const cleanPath = filePath.replace(/^\/+|\/+$/g, '');
-    const cleanPathNoWordError = cleanPath.replace(/error/gi, 'err');
+    const cleanPath = normalizePath(filePath);
+    const sanitizedPathLog = cleanPath.replace(/error/gi, 'err');
 
-    // Secret Sanitization Gatekeeper: Redact any API keys, tokens, or credentials before write/commit
+    // Secret Sanitization Gatekeeper
     const { sanitized: safeContent, findings } = sanitizeContent(content);
     if (findings.length > 0) {
-      console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${cleanPathNoWordError} before write/commit.`);
+      console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${sanitizedPathLog} before write/commit.`);
     }
 
-    // 1. Write file to local disk workspace if path is within project root
-    try {
-      const projectRoot = resolve(process.cwd());
-      const localFilePath = resolve(projectRoot, cleanPath);
-      if (localFilePath.startsWith(projectRoot)) {
-        const parentDir = dirname(localFilePath);
-        if (!existsSync(parentDir)) {
-          mkdirSync(parentDir, { recursive: true });
-        }
-        writeFileSync(localFilePath, safeContent, 'utf-8');
-        console.log(`[Write File] Local disk file updated: ${cleanPathNoWordError}`);
-      }
-    } catch (diskErr) {
-      console.warn(`[Write File] Local disk write warning for ${cleanPathNoWordError}:`, diskErr);
-    }
+    // 1. Write file to local disk workspace
+    writeToLocalDisk(cleanPath, safeContent);
 
     // 2. Ensure repository and branch exist on GitHub
     await ensureRepoExists(token, owner, repo);
     await ensureBranchExists(token, owner, repo, branch);
 
-    // Resolve accurate live SHA from GitHub to eliminate stale SHA mismatches
-    const finalSha = await getFileSha(token, owner, repo, branch, cleanPath) || sha || null;
-
+    // 3. Resolve live SHA and submit payload
+    const finalSha = (await getFileSha(token, owner, repo, branch, cleanPath)) ?? sha ?? null;
     const encodedPath = cleanPath.split('/').map(encodeURIComponent).join('/');
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}`;
+    const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${encodedPath}`;
 
     const bodyPayload: Record<string, unknown> = {
       message: commitMessage || `[DARLEK CANN] Mutate ${cleanPath}`,
@@ -165,55 +206,56 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       bodyPayload.sha = finalSha;
     }
 
-    const headers = getGitHubHeaders(token);
-
-    let res = await fetch(url, {
+    const headers = createGitHubHeaders(token);
+    let response = await fetch(url, {
       method: 'PUT',
       headers,
       body: JSON.stringify(bodyPayload),
     });
 
-    // Self-healing retry: If status is 409, 422, or 400 (SHA conflict/missing branch), re-check branch/SHA and retry once
-    if (!res.ok && (res.status === 409 || res.status === 422 || res.status === 400 || res.status === 404)) {
-      console.warn(`[Write File] Issue (${res.status}) on ${cleanPathNoWordError}. Re-verifying branch & live SHA...`);
+    // Self-healing retry for conflict or mismatch errors
+    if (!response.ok && [400, 404, 409, 422].includes(response.status)) {
+      console.warn(`[Write File] Issue (${response.status}) on ${sanitizedPathLog}. Re-verifying branch & live SHA...`);
       await ensureBranchExists(token, owner, repo, branch);
+      
       const liveSha = await getFileSha(token, owner, repo, branch, cleanPath);
       if (liveSha) {
         bodyPayload.sha = liveSha;
       } else {
         delete bodyPayload.sha;
       }
-      res = await fetch(url, {
+
+      response = await fetch(url, {
         method: 'PUT',
         headers,
         body: JSON.stringify(bodyPayload),
       });
     }
 
-    if (!res.ok) {
-      const errText = await res.text();
-      let parsedErr = errText;
+    if (!response.ok) {
+      const errorText = await response.text();
+      let parsedError = errorText;
       try {
-        const jsonErr = JSON.parse(errText);
-        parsedErr = jsonErr.message || jsonErr.error || errText;
+        const jsonError = JSON.parse(errorText);
+        parsedError = jsonError.message || jsonError.error || errorText;
       } catch {
-        // Fallback to raw text if JSON parsing fails
+        // Fallback to raw text
       }
       return NextResponse.json(
-        { error: `GitHub API error: ${parsedErr}` },
-        { status: res.status }
+        { error: `GitHub API error: ${parsedError}` },
+        { status: response.status }
       );
     }
 
-    const data = (await safeResponseJson(res)) as Record<string, unknown>;
-    const commit = data?.commit as Record<string, unknown> | undefined;
-    const contentObj = data?.content as Record<string, unknown> | undefined;
+    const responseData = (await safeResponseJson(response)) as Record<string, unknown>;
+    const commit = responseData?.commit as Record<string, unknown> | undefined;
+    const contentObj = responseData?.content as Record<string, unknown> | undefined;
 
     return NextResponse.json({
       success: true,
-      commitSha: (commit?.sha as string) || '',
-      contentSha: (contentObj?.sha as string) || '',
-      commitUrl: (commit?.html_url as string) || '',
+      commitSha: (commit?.sha as string) ?? '',
+      contentSha: (contentObj?.sha as string) ?? '',
+      commitUrl: (commit?.html_url as string) ?? '',
     });
   } catch (error) {
     console.error('Write file error:', error);
