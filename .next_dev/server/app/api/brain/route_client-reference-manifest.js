@@ -1,11 +1,25 @@
 "use strict";
+
+/**
+ * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * Route Client Reference Manifest Registrar for: /api/brain/route
+ */
 (() => {
-  const globalTarget = typeof globalThis !== "undefined" ? globalThis : (typeof self !== "undefined" ? self : (typeof window !== "undefined" ? window : this));
+  const resolveGlobalTarget = () => {
+    if (typeof globalThis !== "undefined") return globalThis;
+    if (typeof self !== "undefined") return self;
+    if (typeof window !== "undefined") return window;
+    return typeof global !== "undefined" ? global : null;
+  };
+
+  const globalTarget = resolveGlobalTarget();
   if (!globalTarget || typeof globalTarget !== "object") return;
 
-  const manifestStore = globalTarget.__RSC_MANIFEST ?? (globalTarget.__RSC_MANIFEST = Object.create(null));
+  const manifestStore = globalTarget.__RSC_MANIFEST ??= Object.create(null);
 
-  manifestStore["/api/brain/route"] = Object.freeze({
+  const ROUTE_KEY = "/api/brain/route";
+
+  manifestStore[ROUTE_KEY] = Object.freeze({
     moduleLoading: Object.freeze({
       prefix: "/_next/",
       crossOrigin: null
