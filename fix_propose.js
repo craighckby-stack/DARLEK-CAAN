@@ -7,23 +7,39 @@
 
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
+const { readFileSync, writeFileSync } = require('node:fs');
+const { normalize } = require('node:path');
 
-const TARGET_PATH = path.normalize('src/app/api/evolution/propose/route.ts');
+const TARGET_ROUTE_PATH = normalize('src/app/api/evolution/propose/route.ts');
+const ENCODING_UTF8 = 'utf8';
 
-try {
-    const rawCode = fs.readFileSync(TARGET_PATH, 'utf8');
-    
-    // Optimized regex replacements with pre-compiled patterns and atomic safety
-    const optimizedCode = rawCode
+/**
+ * Escapes markdown code block delimiters within the evolution proposal route source code.
+ * @param {string} sourceCode - The raw source code contents.
+ * @returns {string} The transformed source code with escaped code blocks.
+ */
+function sanitizeMarkdownCodeBlocks(sourceCode) {
+    return sourceCode
         .replace(/```json/g, '\\`\\`\\`json')
         .replace(/```tsx/g, '\\`\\`\\`tsx')
         .replace(/}\n```\n/g, '}\n\\`\\`\\`\n')
         .replace(/\n```\nRisk/g, '\n\\`\\`\\`\nRisk');
-
-    fs.writeFileSync(TARGET_PATH, optimizedCode, 'utf8');
-} catch (error) {
-    process.stderr.write(`[DARLEK-CANN-ERROR] Failed to process proposal route fix: ${error.message}\n`);
-    process.exit(1);
 }
+
+/**
+ * Executes the file transformation routine for the target route.
+ */
+function applyProposalRouteFix() {
+    try {
+        const rawCode = readFileSync(TARGET_ROUTE_PATH, ENCODING_UTF8);
+        const optimizedCode = sanitizeMarkdownCodeBlocks(rawCode);
+        
+        writeFileSync(TARGET_ROUTE_PATH, optimizedCode, ENCODING_UTF8);
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`[DARLEK-CANN-ERROR] Failed to process proposal route fix: ${errorMessage}\n`);
+        process.exit(1);
+    }
+}
+
+applyProposalRouteFix();
