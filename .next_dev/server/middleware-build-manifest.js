@@ -1,27 +1,35 @@
 (function initializeMiddlewareBuildManifest() {
   "use strict";
 
-  const globalScope = 
-    typeof globalThis !== "undefined" ? globalThis : 
-    typeof self !== "undefined" ? self : 
-    this;
+  const resolveGlobalScope = () => {
+    if (typeof globalThis !== "undefined") return globalThis;
+    if (typeof self !== "undefined") return self;
+    return typeof window !== "undefined" ? window : {};
+  };
 
+  const globalScope = resolveGlobalScope();
   const BUILD_ID_REGEX = /^[a-zA-Z0-9_\-]+$/;
 
-  const currentBuildId = (() => {
-    const rawId = process?.env?.__NEXT_BUILD_ID;
-    if (typeof rawId === "string") {
-      return BUILD_ID_REGEX.test(rawId) ? rawId : encodeURIComponent(rawId);
+  const determineCurrentBuildId = () => {
+    const rawBuildId = process?.env?.__NEXT_BUILD_ID;
+    
+    if (typeof rawBuildId === "string") {
+      return BUILD_ID_REGEX.test(rawBuildId) 
+        ? rawBuildId 
+        : encodeURIComponent(rawBuildId);
     }
+    
     return "development";
-  })();
+  };
+
+  const currentBuildId = determineCurrentBuildId();
 
   const lowPriorityFiles = [
     `/static/${currentBuildId}/_buildManifest.js`,
     `/static/${currentBuildId}/_ssgManifest.js`
   ];
 
-  globalScope.__BUILD_MANIFEST = {
+  const buildManifest = {
     polyfillFiles: ["static/chunks/polyfills.js"],
     devFiles: [],
     ampDevFiles: [],
@@ -36,4 +44,6 @@
     },
     ampFirstPages: []
   };
+
+  globalScope.__BUILD_MANIFEST = buildManifest;
 })();
