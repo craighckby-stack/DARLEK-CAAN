@@ -10,11 +10,14 @@
 const fs = require('node:fs');
 const https = require('node:https');
 const path = require('node:path');
+const { URL } = require('node:url');
 
-const MISSING_FILES_PATH = 'missing_files.json';
+const MISSING_FILES_PATH = path.resolve('missing_files.json');
 const BASE_URL = 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/';
 const REQUEST_TIMEOUT_MS = 30000;
 const USER_AGENT = 'EMG-Neural-Code-Optimizer/4.9';
+const MAX_MANIFEST_SIZE_BYTES = 1024 * 1024; // 1MB upper bound for memory safety
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB defensive stream bounds checking
 
 /**
  * @typedef {Object} FileManifestEntry
@@ -22,19 +25,27 @@ const USER_AGENT = 'EMG-Neural-Code-Optimizer/4.9';
  */
 
 /**
- * Validates and reads the missing files manifest securely with strict memory boundaries.
+ * Validates and reads the missing files manifest securely with strict memory boundaries and path restrictions.
  * @returns {FileManifestEntry[]} Array of missing file objects.
  */
 function loadMissingManifest() {
   try {
-    if (!fs.existsSync(MISSING_FILES_PATH)) {
+    const resolvedManifestPath = path.resolve(MISSING_FILES_PATH);
+    if (!fs.existsSync(resolvedManifestPath)) {
       throw new Error(`Manifest not found at ${MISSING_FILES_PATH}`);
     }
-    const rawData = fs.readFileSync(MISSING_FILES_PATH, 'utf8');
+
+    const stats = fs.statSync(resolvedManifestPath);
+    if (stats.size > MAX_MANIFEST_SIZE_BYTES) {
+      throw new Error(`Manifest file exceeds maximum allowed size of ${MAX_MANIFEST_SIZE_BYTES} bytes.`);
+    }
+
+    const rawData = fs.readFileSync(resolvedManifestPath, 'utf8');
     const parsed = JSON.parse(rawData);
     if (!Array.isArray(parsed)) {
       throw new Error('Manifest content must be an array of file objects.');
     }
+
     return parsed;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -44,7 +55,7 @@ function loadMissingManifest() {
 }
 
 /**
- * Downloads a single file via HTTPS with advanced stream management, memory buffering, and atomic cleanup.
+ * Downloads a single file via HTTPS with advanced stream management, memory buffering, strict bounds checking, and atomic cleanup.
  * @param {FileManifestEntry} fileObj - Object containing file path details.
  * @returns {Promise<boolean>} Success status of the download operation.
  */
@@ -55,16 +66,44 @@ function download(fileObj) {
       return resolve(false);
     }
 
-    const normalizedPath = path.normalize(fileObj.path);
-    const targetUrl = BASE_URL + fileObj.path;
+    // Defensive Path Traversal Protection
+    const sanitizedInput = fileObj.path.replace(/^(\.\.[\/\\])+/, '');
+    const normalizedPath = path.normalize(sanitizedInput);
+    if (path.isAbsolute(normalizedPath) || normalizedPath.startsWith('..')) {
+      console.error(`[ERROR] Path traversal attempt detected and blocked: ${fileObj.path}`);
+      return resolve(false);
+    }
+
+    const resolvedTargetPath = path.resolve(process.cwd(), normalizedPath);
+    const cwd = process.cwd();
+    if (!resolvedTargetPath.startsWith(cwd)) {
+      console.error(`[ERROR] Resolved path escapes working directory boundaries: ${resolvedTargetPath}`);
+      return resolve(false);
+    }
+
+    // Construct and validate absolute target URL to prevent SSRF/manipulation
+    let targetUrl;
+    try {
+      const parsedBase = new URL(BASE_URL);
+      const parsedFull = new URL(normalizedPath, parsedBase);
+      if (parsedFull.origin !== parsedBase.origin) {
+        console.error(`[ERROR] Target URL origin mismatch detected: ${parsedFull.href}`);
+        return resolve(false);
+      }
+      targetUrl = parsedFull.href;
+    } catch (urlError) {
+      console.error(`[ERROR] Malformed URL construction for ${fileObj.path}: ${urlError.message}`);
+      return resolve(false);
+    }
+
     const requestOptions = {
       headers: { 'User-Agent': USER_AGENT }
     };
 
-    const dir = path.dirname(normalizedPath);
+    const dir = path.dirname(resolvedTargetPath);
     try {
       if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+        fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
       }
     } catch (mkdirError) {
       const message = mkdirError instanceof Error ? mkdirError.message : String(mkdirError);
@@ -79,15 +118,41 @@ function download(fileObj) {
         return resolve(false);
       }
 
-      const writeStream = fs.createWriteStream(normalizedPath);
+      const contentLengthHeader = res.headers['content-length'];
+      if (contentLengthHeader) {
+        const contentLength = parseInt(contentLengthHeader, 10);
+        if (!isNaN(contentLength) && contentLength > MAX_FILE_SIZE_BYTES) {
+          console.error(`[ERROR] File size exceeds security threshold for ${fileObj.path}: ${contentLength} bytes`);
+          res.resume();
+          return resolve(false);
+        }
+      }
+
+      const writeStream = fs.createWriteStream(resolvedTargetPath, { mode: 0o644 });
+      let downloadedBytes = 0;
+      let hasAborted = false;
+
+      res.on('data', (chunk) => {
+        if (hasAborted) return;
+        downloadedBytes += chunk.length;
+        if (downloadedBytes > MAX_FILE_SIZE_BYTES) {
+          hasAborted = true;
+          console.error(`[ERROR] Download exceeded maximum memory bounds during streaming for ${fileObj.path}`);
+          res.destroy();
+          writeStream.destroy();
+          fs.unlink(resolvedTargetPath, () => {});
+          resolve(false);
+        }
+      });
 
       res.pipe(writeStream);
 
       writeStream.on('finish', () => {
+        if (hasAborted) return;
         writeStream.close((err) => {
           if (err) {
             console.error(`[ERROR] Failed to close write stream for ${fileObj.path}: ${err.message}`);
-            fs.unlink(normalizedPath, () => {});
+            fs.unlink(resolvedTargetPath, () => {});
             return resolve(false);
           }
           console.log(`Successfully downloaded: ${fileObj.path}`);
@@ -96,16 +161,18 @@ function download(fileObj) {
       });
 
       writeStream.on('error', (writeError) => {
+        if (hasAborted) return;
         console.error(`[ERROR] Failed to write file ${fileObj.path}: ${writeError.message}`);
         writeStream.destroy();
-        fs.unlink(normalizedPath, () => {}); // Asynchronously clean up partial file
+        fs.unlink(resolvedTargetPath, () => {}); // Asynchronously clean up partial file
         resolve(false);
       });
 
       res.on('error', (resError) => {
+        if (hasAborted) return;
         console.error(`[ERROR] Response stream error downloading ${fileObj.path}: ${resError.message}`);
         writeStream.destroy();
-        fs.unlink(normalizedPath, () => {});
+        fs.unlink(resolvedTargetPath, () => {});
         resolve(false);
       });
     });
