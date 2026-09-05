@@ -1,33 +1,24 @@
 'use strict';
 
 /**
- * Resolves the global execution context across different JavaScript environments (Browser, Worker, Node.js).
- * @returns {typeof globalThis | Window | WorkerGlobalScope | undefined} The global context object.
+ * Resolves the global execution context across different JavaScript environments with zero allocation overhead.
+ * @returns {typeof globalThis | undefined} The global context object.
  */
 function resolveGlobalContext() {
-  if (typeof self !== 'undefined') {
-    return self;
-  }
-  
-  if (typeof globalThis !== 'undefined') {
-    return globalThis;
-  }
-  
-  return typeof window !== 'undefined' ? window : undefined;
+  return typeof globalThis !== 'undefined' 
+    ? globalThis 
+    : (typeof self !== 'undefined' 
+        ? self 
+        : (typeof window !== 'undefined' ? window : undefined));
 }
 
 (function initializeRscServerManifest() {
   const globalContext = resolveGlobalContext();
 
-  if (!globalContext) {
+  if (globalContext === undefined) {
     return;
   }
 
-  const rscServerManifestPayload = {
-    node: {},
-    edge: {},
-    encryptionKey: 'process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY',
-  };
-
-  globalContext.__RSC_SERVER_MANIFEST = JSON.stringify(rscServerManifestPayload);
+  // Pre-serialize the static manifest payload to eliminate runtime JSON.stringify overhead and allocations
+  globalContext.__RSC_SERVER_MANIFEST = '{"node":{},"edge":{},"encryptionKey":"process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY"}';
 })();
