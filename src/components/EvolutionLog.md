@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `EvolutionLog` component functions as the primary telemetry interface for the DARLEK CANN v3.0 architecture. Precision-engineered for high-throughput operational environments, it renders real-time visualizations of chronological system mutations, agent state transitions, and critical error logs.
+The `EvolutionLog` component serves as the primary telemetry interface for the DARLEK CANN v3.0 architecture. Precision-engineered for high-throughput operational environments, it renders real-time visualizations of chronological system mutations, agent state transitions, and critical error logs.
 
 ---
 
