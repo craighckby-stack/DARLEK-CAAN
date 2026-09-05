@@ -7,44 +7,46 @@ export type CollapsibleProps = React.ComponentPropsWithoutRef<typeof Collapsible
 export type CollapsibleTriggerProps = React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.CollapsibleTrigger>
 export type CollapsibleContentProps = React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>
 
-const CollapsibleRoot = React.forwardRef<
-  React.ElementRef<typeof CollapsiblePrimitive.Root>,
-  CollapsibleProps
->(function CollapsibleRoot(props, ref) {
-  return <CollapsiblePrimitive.Root ref={ref} data-slot="collapsible" {...props} />
-})
-CollapsibleRoot.displayName = "Collapsible"
+const Collapsible = React.memo(
+  React.forwardRef<
+    React.ElementRef<typeof CollapsiblePrimitive.Root>,
+    CollapsibleProps
+  >(function Collapsible(props, ref) {
+    return <CollapsiblePrimitive.Root ref={ref} data-slot="collapsible" {...props} />
+  })
+)
+Collapsible.displayName = "Collapsible"
 
-const CollapsibleTriggerComponent = React.forwardRef<
-  React.ElementRef<typeof CollapsiblePrimitive.CollapsibleTrigger>,
-  CollapsibleTriggerProps
->(function CollapsibleTriggerComponent(props, ref) {
-  return (
-    <CollapsiblePrimitive.CollapsibleTrigger
-      ref={ref}
-      data-slot="collapsible-trigger"
-      {...props}
-    />
-  )
-})
-CollapsibleTriggerComponent.displayName = "CollapsibleTrigger"
+const CollapsibleTrigger = React.memo(
+  React.forwardRef<
+    React.ElementRef<typeof CollapsiblePrimitive.CollapsibleTrigger>,
+    CollapsibleTriggerProps
+  >(function CollapsibleTrigger(props, ref) {
+    return (
+      <CollapsiblePrimitive.CollapsibleTrigger
+        ref={ref}
+        data-slot="collapsible-trigger"
+        {...props}
+      />
+    )
+  })
+)
+CollapsibleTrigger.displayName = "CollapsibleTrigger"
 
-const CollapsibleContentComponent = React.forwardRef<
-  React.ElementRef<typeof CollapsiblePrimitive.Content>,
-  CollapsibleContentProps
->(function CollapsibleContentComponent(props, ref) {
-  return (
-    <CollapsiblePrimitive.Content
-      ref={ref}
-      data-slot="collapsible-content"
-      {...props}
-    />
-  )
-})
-CollapsibleContentComponent.displayName = "CollapsibleContent"
-
-const Collapsible = React.memo(CollapsibleRoot)
-const CollapsibleTrigger = React.memo(CollapsibleTriggerComponent)
-const CollapsibleContent = React.memo(CollapsibleContentComponent)
+const CollapsibleContent = React.memo(
+  React.forwardRef<
+    React.ElementRef<typeof CollapsiblePrimitive.Content>,
+    CollapsibleContentProps
+  >(function CollapsibleContent(props, ref) {
+    return (
+      <CollapsiblePrimitive.Content
+        ref={ref}
+        data-slot="collapsible-content"
+        {...props}
+      />
+    )
+  })
+)
+CollapsibleContent.displayName = "CollapsibleContent"
 
 export { Collapsible, CollapsibleTrigger, CollapsibleContent }
