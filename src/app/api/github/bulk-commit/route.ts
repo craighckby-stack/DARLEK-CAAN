@@ -21,9 +21,280 @@ interface BulkCommitRequestBody {
   commitMessage?: string;
 }
 
-interface GitHubErrorResponse {
-  message?: string;
-  [key: string]: unknown;
+interface GitHubGitObjectRef {
+  object?: {
+    sha?: string;
+  };
+}
+
+interface GitHubRepoInfo {
+  default_branch?: string;
+}
+
+interface GitHubBlobResponse {
+  sha?: string;
+}
+
+interface GitHubTreeResponse {
+  sha?: string;
+}
+
+interface GitHubCommitResponse {
+  sha?: string;
+}
+
+interface GitTreeItem {
+  path: string;
+  mode: '100644';
+  type: 'blob';
+  sha: string;
+}
+
+const GITHUB_API_BASE = 'https://api.github.com';
+
+/**
+ * Creates standard HTTP headers for GitHub API communication.
+ */
+function createGitHubHeaders(token: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json',
+  };
+}
+
+/**
+ * Sanitizes all committable files to redact any accidental secrets or sensitive credentials.
+ */
+function sanitizeCommittableFiles(files: CommittableFile[]): CommittableFile[] {
+  return files.map((file) => {
+    if (!file || typeof file.content !== 'string') return file;
+    
+    const { sanitized, findings } = sanitizeContent(file.content);
+    if (findings.length > 0) {
+      const safeLogPath = file.path.replace(/error/gi, 'err');
+      console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${safeLogPath} before bulk commit.`);
+    }
+
+    return {
+      ...file,
+      content: sanitized,
+    };
+  });
+}
+
+/**
+ * Ensures the target repository exists, dynamically creating it if missing.
+ */
+async function ensureRepositoryExists(owner: string, repo: string, headers: Record<string, string>): Promise<NextResponse | null> {
+  const repoUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}`;
+  const verifyResponse = await fetch(repoUrl, { headers });
+
+  if (verifyResponse.status === 404) {
+    const createResponse = await fetch(`${GITHUB_API_BASE}/user/repos`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        name: repo,
+        private: false,
+        auto_init: true,
+      }),
+    });
+
+    if (!createResponse.ok) {
+      const errorDetails = await createResponse.text();
+      console.error('Failed to create missing repo in bulk commit:', errorDetails);
+      return NextResponse.json(
+        { error: `Failed to auto-create missing repository ${repo}: ${errorDetails}` },
+        { status: 400 }
+      );
+    }
+
+    // Wait briefly for GitHub asynchronous propagation of ref heads
+    await new Promise<void>((resolveTimer) => setTimeout(resolveTimer, 3000));
+  }
+
+  return null;
+}
+
+/**
+ * Resolves or creates the target branch reference, falling back to the default branch if needed.
+ */
+async function resolveBranchCommitSha(
+  owner: string,
+  repo: string,
+  branch: string,
+  headers: Record<string, string>
+): Promise<{ sha?: string; errorResponse?: NextResponse }> {
+  const refUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`;
+  let refResponse = await fetch(refUrl, { headers });
+
+  if (!refResponse.ok) {
+    const repoInfoResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}`, { headers });
+    if (repoInfoResponse.ok) {
+      const repoInfo = (await repoInfoResponse.json()) as GitHubRepoInfo;
+      const defaultBranch = repoInfo.default_branch || 'main';
+
+      const defaultRefUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(defaultBranch)}`;
+      const defaultRefResponse = await fetch(defaultRefUrl, { headers });
+
+      if (defaultRefResponse.ok) {
+        const defaultRefData = (await defaultRefResponse.json()) as GitHubGitObjectRef;
+        const defaultCommitSha = defaultRefData.object?.sha;
+
+        if (defaultCommitSha) {
+          const createRefResponse = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              ref: `refs/heads/${branch}`,
+              sha: defaultCommitSha,
+            }),
+          });
+
+          if (createRefResponse.ok) {
+            refResponse = await fetch(refUrl, { headers });
+          }
+        }
+      }
+    }
+  }
+
+  if (!refResponse.ok) {
+    const errorText = await refResponse.text();
+    return {
+      errorResponse: NextResponse.json(
+        { error: `Could not fetch or create branch ref (${branch}): ${errorText}` },
+        { status: refResponse.status }
+      ),
+    };
+  }
+
+  const refData = (await refResponse.json()) as GitHubGitObjectRef;
+  const latestCommitSha = refData.object?.sha;
+
+  if (!latestCommitSha) {
+    return {
+      errorResponse: NextResponse.json(
+        { error: 'Could not resolve latest commit SHA from branch.' },
+        { status: 500 }
+      ),
+    };
+  }
+
+  return { sha: latestCommitSha };
+}
+
+/**
+ * Resolves the base tree SHA from a given commit SHA.
+ */
+async function resolveBaseTreeSha(
+  owner: string,
+  repo: string,
+  commitSha: string,
+  headers: Record<string, string>
+): Promise<{ sha?: string; errorResponse?: NextResponse }> {
+  const commitUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/commits/${commitSha}`;
+  const commitResponse = await fetch(commitUrl, { headers });
+
+  if (!commitResponse.ok) {
+    const errorText = await commitResponse.text();
+    return {
+      errorResponse: NextResponse.json(
+        { error: `Could not fetch commit details: ${errorText}` },
+        { status: commitResponse.status }
+      ),
+    };
+  }
+
+  const commitData = (await commitResponse.json()) as { tree?: { sha?: string } };
+  const baseTreeSha = commitData.tree?.sha;
+
+  if (!baseTreeSha) {
+    return {
+      errorResponse: NextResponse.json(
+        { error: 'Could not resolve base tree SHA.' },
+        { status: 500 }
+      ),
+    };
+  }
+
+  return { sha: baseTreeSha };
+}
+
+/**
+ * Writes committable files to local disk asynchronously with error shielding.
+ */
+async function writeFilesToLocalDisk(files: CommittableFile[]): Promise<void> {
+  try {
+    const projectRoot = resolve(process.cwd());
+    await Promise.all(
+      files.map(async (file) => {
+        if (!file.path || typeof file.content !== 'string') return;
+        const cleanPath = file.path.replace(/^\/+|\/+$/g, '');
+        const localFilePath = resolve(projectRoot, cleanPath);
+        
+        if (localFilePath.startsWith(projectRoot)) {
+          const parentDir = dirname(localFilePath);
+          await fs.mkdir(parentDir, { recursive: true });
+          await fs.writeFile(localFilePath, file.content, 'utf-8');
+        }
+      })
+    );
+  } catch (diskError: unknown) {
+    console.warn('[Bulk Commit] Disk write warning:', diskError);
+  }
+}
+
+/**
+ * Generates Git blobs for each file and builds the tree payload items.
+ */
+async function generateTreeItems(
+  owner: string,
+  repo: string,
+  files: CommittableFile[],
+  headers: Record<string, string>
+): Promise<{ items?: GitTreeItem[]; errorResponse?: NextResponse }> {
+  const blobUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/blobs`;
+
+  try {
+    const treeItems = await Promise.all(
+      files.map(async (file): Promise<GitTreeItem> => {
+        const blobResponse = await fetch(blobUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            content: Buffer.from(file.content, 'utf-8').toString('base64'),
+            encoding: 'base64',
+          }),
+        });
+
+        if (!blobResponse.ok) {
+          const errorMsg = await blobResponse.text();
+          throw new Error(`Failed to create git blob for file ${file.path}: ${errorMsg}`);
+        }
+
+        const blobData = (await blobResponse.json()) as GitHubBlobResponse;
+        if (!blobData.sha) {
+          throw new Error(`Git blob API did not return SHA for file ${file.path}`);
+        }
+
+        return {
+          path: file.path.replace(/^\/+|\/+$/g, ''),
+          mode: '100644',
+          type: 'blob',
+          sha: blobData.sha,
+        };
+      })
+    );
+
+    return { items: treeItems };
+  } catch (blobError: unknown) {
+    const errorMessage = blobError instanceof Error ? blobError.message : 'Failed during file blob generation.';
+    return {
+      errorResponse: NextResponse.json({ error: errorMessage }, { status: 500 }),
+    };
+  }
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -49,189 +320,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Secret Sanitization Gatekeeper: Redact API keys, tokens, or credentials across all committable files
-    const safeFiles: CommittableFile[] = files.map((file: CommittableFile) => {
-      if (!file || typeof file.content !== 'string') return file;
-      const { sanitized, findings } = sanitizeContent(file.content);
-      if (findings.length > 0) {
-        const safeLogPath = file.path.replace(/error/gi, 'err');
-        console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${safeLogPath} before bulk commit.`);
-      }
-      return {
-        ...file,
-        content: sanitized,
-      };
-    });
+    const safeFiles = sanitizeCommittableFiles(files);
+    const headers = createGitHubHeaders(token);
 
-    const headers = {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'Content-Type': 'application/json',
-    };
+    // 1. Verify / Auto-create repository
+    const repoErrorResponse = await ensureRepositoryExists(owner, repo, headers);
+    if (repoErrorResponse) return repoErrorResponse;
 
-    // Verify repo exists, if not create it dynamically
-    const verifyRepoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
+    // 2. Resolve latest commit SHA on branch
+    const branchResult = await resolveBranchCommitSha(owner, repo, branch, headers);
+    if (branchResult.errorResponse) return branchResult.errorResponse;
+    const latestCommitSha = branchResult.sha!;
 
-    if (verifyRepoRes.status === 404) {
-      const createRes = await fetch('https://api.github.com/user/repos', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: repo,
-          private: false,
-          auto_init: true,
-        }),
-      });
-      if (!createRes.ok) {
-        const createErr = await createRes.text();
-        console.error('Failed to create missing repo in bulk commit:', createErr);
-        return NextResponse.json({ error: `Failed to auto-create missing repository ${repo}: ${createErr}` }, { status: 400 });
-      }
-      
-      // Wait for GitHub propagation so ref heads are available
-      await new Promise<void>((resolveTimer) => setTimeout(resolveTimer, 3000));
-    }
+    // 3. Resolve base tree SHA
+    const treeResult = await resolveBaseTreeSha(owner, repo, latestCommitSha, headers);
+    if (treeResult.errorResponse) return treeResult.errorResponse;
+    const baseTreeSha = treeResult.sha!;
 
-    // ────────────────────────────────────────────────────────
-    // STEP A: Get latest reference SHA (latest commit)
-    // ────────────────────────────────────────────────────────
-    const refUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`;
-    let refRes = await fetch(refUrl, { headers });
+    // 4. Synchronize local disk representations (optional development cache)
+    await writeFilesToLocalDisk(safeFiles);
 
-    if (!refRes.ok) {
-      const repoInfoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
-      if (repoInfoRes.ok) {
-        const repoInfo = await repoInfoRes.json() as { default_branch?: string };
-        const defaultBranch = repoInfo.default_branch || 'main';
+    // 5. Generate Git blobs and construct tree items
+    const treeItemsResult = await generateTreeItems(owner, repo, safeFiles, headers);
+    if (treeItemsResult.errorResponse) return treeItemsResult.errorResponse;
+    const treeItems = treeItemsResult.items!;
 
-        const defRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(defaultBranch)}`, { headers });
-        if (defRefRes.ok) {
-          const defRefData = await defRefRes.json() as { object?: { sha?: string } };
-          const defaultCommitSha = defRefData.object?.sha;
-          if (defaultCommitSha) {
-            const createRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({
-                ref: `refs/heads/${branch}`,
-                sha: defaultCommitSha,
-              }),
-            });
-            if (createRefRes.ok) {
-              refRes = await fetch(refUrl, { headers });
-            }
-          }
-        }
-      }
-    }
-
-    if (!refRes.ok) {
-      const err = await refRes.text();
-      return NextResponse.json(
-        { error: `Could not fetch or create branch ref (${branch}): ${err}` },
-        { status: refRes.status }
-      );
-    }
-
-    const refData = await refRes.json() as { object?: { sha?: string } };
-    const latestCommitSha = refData.object?.sha;
-
-    if (!latestCommitSha) {
-      return NextResponse.json(
-        { error: 'Could not resolve latest commit SHA from branch.' },
-        { status: 500 }
-      );
-    }
-
-    // ────────────────────────────────────────────────────────
-    // STEP B: Get base commit's tree SHA
-    // ────────────────────────────────────────────────────────
-    const commitUrl = `https://api.github.com/repos/${owner}/${repo}/git/commits/${latestCommitSha}`;
-    const commitRes = await fetch(commitUrl, { headers });
-
-    if (!commitRes.ok) {
-      const err = await commitRes.text();
-      return NextResponse.json(
-        { error: `Could not fetch commit details: ${err}` },
-        { status: commitRes.status }
-      );
-    }
-
-    const commitData = await commitRes.json() as { tree?: { sha?: string } };
-    const baseTreeSha = commitData.tree?.sha;
-
-    if (!baseTreeSha) {
-      return NextResponse.json(
-        { error: 'Could not resolve base tree SHA.' },
-        { status: 500 }
-      );
-    }
-
-    // ────────────────────────────────────────────────────────
-    // STEP C: Create a new tree with modified files
-    // ────────────────────────────────────────────────────────
-    try {
-      const projectRoot = resolve(process.cwd());
-      await Promise.all(
-        safeFiles.map(async (file) => {
-          if (!file.path || typeof file.content !== 'string') return;
-          const cleanPath = file.path.replace(/^\/+|\/+$/g, '');
-          const localFilePath = resolve(projectRoot, cleanPath);
-          if (localFilePath.startsWith(projectRoot)) {
-            const parentDir = dirname(localFilePath);
-            await fs.mkdir(parentDir, { recursive: true });
-            await fs.writeFile(localFilePath, file.content, 'utf-8');
-          }
-        })
-      );
-    } catch (diskErr: unknown) {
-      console.warn('[Bulk Commit] Disk write warning:', diskErr);
-    }
-
-    const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees`;
-    const blobUrl = `https://api.github.com/repos/${owner}/${repo}/git/blobs`;
-
-    const blobPromises = safeFiles.map(async (file: CommittableFile) => {
-      const blobRes = await fetch(blobUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          content: Buffer.from(file.content, 'utf-8').toString('base64'),
-          encoding: 'base64',
-        }),
-      });
-
-      if (!blobRes.ok) {
-        const errMsg = await blobRes.text();
-        throw new Error(`Failed to create git blob for file ${file.path}: ${errMsg}`);
-      }
-
-      const blobData = await blobRes.json() as { sha?: string };
-      if (!blobData.sha) {
-        throw new Error(`Git blob API did not return SHA for file ${file.path}`);
-      }
-
-      const cleanPath = file.path.replace(/^\/+|\/+$/g, '');
-      return {
-        path: cleanPath,
-        mode: '100644' as const,
-        type: 'blob' as const,
-        sha: blobData.sha,
-      };
-    });
-
-    let treeItems;
-    try {
-      treeItems = await Promise.all(blobPromises);
-    } catch (blobErr: unknown) {
-      const errorMessage = blobErr instanceof Error ? blobErr.message : 'Failed during file blob generation.';
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: 500 }
-      );
-    }
-
-    const treeRes = await fetch(treeUrl, {
+    // 6. Create new tree referencing base tree
+    const treeUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees`;
+    const createTreeResponse = await fetch(treeUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -240,16 +356,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }),
     });
 
-    if (!treeRes.ok) {
-      const err = await treeRes.text();
+    if (!createTreeResponse.ok) {
+      const errorText = await createTreeResponse.text();
       return NextResponse.json(
-        { error: `Could not create dynamic tree: ${err}` },
-        { status: treeRes.status }
+        { error: `Could not create dynamic tree: ${errorText}` },
+        { status: createTreeResponse.status }
       );
     }
 
-    const treeData = await treeRes.json() as { sha?: string };
-    const newTreeSha = treeData.sha;
+    const createTreeData = (await createTreeResponse.json()) as GitHubTreeResponse;
+    const newTreeSha = createTreeData.sha;
 
     if (!newTreeSha) {
       return NextResponse.json(
@@ -258,32 +374,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // ────────────────────────────────────────────────────────
-    // STEP D: Create a commit pointing to the new tree and base commit
-    // ────────────────────────────────────────────────────────
-    const createCommitUrl = `https://api.github.com/repos/${owner}/${repo}/git/commits`;
-    const defaultMsg = `[DARLEK CANN] Bulk Commit: Staged system evolution of ${files.length} file${files.length > 1 ? 's' : ''}`;
-    const commitBody = {
-      message: commitMessage || defaultMsg,
-      tree: newTreeSha,
-      parents: [latestCommitSha],
-    };
-
-    const createCommitRes = await fetch(createCommitUrl, {
+    // 7. Create commit pointing to new tree and parent commit
+    const createCommitUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/commits`;
+    const defaultCommitMsg = `[DARLEK CANN] Bulk Commit: Staged system evolution of ${files.length} file${files.length > 1 ? 's' : ''}`;
+    
+    const createCommitResponse = await fetch(createCommitUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify(commitBody),
+      body: JSON.stringify({
+        message: commitMessage || defaultCommitMsg,
+        tree: newTreeSha,
+        parents: [latestCommitSha],
+      }),
     });
 
-    if (!createCommitRes.ok) {
-      const err = await createCommitRes.text();
+    if (!createCommitResponse.ok) {
+      const errorText = await createCommitResponse.text();
       return NextResponse.json(
-        { error: `Could not create commit resource: ${err}` },
-        { status: createCommitRes.status }
+        { error: `Could not create commit resource: ${errorText}` },
+        { status: createCommitResponse.status }
       );
     }
 
-    const createCommitData = await createCommitRes.json() as { sha?: string };
+    const createCommitData = (await createCommitResponse.json()) as GitHubCommitResponse;
     const newCommitSha = createCommitData.sha;
 
     if (!newCommitSha) {
@@ -293,11 +406,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // ────────────────────────────────────────────────────────
-    // STEP E: Update branch reference to point to new commit
-    // ────────────────────────────────────────────────────────
-    const updateRefUrl = `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`;
-    const updateRefRes = await fetch(updateRefUrl, {
+    // 8. Update branch reference to point to new commit
+    const updateRefUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/heads/${branch}`;
+    const updateRefResponse = await fetch(updateRefUrl, {
       method: 'PATCH',
       headers,
       body: JSON.stringify({
@@ -306,11 +417,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }),
     });
 
-    if (!updateRefRes.ok) {
-      const err = await updateRefRes.text();
+    if (!updateRefResponse.ok) {
+      const errorText = await updateRefResponse.text();
       return NextResponse.json(
-        { error: `Could not direct branch head reference: ${err}` },
-        { status: updateRefRes.status }
+        { error: `Could not direct branch head reference: ${errorText}` },
+        { status: updateRefResponse.status }
       );
     }
 
@@ -322,7 +433,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
   } catch (error: unknown) {
     console.error('Bulk commit API crash:', error);
-    const errMsg = error instanceof Error ? error.message : 'Unknown exception';
-    return NextResponse.json({ error: errMsg }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown exception';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
