@@ -7,6 +7,9 @@ import { type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 import { toggleVariants } from "@/components/ui/toggle"
 
+/**
+ * Shared configuration context for the toggle group and its items.
+ */
 export interface ToggleGroupContextValue extends VariantProps<typeof toggleVariants> {}
 
 const ToggleGroupContext = React.createContext<ToggleGroupContextValue>({
@@ -14,10 +17,18 @@ const ToggleGroupContext = React.createContext<ToggleGroupContextValue>({
   variant: "default",
 })
 
+/**
+ * Custom hook to access toggle group context safely.
+ */
+const useToggleGroupContext = () => React.useContext(ToggleGroupContext)
+
 export interface ToggleGroupProps
   extends React.ComponentProps<typeof ToggleGroupPrimitive.Root>,
     VariantProps<typeof toggleVariants> {}
 
+/**
+ * A container component that manages a group of mutually exclusive or multiple active toggle buttons.
+ */
 const ToggleGroup = React.memo(function ToggleGroup({
   className,
   variant = "default",
@@ -30,15 +41,21 @@ const ToggleGroup = React.memo(function ToggleGroup({
     [variant, size]
   )
 
+  const rootClassName = React.useMemo(
+    () =>
+      cn(
+        "group/toggle-group flex w-fit items-center rounded-md data-[variant=outline]:shadow-xs",
+        className
+      ),
+    [className]
+  )
+
   return (
     <ToggleGroupPrimitive.Root
       data-slot="toggle-group"
       data-variant={variant}
       data-size={size}
-      className={cn(
-        "group/toggle-group flex w-fit items-center rounded-md data-[variant=outline]:shadow-xs",
-        className
-      )}
+      className={rootClassName}
       {...props}
     >
       <ToggleGroupContext.Provider value={contextValue}>
@@ -53,6 +70,9 @@ export interface ToggleGroupItemProps
   extends React.ComponentProps<typeof ToggleGroupPrimitive.Item>,
     VariantProps<typeof toggleVariants> {}
 
+/**
+ * An individual interactive action item within a ToggleGroup container.
+ */
 const ToggleGroupItem = React.memo(function ToggleGroupItem({
   className,
   children,
@@ -60,12 +80,12 @@ const ToggleGroupItem = React.memo(function ToggleGroupItem({
   size,
   ...props
 }: ToggleGroupItemProps) {
-  const context = React.useContext(ToggleGroupContext)
+  const context = useToggleGroupContext()
 
   const resolvedVariant = variant ?? context.variant ?? "default"
   const resolvedSize = size ?? context.size ?? "default"
 
-  const computedClassName = React.useMemo(
+  const itemClassName = React.useMemo(
     () =>
       cn(
         toggleVariants({
@@ -83,7 +103,7 @@ const ToggleGroupItem = React.memo(function ToggleGroupItem({
       data-slot="toggle-group-item"
       data-variant={resolvedVariant}
       data-size={resolvedSize}
-      className={computedClassName}
+      className={itemClassName}
       {...props}
     >
       {children}
