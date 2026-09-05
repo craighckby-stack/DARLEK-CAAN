@@ -8,11 +8,13 @@
 ---
 
 ## ⚡ Executive Summary
+
 `OMEGA-EMERGENT-INTELLIGENCE` (Core v49) is an autonomous, self-refactoring multi-agent execution kernel driven by the **Huxley-Singularity-Loop**. This document outlines the system architecture, directory topology, security directives, vulnerability reporting workflows, and external module integrations designed for high-performance distributed cognitive processing.
 
 ---
 
 ## 📑 Table of Contents
+
 1. [System Overview](#1-system-overview)
 2. [Directory Structure](#2-directory-structure)
 3. [Security Protocols & Best Practices](#3-security-protocols--best-practices)
@@ -31,12 +33,12 @@ The `OMEGA` repository acts as the central execution kernel, seamlessly blending
 
 The repository isolates orchestration logic, evolution mechanisms, state persistence, and environment-specific overrides:
 
-| Directory | Purpose & Contents |
-| :--- | :--- |
-| `src/agents/` | Orchestration logic, inter-agent communication protocols, and autonomous agent behaviors. |
-| `src/evolution/` | Self-modifying code blocks, evaluation metrics, and mutation engines. |
-| `persistence/` | State snapshots, execution state-trees, and quantum-core memory dumps. |
-| `local-overrides/` | Environment-specific behavioral patches and local configurations. |
+| Directory             | Purpose & Contents                                                                   |
+| :-------------------- | :----------------------------------------------------------------------------------- |
+| `src/agents/`         | Orchestration logic, inter-agent communication protocols, and autonomous agent behaviors. |
+| `src/evolution/`      | Self-modifying code blocks, evaluation metrics, and mutation engines.                |
+| `persistence/`        | State snapshots, execution state-trees, and quantum-core memory dumps.               |
+| `local-overrides/`    | Environment-specific behavioral patches and local configurations.                    |
 
 ---
 
@@ -58,6 +60,7 @@ To maintain absolute system integrity and prevent unauthorized access, operators
 We take the security of `OMEGA-EMERGENT-INTELLIGENCE` and its neural components very seriously. If you discover a security vulnerability, privilege escalation path, or unsafe mutation vector within Core v49, please responsibly disclose it.
 
 ### Reporting Instructions
+
 * **Do Not** open public GitHub issues for security vulnerabilities.
 * **Direct Channel:** Send details securely to the core security maintainers via encrypted email at `security@omega-core.internal` (or utilize our PGP key available on the main repository).
 * **Include in Report:** 
