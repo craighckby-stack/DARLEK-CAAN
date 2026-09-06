@@ -49,7 +49,6 @@ export interface SetupStep {
   readonly placeholder: string;
 }
 
-// Setup — GitHub token, repo, branch, then optional LLM keys
 export const SETUP_STEPS: readonly SetupStep[] = [
   {
     id: 'github',
@@ -139,10 +138,6 @@ export const DEFAULT_DEBATE_AGENTS: readonly DebateAgent[] = [
   { id: 'security', name: 'SECURITY', status: 'active', color: COLORS.dalekRed, icon: '\u25C9' },
   { id: 'pragmatist', name: 'PRAGMATIST', status: 'active', color: COLORS.cyan, icon: '\u25C9' },
 ] as const;
-
-// ─────────────────────────────────────────────
-// AGENT ORCHESTRA CONSTANTS
-// ─────────────────────────────────────────────
 
 export interface OrchestraAgent {
   readonly id: string;
