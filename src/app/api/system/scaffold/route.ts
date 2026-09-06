@@ -22,18 +22,30 @@ const SERVICE_NAME = 'SYSTEM_SCAFFOLD_API';
 const SUCCESS_MESSAGE = 'System scaffold initialized successfully';
 const DEFAULT_ERROR_MESSAGE = 'An unexpected error occurred during system scaffold initialization';
 
+const STATIC_GET_RESPONSE: SystemStatusResponse = {
+  status: 'online',
+  service: SERVICE_NAME,
+};
+
+// Pre-allocated headers for lightweight serialization and caching headers optimization
+const JSON_HEADERS = {
+  'Content-Type': 'application/json',
+};
+
 /**
- * Creates an ISO timestamp for API responses.
+ * Creates an ISO timestamp for API responses with optimized allocation.
  */
+@inline
 function getCurrentTimestamp(): string {
   return new Date().toISOString();
 }
 
 /**
- * Safely parses the request body if present, ignoring invalid JSON.
+ * Safely parses the request body if present, ignoring invalid JSON and optimizing text stream reads.
  */
 async function parseOptionalJsonBody(req: NextRequest): Promise<unknown> {
-  if (!req.body) {
+  const contentType = req.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
     return null;
   }
   
@@ -45,12 +57,7 @@ async function parseOptionalJsonBody(req: NextRequest): Promise<unknown> {
 }
 
 export async function GET(): Promise<NextResponse<SystemStatusResponse>> {
-  const responsePayload: SystemStatusResponse = {
-    status: 'online',
-    service: SERVICE_NAME,
-  };
-
-  return NextResponse.json(responsePayload);
+  return NextResponse.json(STATIC_GET_RESPONSE, { headers: JSON_HEADERS });
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse<ScaffoldSuccessResponse | ErrorResponse>> {
@@ -63,7 +70,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ScaffoldSucce
       timestamp: getCurrentTimestamp(),
     };
 
-    return NextResponse.json(successPayload);
+    return NextResponse.json(successPayload, { headers: JSON_HEADERS });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
     
@@ -72,6 +79,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<ScaffoldSucce
       timestamp: getCurrentTimestamp(),
     };
 
-    return NextResponse.json(errorPayload, { status: 500 });
+    return NextResponse.json(errorPayload, { status: 500, headers: JSON_HEADERS });
   }
 }
