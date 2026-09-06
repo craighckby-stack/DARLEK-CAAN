@@ -1,8 +1,8 @@
 /**
  * @file patch_prompt.js
- * @version v49.2.0-sovereign
- * @description Sovereign Neural Code Optimizer Engine - Comprehensive overhaul
- * for strict type-safety, robust error-handling, memory efficiency, and atomic file operations.
+ * @version v49.3.0-sovereign-optimized
+ * @description Sovereign Neural Code Optimizer Engine - Performance-tuned for zero-allocation loops,
+ * pre-compiled path resolution, and high-speed synchronous I/O execution.
  */
 
 'use strict';
@@ -10,15 +10,19 @@
 const fs = require('fs');
 const path = require('path');
 
+// Pre-compute process working directory to prevent redundant system calls during path resolution
+const CWD = process.cwd();
+
 /**
  * Validates the parameters for the file patching operation.
+ * Optimized with direct type-checks and fast-fail conditions.
  * 
  * @param {string} targetPath - The relative or absolute path to the target file.
  * @param {Array} patches - Collection of transformations.
  * @throws {TypeError} If parameters are invalid types.
  */
 function validatePatchParameters(targetPath, patches) {
-  if (typeof targetPath !== 'string' || targetPath.trim() === '') {
+  if (typeof targetPath !== 'string' || !targetPath.length) {
     throw new TypeError('EMG_CORE_ERR: targetPath must be a non-empty string.');
   }
 
@@ -42,24 +46,31 @@ function validatePatchObject(patch, index) {
 
 /**
  * Applies a sequence of text transformations to a target file's content.
+ * Unrolled using a high-performance standard loop to avoid closure allocation overhead of Array.prototype.reduce.
  * 
  * @param {string} code - The original source code content.
  * @ReadonlyArray<{readonly searchValue: string | RegExp, readonly replaceValue: string}> patches - Collection of transformations.
  * @returns {string} The transformed source code content.
  */
 function executeTransformations(code, patches) {
-  return patches.reduce((currentCode, patch, index) => {
-    validatePatchObject(patch, index);
+  let currentCode = code;
+  const len = patches.length;
+
+  for (let i = 0; i < len; i++) {
+    const patch = patches[i];
+    validatePatchObject(patch, i);
 
     const { searchValue, replaceValue } = patch;
     const updatedCode = currentCode.replace(searchValue, replaceValue);
 
     if (updatedCode === currentCode && !(searchValue instanceof RegExp)) {
-      process.stderr.write(`EMG_CORE_WARN: Patch string at index ${index} resulted in zero mutations.\n`);
+      process.stderr.write(`EMG_CORE_WARN: Patch string at index ${i} resulted in zero mutations.\n`);
     }
 
-    return updatedCode;
-  }, code);
+    currentCode = updatedCode;
+  }
+
+  return currentCode;
 }
 
 /**
@@ -74,7 +85,7 @@ function executeTransformations(code, patches) {
 function applySovereignPatch(targetPath, patches) {
   validatePatchParameters(targetPath, patches);
 
-  const absolutePath = path.resolve(process.cwd(), targetPath);
+  const absolutePath = path.resolve(CWD, targetPath);
 
   let originalCode;
   try {
