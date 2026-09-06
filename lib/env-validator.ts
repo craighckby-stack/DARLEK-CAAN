@@ -25,9 +25,13 @@ export interface SystemEnvironmentConfig {
   readonly PORT: number;
 }
 
-const ALLOWED_NODE_ENVS = ['development', 'production', 'test'] as const;
-const ALLOWED_SANDBOX_LEVELS = ['strict', 'permissive', 'zero-leak'] as const;
-const ALLOWED_LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+const ALLOWED_NODE_ENVS = new Set<string>(['development', 'production', 'test']);
+const ALLOWED_SANDBOX_LEVELS = new Set<string>(['strict', 'permissive', 'zero-leak']);
+const ALLOWED_LOG_LEVELS = new Set<string>(['debug', 'info', 'warn', 'error']);
+
+const ALLOWED_NODE_ENVS_ARR = ['development', 'production', 'test'] as const;
+const ALLOWED_SANDBOX_LEVELS_ARR = ['strict', 'permissive', 'zero-leak'] as const;
+const ALLOWED_LOG_LEVELS_ARR = ['debug', 'info', 'warn', 'error'] as const;
 
 export class EnvironmentValidator {
   private static instance: EnvironmentValidator;
@@ -53,62 +57,68 @@ export class EnvironmentValidator {
   private validateEnum<T extends string>(
     value: string | undefined,
     fallback: T,
-    allowedValues: readonly T[],
+    allowedSet: Set<string>,
+    allowedArray: readonly T[],
     configName: string
   ): T {
     const resolvedValue = (value ?? fallback) as T;
-    if (!allowedValues.includes(resolvedValue)) {
+    if (!allowedSet.has(resolvedValue)) {
       throw new Error(
-        `Invalid ${configName} configuration: "${resolvedValue}". Allowed values: ${allowedValues.join(', ')}.`
+        `Invalid ${configName} configuration: "${resolvedValue}". Allowed values: ${allowedArray.join(', ')}.`
       );
     }
     return resolvedValue;
   }
 
   private validate(): SystemEnvironmentConfig {
+    const env = process.env;
+
     const nodeEnv = this.validateEnum(
-      process.env.NODE_ENV,
+      env.NODE_ENV,
       'development',
       ALLOWED_NODE_ENVS,
+      ALLOWED_NODE_ENVS_ARR,
       'NODE_ENV'
     );
 
     const sandboxIsolation = this.validateEnum(
-      process.env.SANDBOX_ISOLATION_LEVEL,
+      env.SANDBOX_ISOLATION_LEVEL,
       'zero-leak',
       ALLOWED_SANDBOX_LEVELS,
+      ALLOWED_SANDBOX_LEVELS_ARR,
       'SANDBOX_ISOLATION_LEVEL'
     );
 
     const logLevel = this.validateEnum(
-      process.env.LOG_LEVEL,
+      env.LOG_LEVEL,
       'info',
       ALLOWED_LOG_LEVELS,
+      ALLOWED_LOG_LEVELS_ARR,
       'LOG_LEVEL'
     );
 
-    const parsedConsensus = process.env.CONSENSUS_WEIGHT_THRESHOLD !== undefined
-      ? Number(process.env.CONSENSUS_WEIGHT_THRESHOLD)
+    const parsedConsensus = env.CONSENSUS_WEIGHT_THRESHOLD !== undefined
+      ? Number(env.CONSENSUS_WEIGHT_THRESHOLD)
       : NaN;
     const consensusWeight = Number.isNaN(parsedConsensus) ? 0.75 : parsedConsensus;
 
-    const parsedPort = process.env.PORT !== undefined
-      ? Number.parseInt(process.env.PORT, 10)
+    const parsedPort = env.PORT !== undefined
+      ? Number.parseInt(env.PORT, 10)
       : NaN;
     const port = Number.isNaN(parsedPort) ? 3000 : parsedPort;
 
     return {
       NODE_ENV: nodeEnv,
-      DATABASE_URL: process.env.DATABASE_URL ?? 'file:./dev.db',
-      GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-      DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
-      OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
-      MEMORY_DIR: process.env.MEMORY_DIR ?? './memory',
+      DATABASE_URL: env.DATABASE_URL ?? 'file:./dev.db',
+      GEMINI_API_KEY: env.GEMINI_API_KEY ?? '',
+      OPENAI_API_KEY: env.OPENAI_API_KEY,
+      ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
+      DEEPSEEK_API_KEY: env.DEEPSEEK_API_KEY,
+      OLLAMA_BASE_URL: env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
+      MEMORY_DIR: env.MEMORY_DIR ?? './memory',
       CONSENSUS_WEIGHT_THRESHOLD: consensusWeight,
       SANDBOX_ISOLATION_LEVEL: sandboxIsolation,
-      DIAGNOSTICS_ENABLED: process.env.DIAGNOSTICS_ENABLED !== 'false',
+      DIAGNOSTICS_ENABLED: env.DIAGNOSTICS_ENABLED !== 'false',
       LOG_LEVEL: logLevel,
       PORT: port,
     };
