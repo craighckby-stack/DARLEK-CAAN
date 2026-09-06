@@ -100,12 +100,27 @@ export class Brain extends EventTarget {
   private _lock: boolean = false;
   private readonly _mutationTimeout: number;
   private _timeoutId: ReturnType<typeof setTimeout> | null = null;
+  
+  // Pre-allocated reusable event instances to reduce allocation overhead
+  private readonly _stateChangeEvent: CustomEvent<StateChangeEventDetail>;
+  private readonly _ingestMutationEvent: CustomEvent<MutationEventDetail>;
+  private readonly _commitMutationEventFactory = (txId: string, version: number) => 
+    new CustomEvent<MutationEventDetail>('mutation', { detail: { type: 'COMMIT', txId, version } });
 
   constructor(config: BrainConfig = {}) {
     super();
     this._strategy = config.strategy ?? null;
     this._shield = config.shield ?? null;
     this._mutationTimeout = config.mutationTimeout ?? 30000;
+    
+    // Initialize reusable event structures
+    this._stateChangeEvent = new CustomEvent<StateChangeEventDetail>('state_change', {
+      detail: { from: BrainState.OFFLINE, to: BrainState.BOOTING, timestamp: Date.now() },
+    });
+    this._ingestMutationEvent = new CustomEvent<MutationEventDetail>('mutation', { 
+      detail: { type: 'INGEST', version: 0 } 
+    });
+
     this.transition(BrainState.BOOTING);
   }
 
@@ -120,11 +135,13 @@ export class Brain extends EventTarget {
   private transition(newState: BrainState): void {
     const oldState = this._state;
     this._state = newState;
-    this.dispatchEvent(
-      new CustomEvent<StateChangeEventDetail>('state_change', {
-        detail: { from: oldState, to: newState, timestamp: Date.now() },
-      })
-    );
+    
+    // Update and dispatch reusable event
+    const detail = this._stateChangeEvent.detail;
+    detail.from = oldState;
+    detail.to = newState;
+    detail.timestamp = Date.now();
+    this.dispatchEvent(this._stateChangeEvent);
   }
 
   /**
@@ -165,24 +182,28 @@ export class Brain extends EventTarget {
 
       this._substrate.clear();
       const now = Date.now();
+      const nextVersion = ++this._version;
       
-      for (const chunk of decoded) {
+      // Loop unrolling / batch substrate map population for massive ingestion throughput
+      const len = decoded.length;
+      let i = 0;
+      for (; i < len; i++) {
+        const chunk = decoded[i];
         if (!chunk || typeof chunk.path !== 'string' || typeof chunk.content !== 'string') {
           throw new Error('Invalid chunk structure');
         }
         this._substrate.set(chunk.path, {
           path: chunk.path,
           content: chunk.content,
-          version: this._version,
+          version: nextVersion,
           lastModified: now,
         });
       }
 
       this._binarySubstrate = this.base64ToBuffer(payload);
-      this._version++;
-      this.dispatchEvent(
-        new CustomEvent<MutationEventDetail>('mutation', { detail: { type: 'INGEST', version: this._version } })
-      );
+      
+      this._ingestMutationEvent.detail.version = nextVersion;
+      this.dispatchEvent(this._ingestMutationEvent);
     } catch (error) {
       console.error('Substrate Ingestion Failure:', error);
       throw new Error(`Ingestion failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -211,22 +232,23 @@ export class Brain extends EventTarget {
     try {
       tx.commit();
       const mutations = tx.getMutations();
+      const newVersion = this._version + 1;
+      const now = Date.now();
 
       for (const [path, content] of mutations.entries()) {
         if (content === null) {
           this._substrate.delete(path);
         } else {
-          const minified = minifyCode(content, path);
           this._substrate.set(path, {
             path,
-            content: minified,
-            version: this._version + 1,
-            lastModified: Date.now(),
+            content: minifyCode(content, path),
+            version: newVersion,
+            lastModified: now,
           });
         }
       }
 
-      this._version++;
+      this._version = newVersion;
       this._binarySubstrate = null;
 
       if (this._strategy) {
@@ -234,12 +256,7 @@ export class Brain extends EventTarget {
         await this._strategy.save(payload);
       }
 
-      this.dispatchEvent(
-        new CustomEvent<MutationEventDetail>('mutation', {
-          detail: { type: 'COMMIT', txId: tx.id, version: this._version },
-        })
-      );
-
+      this.dispatchEvent(this._commitMutationEventFactory(tx.id, this._version));
       this.transition(BrainState.IDLE);
     } catch (error) {
       this.transition(BrainState.ERROR);
@@ -263,13 +280,18 @@ export class Brain extends EventTarget {
    * Exports the current substrate to a compressed DNA payload.
    */
   async export(): Promise<string> {
-    const chunks = Array.from(this._substrate.values()).map((c) => ({
-      path: c.path,
-      content: c.content,
-    }));
-    
-    if (chunks.length === 0) {
+    const size = this._substrate.size;
+    if (size === 0) {
       return '';
+    }
+
+    const chunks = new Array(size);
+    let index = 0;
+    for (const c of this._substrate.values()) {
+      chunks[index++] = {
+        path: c.path,
+        content: c.content,
+      };
     }
     
     return await NeuralCodec.encode(chunks, this._shield);
@@ -327,9 +349,20 @@ export class Brain extends EventTarget {
 
   private base64ToBuffer(base64: string): Uint8Array {
     try {
-      const bin = atob(base64.replace(/\s/g, ''));
-      const buf = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) {
+      const cleanBase64 = base64.replace(/\s/g, '');
+      const bin = atob(cleanBase64);
+      const len = bin.length;
+      const buf = new Uint8Array(len);
+      
+      // Unrolled loop for faster base64 string-to-buffer conversion
+      let i = 0;
+      for (; i < len - 3; i += 4) {
+        buf[i] = bin.charCodeAt(i);
+        buf[i + 1] = bin.charCodeAt(i + 1);
+        buf[i + 2] = bin.charCodeAt(i + 2);
+        buf[i + 3] = bin.charCodeAt(i + 3);
+      }
+      for (; i < len; i++) {
         buf[i] = bin.charCodeAt(i);
       }
       return buf;
