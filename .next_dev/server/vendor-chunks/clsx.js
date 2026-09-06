@@ -16,11 +16,11 @@ exports.modules = {
 
     const MAX_RECURSION_DEPTH = 32;
     const hasOwnProperty = Object.prototype.hasOwnProperty;
-    const FORBIDDEN_OBJECT_KEYS = {
+    const FORBIDDEN_OBJECT_KEYS = Object.freeze({
       __proto__: true,
       prototype: true,
       constructor: true
-    };
+    });
 
     /**
      * Appends a class string to an accumulator with a space separator if needed.
@@ -31,7 +31,7 @@ exports.modules = {
      */
     function appendClass(accumulator, nextValue) {
       if (!nextValue) return accumulator;
-      return accumulator ? accumulator + " " + nextValue : nextValue;
+      return accumulator ? `${accumulator} ${nextValue}` : nextValue;
     }
 
     /**
@@ -128,7 +128,7 @@ exports.modules = {
         return "";
       }
 
-      const activeVisited = visited || new Set();
+      const activeVisited = visited ?? new Set();
       const targetObj = value;
 
       if (activeVisited.has(targetObj)) {
