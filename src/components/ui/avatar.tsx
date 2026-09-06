@@ -1,5 +1,10 @@
 "use client"
 
+/**
+ * @fileoverview Avatar UI components built on top of Radix UI primitives.
+ * Provides accessible, customizable avatar, image, and fallback elements.
+ */
+
 import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
 import { cn } from "@/lib/utils"
@@ -16,16 +21,19 @@ export interface AvatarFallbackProps extends React.ComponentPropsWithoutRef<type
   readonly className?: string
 }
 
-const AVATAR_BASE_CLASS = "relative flex size-8 shrink-0 overflow-hidden rounded-full"
-const AVATAR_IMAGE_BASE_CLASS = "aspect-square size-full"
-const AVATAR_FALLBACK_BASE_CLASS = "bg-muted flex size-full items-center justify-center rounded-full"
+const AVATAR_BASE_CLASSES = "relative flex size-8 shrink-0 overflow-hidden rounded-full"
+const AVATAR_IMAGE_BASE_CLASSES = "aspect-square size-full"
+const AVATAR_FALLBACK_BASE_CLASSES = "bg-muted flex size-full items-center justify-center rounded-full"
 
+/**
+ * Root container for the avatar component.
+ */
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
   AvatarProps
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () => (className ? `${AVATAR_BASE_CLASS} ${className}` : AVATAR_BASE_CLASS),
+    () => cn(AVATAR_BASE_CLASSES, className),
     [className]
   )
 
@@ -40,12 +48,15 @@ const Avatar = React.forwardRef<
 })
 Avatar.displayName = AvatarPrimitive.Root.displayName || "Avatar"
 
+/**
+ * Image component rendered within the avatar root.
+ */
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   AvatarImageProps
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () => (className ? `${AVATAR_IMAGE_BASE_CLASS} ${className}` : AVATAR_IMAGE_BASE_CLASS),
+    () => cn(AVATAR_IMAGE_BASE_CLASSES, className),
     [className]
   )
 
@@ -60,12 +71,15 @@ const AvatarImage = React.forwardRef<
 })
 AvatarImage.displayName = AvatarPrimitive.Image.displayName || "AvatarImage"
 
+/**
+ * Fallback component displayed when the avatar image fails to load or load is pending.
+ */
 const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
   AvatarFallbackProps
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () => (className ? cn(AVATAR_FALLBACK_BASE_CLASS, className) : AVATAR_FALLBACK_BASE_CLASS),
+    () => cn(AVATAR_FALLBACK_BASE_CLASSES, className),
     [className]
   )
 
