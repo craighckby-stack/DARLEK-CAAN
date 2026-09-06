@@ -55,7 +55,10 @@ const RATE_LIMIT_DELAY_MS = 300;
 const FETCH_TIMEOUT_MS = 8000;
 
 function isAllowedFile(filePath: string): boolean {
-  return filePath.startsWith('src/') || filePath.startsWith('public/') || ALLOWED_ROOT_FILES.has(filePath);
+  if (filePath.startsWith('src/') || filePath.startsWith('public/')) {
+    return true;
+  }
+  return ALLOWED_ROOT_FILES.has(filePath);
 }
 
 function createGitHubHeaders(token: string): Record<string, string> {
@@ -72,7 +75,12 @@ async function fetchSessionMutations(sessionId: string): Promise<string[]> {
       orderBy: { createdAt: 'desc' },
       select: { filePath: true },
     });
-    return mutations.map((mutation: { filePath: string }) => mutation.filePath);
+    const len = mutations.length;
+    const paths = new Array<string>(len);
+    for (let i = 0; i < len; i++) {
+      paths[i] = mutations[i].filePath;
+    }
+    return paths;
   } catch {
     return [];
   }
@@ -84,8 +92,7 @@ async function fetchRepositoryTreeSources(
   branch: string,
   token: string
 ): Promise<string[]> {
-  const encodedBranch = encodeURIComponent(branch);
-  const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodedBranch}?recursive=1`;
+  const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
   const response = await fetch(treeUrl, { headers: createGitHubHeaders(token) });
 
   if (!response.ok) {
@@ -93,34 +100,56 @@ async function fetchRepositoryTreeSources(
   }
 
   const data = (await response.json()) as GitHubTreeResponse;
-  const treeItems = data.tree ?? [];
+  const treeItems = data.tree;
+  if (!treeItems) {
+    return [];
+  }
 
-  return treeItems
-    .filter((item) => {
-      if (item.type !== 'blob') return false;
+  const itemsLen = treeItems.length;
+  const validPaths: string[] = [];
+
+  for (let i = 0; i < itemsLen; i++) {
+    const item = treeItems[i];
+    if (item.type !== 'blob') continue;
+
+    const p = item.path;
+    if (
+      p.includes('node_modules/') ||
+      p.includes('.next/') ||
+      p.includes('.git/')
+    ) {
+      continue;
+    }
+
+    const lastDotIdx = p.lastIndexOf('.');
+    const extension = lastDotIdx !== -1 ? p.substring(lastDotIdx).toLowerCase() : '';
+    const isSourceExt = SOURCE_EXTENSIONS.has(extension);
+    
+    let isConfigOrRoot = isSourceExt;
+    if (!isConfigOrRoot) {
       if (
-        item.path.includes('node_modules/') ||
-        item.path.includes('.next/') ||
-        item.path.includes('.git/')
+        p.startsWith('next.config.') ||
+        p === 'package.json' ||
+        p === 'tsconfig.json' ||
+        p.startsWith('tailwind.config.') ||
+        p.startsWith('postcss.config.') ||
+        p.startsWith('.eslintrc.')
       ) {
-        return false;
+        isConfigOrRoot = true;
       }
+    }
 
-      const extension = `.${item.path.split('.').pop()?.toLowerCase() ?? ''}`;
-      const isSourceExt = SOURCE_EXTENSIONS.has(extension);
-      const isConfigOrRoot =
-        isSourceExt ||
-        ['next.config', 'package.json', 'tsconfig.json', 'tailwind.config', 'postcss.config', '.eslintrc'].some(
-          (prefix) => item.path === prefix || item.path.startsWith(`${prefix}.`)
-        );
+    if (isConfigOrRoot) {
+      validPaths.push(p);
+    }
+  }
 
-      return isConfigOrRoot;
-    })
-    .map((item) => item.path);
+  return validPaths;
 }
 
 async function createTimestampedBackupDir(projectRoot: string): Promise<{ backupDir: string; timestamp: string }> {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const backupDir = path.join(projectRoot, '.darleK-backups', `pre-reboot-${timestamp}`);
   await fs.mkdir(backupDir, { recursive: true });
   return { backupDir, timestamp };
@@ -137,9 +166,7 @@ async function fetchGitHubFileContent(
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const encodedPath = encodeURIComponent(filePath);
-    const encodedBranch = encodeURIComponent(branch);
-    const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodedBranch}`;
+    const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(branch)}`;
 
     const response = await fetch(fileUrl, {
       headers: createGitHubHeaders(token),
@@ -183,7 +210,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       mutatedFiles = await fetchRepositoryTreeSources(owner, repo, branch, token);
     }
 
-    if (mutatedFiles.length === 0) {
+    const mutatedLen = mutatedFiles.length;
+    if (mutatedLen === 0) {
       return NextResponse.json({
         success: true,
         message: 'No files to reboot — no mutations or repository sources found.',
@@ -197,40 +225,44 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const projectRoot = process.cwd();
     const { backupDir, timestamp } = await createTimestampedBackupDir(projectRoot);
 
-    const results: RebootFileResult[] = [];
+    const results: RebootFileResult[] = new Array(mutatedLen);
     let updatedCount = 0;
     let failedCount = 0;
+    let skippedCount = 0;
 
-    for (const [index, filePath] of mutatedFiles.entries()) {
+    for (let i = 0; i < mutatedLen; i++) {
+      const filePath = mutatedFiles[i];
+
       if (!isAllowedFile(filePath)) {
-        results.push({ file: filePath, status: 'skipped' });
+        results[i] = { file: filePath, status: 'skipped' };
+        skippedCount++;
         continue;
       }
 
       try {
-        if (index > 0) {
+        if (i > 0) {
           await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
         }
 
-        const newContent = await fetchGitHubFileContent(owner, repo, filePath, branch, token);
+        const [newContent, fileExistsInfo] = await Promise.all([
+          fetchGitHubFileContent(owner, repo, filePath, branch, token),
+          fs.stat(path.join(projectRoot, filePath)).then(() => true).catch(() => false)
+        ]);
+
         const localPath = path.join(projectRoot, filePath);
 
-        let fileExists = false;
-        try {
-          await fs.access(localPath);
-          fileExists = true;
-        } catch {
-          fileExists = false;
-        }
-
-        if (fileExists) {
+        if (fileExistsInfo) {
           const backupPath = path.join(backupDir, filePath);
           await fs.mkdir(path.dirname(backupPath), { recursive: true });
-          await fs.copyFile(localPath, backupPath);
+          
+          const [existingContent] = await Promise.all([
+            fs.readFile(localPath, 'utf-8'),
+            fs.copyFile(localPath, backupPath)
+          ]);
 
-          const existingContent = await fs.readFile(localPath, 'utf-8');
           if (existingContent === newContent) {
-            results.push({ file: filePath, status: 'skipped', backup: backupPath });
+            results[i] = { file: filePath, status: 'skipped', backup: backupPath };
+            skippedCount++;
             continue;
           }
         }
@@ -239,21 +271,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         await fs.writeFile(localPath, newContent, 'utf-8');
         updatedCount++;
 
-        results.push({ file: filePath, status: 'updated' });
+        results[i] = { file: filePath, status: 'updated' };
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error encountered';
-        results.push({ file: filePath, status: 'error', error: errorMessage });
+        results[i] = { file: filePath, status: 'error', error: errorMessage };
         failedCount++;
       }
     }
-
-    const skippedCount = results.filter((result) => result.status === 'skipped').length;
     
     return NextResponse.json({
       success: true,
       message: `Reboot complete. ${updatedCount} files updated, ${skippedCount} skipped, ${failedCount} failed.`,
       results,
-      total: mutatedFiles.length,
+      total: mutatedLen,
       updated: updatedCount,
       failed: failedCount,
       backupDir: `.darleK-backups/pre-reboot-${timestamp}`,
