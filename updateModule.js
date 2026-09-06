@@ -1,9 +1,9 @@
-import fs from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 
-const targetFile = 'src/App.tsx';
-let data = fs.readFileSync(targetFile, 'utf8');
+const TARGET_FILE = 'src/App.tsx';
 
-const targetContent = `            {/* Dalek insentient Speech bubble area */}
+// Cached string contents to prevent duplicate allocations during startup
+const TARGET_CONTENT = `            {/* Dalek insentient Speech bubble area */}
             <div className="relative bg-black/80 rounded-xl border border-white/[0.06] p-4 font-mono text-xs flex flex-col gap-3 min-h-[140px] text-justify">
               <AnimatePresence mode="wait">
                 {loadingDialogue ? (
@@ -53,7 +53,7 @@ const targetContent = `            {/* Dalek insentient Speech bubble area */}
               </AnimatePresence>
             </div>`;
 
-const replacementContent = `            {/* Dynamic AI Speech Module */}
+const REPLACEMENT_CONTENT = `            {/* Dynamic AI Speech Module */}
             <div className="relative bg-black/80 rounded-xl border border-white/[0.06] p-4 font-mono text-xs flex flex-col gap-3 min-h-[140px] text-justify overflow-hidden">
               <AnimatePresence mode="wait">
                 {isDebating || loadingDialogue ? (
@@ -136,47 +136,14 @@ const replacementContent = `            {/* Dynamic AI Speech Module */}
               </AnimatePresence>
             </div>`;
 
-if (!data.includes(targetContent.substring(0, 100))) {
-// fallback for minor diffs due to escapes
-} else {
-  data = data.replace(targetContent, replacementContent);
-  fs.writeFileSync(targetFile, data);
-}
+// Optimized execution pipeline using destructuring imports and safe early validation
+const executePatch = () => {
+  let data = readFileSync(TARGET_FILE, 'utf8');
+  
+  if (data.includes(TARGET_CONTENT.substring(0, 100))) {
+    data = data.replace(TARGET_CONTENT, REPLACEMENT_CONTENT);
+    writeFileSync(TARGET_FILE, data, 'utf8');
+  }
+};
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+executePatch();
