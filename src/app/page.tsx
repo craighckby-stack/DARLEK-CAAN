@@ -6,8 +6,8 @@ export const fetchCache = 'default-no-store';
 export const revalidate = 0;
 
 /**
- * Fallback skeleton for PageClient initial suspension boundary.
- * Memoized to eliminate unnecessary re-renders and optimized for minimal paint overhead.
+ * Fallback skeleton for the initial suspension boundary.
+ * Memoized to prevent redundant renders and optimized for minimal paint overhead.
  */
 const PageLoadingSkeleton = memo(function PageLoadingSkeleton(): JSX.Element {
   return (
@@ -23,8 +23,7 @@ const PageLoadingSkeleton = memo(function PageLoadingSkeleton(): JSX.Element {
 PageLoadingSkeleton.displayName = 'PageLoadingSkeleton';
 
 /**
- * Optimized root server page component for src/app/page.tsx.
- * Enforces strict type safety, memory efficiency, and robust Suspense boundaries.
+ * Root server page component enforcing strict type safety and robust suspense architecture.
  */
 export default function Page(): JSX.Element {
   return (
