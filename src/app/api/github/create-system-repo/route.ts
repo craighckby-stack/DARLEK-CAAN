@@ -91,7 +91,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'GitHub Token validation failed.' }, { status: 401 });
     }
 
-    const userPrompt = buildUserPrompt(repoName, description, blueprintName, blueprintContent, prompt);
+    const userPrompt = buildUserPrompt({ repoName, description, blueprintName, blueprintContent, prompt });
     const { compilation, useDeterministicFallback } = await compileBlueprintToFiles({
       systemPrompt: SYSTEM_PROMPT,
       userPrompt,
@@ -106,10 +106,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       upsertReadmeContent(compilation.files, blueprintContent);
     }
 
-    const defaultBranch = await ensureGitHubRepositoryExists(token, owner, repoName, description, blueprintName);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const defaultBranch = await ensureGitHubRepositoryExists({ token, owner, repoName, description, blueprintName });
+    await delay(1000);
 
-    const { pushedFiles, failedFiles } = await pushFilesToGitHub(token, owner, repoName, defaultBranch, compilation.files);
+    const { pushedFiles, failedFiles } = await pushFilesToGitHub({ token, owner, repoName, defaultBranch, files: compilation.files });
 
     return NextResponse.json({
       success: true,
@@ -141,13 +141,15 @@ async function validateGitHubTokenAndGetOwner(token: string): Promise<string | n
   return userData.login || null;
 }
 
-function buildUserPrompt(
-  repoName?: string,
-  description?: string,
-  blueprintName?: string,
-  blueprintContent?: string,
-  prompt?: string
-): string {
+interface UserPromptOptions {
+  repoName?: string;
+  description?: string;
+  blueprintName?: string;
+  blueprintContent?: string;
+  prompt?: string;
+}
+
+function buildUserPrompt({ repoName, description, blueprintName, blueprintContent, prompt }: UserPromptOptions): string {
   return `System/Repository Name: ${repoName}
 Description: ${description || 'No description provided'}
 Attached Specification Document: "${blueprintName || 'None'}"
@@ -162,15 +164,13 @@ User Extra Customization Instructions:
 Synthesize the files JSON structure now. Remember, output ONLY valid raw JSON with exact {"files": [...]} signature representing the compiled Next.js structure. Write dense, beautiful, clean code with zero redundant boilerplate to stay perfectly compact.`;
 }
 
-async function compileBlueprintToFiles(params: {
+interface CompileBlueprintParams extends UserPromptOptions {
   systemPrompt: string;
   userPrompt: string;
   geminiKey: string;
-  repoName?: string;
-  description?: string;
-  blueprintName?: string;
-  blueprintContent?: string;
-}): Promise<{ compilation: CompilationOutput; useDeterministicFallback: boolean }> {
+}
+
+async function compileBlueprintToFiles(params: CompileBlueprintParams): Promise<{ compilation: CompilationOutput; useDeterministicFallback: boolean }> {
   let generatedText: string | null = null;
   let useDeterministicFallback = false;
 
@@ -310,13 +310,15 @@ function upsertReadmeContent(files: RepositoryFile[], blueprintContent: string):
   }
 }
 
-async function ensureGitHubRepositoryExists(
-  token: string,
-  owner: string,
-  repoName: string,
-  description?: string,
-  blueprintName?: string
-): Promise<string> {
+interface EnsureRepoParams {
+  token: string;
+  owner: string;
+  repoName: string;
+  description?: string;
+  blueprintName?: string;
+}
+
+async function ensureGitHubRepositoryExists({ token, owner, repoName, description, blueprintName }: EnsureRepoParams): Promise<string> {
   const existingCheck = await fetch(`https://api.github.com/repos/${owner}/${encodeURIComponent(repoName)}`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -351,13 +353,15 @@ async function ensureGitHubRepositoryExists(
   return repoData.default_branch || 'main';
 }
 
-async function pushFilesToGitHub(
-  token: string,
-  owner: string,
-  repoName: string,
-  defaultBranch: string,
-  files: RepositoryFile[]
-): Promise<{ pushedFiles: string[]; failedFiles: Array<{ file: string; error: string }> }> {
+interface PushFilesParams {
+  token: string;
+  owner: string;
+  repoName: string;
+  defaultBranch: string;
+  files: RepositoryFile[];
+}
+
+async function pushFilesToGitHub({ token, owner, repoName, defaultBranch, files }: PushFilesParams): Promise<{ pushedFiles: string[]; failedFiles: Array<{ file: string; error: string }> }> {
   const pushedFiles: string[] = [];
   const failedFiles: Array<{ file: string; error: string }> = [];
 
@@ -411,10 +415,14 @@ async function pushFilesToGitHub(
       const errMessage = err instanceof Error ? err.message : 'Unknown write error';
       failedFiles.push({ file: file.path, error: errMessage });
     }
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await delay(200);
   }
 
   return { pushedFiles, failedFiles };
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function generateDeterministicFallbackStructure(
