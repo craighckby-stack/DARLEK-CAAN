@@ -2,7 +2,7 @@
  * @file src/lib/omega-bootstrap.ts
  * @module OmegaBootstrap
  * @version 49.2.0
- * @description Sovereign neural bootstrap and initialization sequence optimized for extreme performance, strict type-safety, and zero-allocation execution paths.
+ * @description Sovereign neural bootstrap and initialization sequence optimized for pristine readability, modern idioms, and strict architectural clarity.
  */
 
 export type OmegaBootState = 'READY' | 'INITIALIZING' | 'FAILED';
@@ -19,26 +19,32 @@ export interface OmegaBootSequence {
 
 const DEFAULT_CODE_VERSION = '49.2.0';
 
-// Pre-allocated static success response object to eliminate runtime allocation overhead
-const STATIC_READY_STATUS: Omit<OmegaBootStatus, 'timestamp'> = {
-  status: 'READY',
+/**
+ * Immutable base status payload utilized to construct initialization responses.
+ */
+const BASE_READY_STATUS = Object.freeze({
+  status: 'READY' as const,
   codeVersion: DEFAULT_CODE_VERSION,
-};
+});
+
+/**
+ * Serializes an unknown error into a standardized sovereign bootstrap error message.
+ */
+function createBootstrapError(error: unknown): Error {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  return new Error(`[OmegaBootError] Sovereign initialization sequence failed: ${errorMessage}`);
+}
 
 export const OMEGA_BOOT_SEQUENCE: OmegaBootSequence = {
   __proto__: null,
   async init(): Promise<OmegaBootStatus> {
     try {
-      // Direct property assignment utilizing cached structure to maintain zero-allocation footprint
       return {
-        status: STATIC_READY_STATUS.status,
+        ...BASE_READY_STATUS,
         timestamp: Date.now(),
-        codeVersion: STATIC_READY_STATUS.codeVersion,
       };
     } catch (error: unknown) {
-      // Optimized error serialization avoiding redundant instantiation when already an Error instance
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`[OmegaBootError] Sovereign initialization sequence failed: ${message}`);
+      throw createBootstrapError(error);
     }
   },
 };
