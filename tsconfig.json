@@ -23,6 +23,9 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "tsBuildInfoFile": "./.next/cache/tsconfig.tsbuildinfo",
+    "disableSourceOfProjectReferenceRedirect": true,
+    "disableSolutionSearching": true,
     "plugins": [
       {
         "name": "next"
