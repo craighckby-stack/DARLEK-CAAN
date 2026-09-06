@@ -4,7 +4,7 @@
 
 ## Quick Navigation
 - [API Endpoints](#api-endpoints)
-- [Integration Requirements](#integration)
+- [Integration Requirements](#integration-requirements)
 
 ---
 
@@ -12,11 +12,11 @@
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api` | System health, performance metrics, and node status. |
-| `POST` | `/api` | Agent-orchestration payloads for swarm synchronization. |
+| `GET` | `/api` | Retrieves system health, performance metrics, and node status. |
+| `POST` | `/api` | Submits agent-orchestration payloads for swarm synchronization. |
 
-## Integration
+## Integration Requirements
 
-Engineered for seamless interface with the `sovereign-kernel` and `unitary-core` repositories. 
+Engineered for seamless interfacing with the `sovereign-kernel` and `unitary-core` repositories.
 
 * **Required Header:** `X-Agent-Context` must be included in all incoming requests to guarantee proper routing.
