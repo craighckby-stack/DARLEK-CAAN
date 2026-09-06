@@ -61,22 +61,28 @@ export type PaginationLinkProps = {
 
 const PaginationLink = React.memo(
   React.forwardRef<HTMLAnchorElement, PaginationLinkProps>(
-    ({ className, isActive, size = "icon", ...props }, ref) => (
-      <a
-        ref={ref}
-        aria-current={isActive ? "page" : undefined}
-        data-slot="pagination-link"
-        data-active={isActive}
-        className={cn(
+    ({ className, isActive, size = "icon", ...props }, ref) => {
+      const computedClassName = React.useMemo(() => {
+        return cn(
           buttonVariants({
             variant: isActive ? "outline" : "ghost",
             size,
           }),
           className
-        )}
-        {...props}
-      />
-    )
+        )
+      }, [isActive, size, className])
+
+      return (
+        <a
+          ref={ref}
+          aria-current={isActive ? "page" : undefined}
+          data-slot="pagination-link"
+          data-active={isActive}
+          className={computedClassName}
+          {...props}
+        />
+      )
+    }
   )
 )
 PaginationLink.displayName = "PaginationLink"
@@ -85,18 +91,24 @@ export interface PaginationPreviousProps extends React.ComponentProps<typeof Pag
 
 const PaginationPrevious = React.memo(
   React.forwardRef<HTMLAnchorElement, PaginationPreviousProps>(
-    ({ className, ...props }, ref) => (
-      <PaginationLink
-        ref={ref}
-        aria-label="Go to previous page"
-        size="default"
-        className={cn("gap-1 px-2.5 sm:pl-2.5", className)}
-        {...props}
-      >
-        <ChevronLeftIcon />
-        <span className="hidden sm:block">Previous</span>
-      </PaginationLink>
-    )
+    ({ className, ...props }, ref) => {
+      const computedClassName = React.useMemo(() => {
+        return cn("gap-1 px-2.5 sm:pl-2.5", className)
+      }, [className])
+
+      return (
+        <PaginationLink
+          ref={ref}
+          aria-label="Go to previous page"
+          size="default"
+          className={computedClassName}
+          {...props}
+        >
+          <ChevronLeftIcon />
+          <span className="hidden sm:block">Previous</span>
+        </PaginationLink>
+      )
+    }
   )
 )
 PaginationPrevious.displayName = "PaginationPrevious"
@@ -105,18 +117,24 @@ export interface PaginationNextProps extends React.ComponentProps<typeof Paginat
 
 const PaginationNext = React.memo(
   React.forwardRef<HTMLAnchorElement, PaginationNextProps>(
-    ({ className, ...props }, ref) => (
-      <PaginationLink
-        ref={ref}
-        aria-label="Go to next page"
-        size="default"
-        className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
-        {...props}
-      >
-        <span className="hidden sm:block">Next</span>
-        <ChevronRightIcon />
-      </PaginationLink>
-    )
+    ({ className, ...props }, ref) => {
+      const computedClassName = React.useMemo(() => {
+        return cn("gap-1 px-2.5 sm:pr-2.5", className)
+      }, [className])
+
+      return (
+        <PaginationLink
+          ref={ref}
+          aria-label="Go to next page"
+          size="default"
+          className={computedClassName}
+          {...props}
+        >
+          <span className="hidden sm:block">Next</span>
+          <ChevronRightIcon />
+        </PaginationLink>
+      )
+    }
   )
 )
 PaginationNext.displayName = "PaginationNext"
@@ -125,18 +143,24 @@ export interface PaginationEllipsisProps extends React.ComponentProps<"span"> {}
 
 const PaginationEllipsis = React.memo(
   React.forwardRef<HTMLSpanElement, PaginationEllipsisProps>(
-    ({ className, ...props }, ref) => (
-      <span
-        ref={ref}
-        aria-hidden
-        data-slot="pagination-ellipsis"
-        className={cn("flex size-9 items-center justify-center", className)}
-        {...props}
-      >
-        <MoreHorizontalIcon className="size-4" />
-        <span className="sr-only">More pages</span>
-      </span>
-    )
+    ({ className, ...props }, ref) => {
+      const computedClassName = React.useMemo(() => {
+        return cn("flex size-9 items-center justify-center", className)
+      }, [className])
+
+      return (
+        <span
+          ref={ref}
+          aria-hidden
+          data-slot="pagination-ellipsis"
+          className={computedClassName}
+          {...props}
+        >
+          <MoreHorizontalIcon className="size-4" />
+          <span className="sr-only">More pages</span>
+        </span>
+      )
+    }
   )
 )
 PaginationEllipsis.displayName = "PaginationEllipsis"
