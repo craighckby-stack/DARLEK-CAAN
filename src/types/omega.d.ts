@@ -1,6 +1,6 @@
 /**
  * @file src/types/omega.d.ts
- * @version 4.9.0-core
+ * @version 4.9.1-core-opt
  * @description Sovereign Neural Code Optimized Type Definitions
  */
 
