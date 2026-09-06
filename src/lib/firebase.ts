@@ -29,14 +29,14 @@ export const db = initializeFirestore(
 
 export const auth = getAuth(app);
 
-async function testConnection(): Promise<void> {
+const testConnection = async (): Promise<void> => {
   try {
     await getDocFromServer(doc(db, 'world_test', 'connection'));
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.warn(`Firestore service is in local/offline sandbox fallback mode: ${errorMsg}`);
   }
-}
+};
 
 if (!auth.currentUser) {
   signInAnonymously(auth).catch((err: unknown) => {
