@@ -10,21 +10,23 @@ export interface SkeletonProps extends React.ComponentProps<"div"> {
 
 const SkeletonComponent = React.forwardRef<HTMLDivElement, SkeletonProps>(
   ({ className, style, width, height, ...props }, ref) => {
-    const computedStyle = React.useMemo<React.CSSProperties>(
-      () => ({
-        ...(width !== undefined && { width }),
-        ...(height !== undefined && { height }),
-        ...style,
-      }),
-      [width, height, style]
-    )
+    const computedStyle = React.useMemo<React.CSSProperties>(() => {
+      const s: React.CSSProperties = style ? { ...style } : {}
+      if (width !== undefined) s.width = width
+      if (height !== undefined) s.height = height
+      return s
+    }, [width, height, style])
+
+    const computedClassName = React.useMemo(() => {
+      return cn("bg-accent animate-pulse rounded-md", className)
+    }, [className])
 
     return (
       <div
         ref={ref}
         data-slot="skeleton"
         style={computedStyle}
-        className={cn("bg-accent animate-pulse rounded-md", className)}
+        className={computedClassName}
         {...props}
       />
     )
