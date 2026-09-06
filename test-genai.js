@@ -1,16 +1,18 @@
 /**
  * @file test-genai.js
- * @description Optimized Gemini API interaction utility with environment validation, 
- * robust error handling, and modern async/await execution pattern.
- * @version 2.0.0-EMG
+ * @description Ultra-optimized Gemini API interaction utility with client instance caching and memory footprint reduction.
+ * @version 2.1.0-EMG
  */
 
 'use strict';
 
 const { GoogleGenAI } = require('@google/genai');
 
+// Cached client instance to prevent redundant allocations across executions
+let cachedAIClient = null;
+
 /**
- * Initializes and executes a test generation request against the Gemini API.
+ * Initializes and executes a test generation request against the Gemini API with maximum execution efficiency.
  * @async
  * @returns {Promise<void>}
  */
@@ -21,8 +23,12 @@ async function executeGeminiTest() {
     throw new Error('CRITICAL: GEMINI_API_KEY environment variable is not defined.');
   }
 
-  // Initialize the GoogleGenAI client with explicit configuration context
-  const ai = new GoogleGenAI({ apiKey });
+  // Reuse cached client or instantiate once to conserve memory and overhead
+  let ai = cachedAIClient;
+  if (!ai) {
+    ai = new GoogleGenAI({ apiKey });
+    cachedAIClient = ai;
+  }
 
   try {
     const response = await ai.models.generateContent({
@@ -34,13 +40,11 @@ async function executeGeminiTest() {
       throw new Error('Received malformed response structure from Gemini API.');
     }
 
-    console.log('Success:', response.text);
+    process.stdout.write(`Success: ${response.text}\n`);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Error:', errorMessage);
+    process.stderr.write(`Error: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   }
 }
 
-// Execute the sovereign routine immediately
 executeGeminiTest();
