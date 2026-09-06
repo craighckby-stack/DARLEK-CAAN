@@ -61,7 +61,7 @@ interface ActionDefinition {
 }
 
 // ============================================================================
-// CONSTANTS (Hoisted outside component scope to prevent memory reallocation)
+// CONSTANTS
 // ============================================================================
 
 const QUICK_ACTION_REGISTRY: ActionDefinition[] = [
@@ -91,7 +91,7 @@ const CUSTOM_CYCLE_VALUES = [2, 3, 4, 15, 20, 50, 100] as const;
 // SUB-COMPONENTS
 // ============================================================================
 
-interface ToggleSwitchProps {
+interface ControlToggleProps {
   active: boolean;
   activeColor: string;
   label: string;
@@ -100,7 +100,14 @@ interface ToggleSwitchProps {
   title: string;
 }
 
-const ControlToggle = memo(function ControlToggle({ active, activeColor, label, icon, onToggle, title }: ToggleSwitchProps) {
+const ControlToggle = memo(function ControlToggle({ 
+  active, 
+  activeColor, 
+  label, 
+  icon, 
+  onToggle, 
+  title 
+}: ControlToggleProps) {
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onToggle();
@@ -142,10 +149,6 @@ const ControlToggle = memo(function ControlToggle({ active, activeColor, label, 
   );
 });
 
-// ============================================================================
-// MEMOIZED INDIVIDUAL ACTION BUTTON COMPONENT
-// ============================================================================
-
 interface ActionButtonProps {
   id: string;
   label: string;
@@ -176,43 +179,52 @@ const ActionButton = memo(function ActionButton({
   onAction,
 }: ActionButtonProps) {
   
-  // Inline resolution for zero-overhead performance
-  let isBusy = false;
-  let resolvedColor = color;
+  const { isBusy, resolvedColor, busyLabel } = useMemo(() => {
+    let busy = false;
+    let resColor = color;
+    let bLabel = label;
 
-  if (id === 'push-enhancements') {
-    isBusy = pushStatus === 'pushing';
-    if (pushStatus === 'success') resolvedColor = COLORS.green;
-    if (pushStatus === 'error') resolvedColor = COLORS.dalekRed;
-  } else if (id === 'deploy-new-repo') {
-    isBusy = deployStatus === 'deploying';
-    if (deployStatus === 'success') resolvedColor = COLORS.green;
-    if (deployStatus === 'error') resolvedColor = COLORS.dalekRed;
-  } else if (id === 'reboot-system') {
-    isBusy = rebootStatus === 'rebooting';
-    if (rebootStatus === 'success') resolvedColor = COLORS.green;
-    if (rebootStatus === 'error') resolvedColor = COLORS.dalekRed;
-  } else if (id === 'undo-mutation') {
-    isBusy = undoStatus === 'undoing';
-    if (undoStatus === 'success') resolvedColor = COLORS.green;
-    if (undoStatus === 'error') resolvedColor = COLORS.dalekRed;
-  } else if (id === 'bulk-commit') {
-    isBusy = bulkCommitStatus === 'committing';
-    if (bulkCommitStatus === 'success') resolvedColor = COLORS.green;
-    if (bulkCommitStatus === 'error') resolvedColor = COLORS.dalekRed;
-  } else if (id === 'propose-all' && batchMode) {
-    resolvedColor = '#00ccff';
-  }
+    switch (id) {
+      case 'push-enhancements':
+        busy = pushStatus === 'pushing';
+        if (pushStatus === 'success') resColor = COLORS.green;
+        if (pushStatus === 'error') resColor = COLORS.dalekRed;
+        if (pushStatus === 'pushing') bLabel = 'PUSHING...';
+        break;
+      case 'deploy-new-repo':
+        busy = deployStatus === 'deploying';
+        if (deployStatus === 'success') resColor = COLORS.green;
+        if (deployStatus === 'error') resColor = COLORS.dalekRed;
+        if (deployStatus === 'deploying') bLabel = 'DEPLOYING...';
+        break;
+      case 'reboot-system':
+        busy = rebootStatus === 'rebooting';
+        if (rebootStatus === 'success') resColor = COLORS.green;
+        if (rebootStatus === 'error') resColor = COLORS.dalekRed;
+        if (rebootStatus === 'rebooting') bLabel = 'REBOOTING...';
+        break;
+      case 'undo-mutation':
+        busy = undoStatus === 'undoing';
+        if (undoStatus === 'success') resColor = COLORS.green;
+        if (undoStatus === 'error') resColor = COLORS.dalekRed;
+        if (undoStatus === 'undoing') bLabel = 'UNDOING...';
+        break;
+      case 'bulk-commit':
+        busy = bulkCommitStatus === 'committing';
+        if (bulkCommitStatus === 'success') resColor = COLORS.green;
+        if (bulkCommitStatus === 'error') resColor = COLORS.dalekRed;
+        if (bulkCommitStatus === 'committing') bLabel = 'COMMITTING...';
+        break;
+      case 'propose-all':
+        if (batchMode) resColor = '#00ccff';
+        break;
+    }
+
+    return { isBusy: busy, resolvedColor: resColor, busyLabel: bLabel };
+  }, [id, label, color, batchMode, pushStatus, deployStatus, rebootStatus, undoStatus, bulkCommitStatus]);
 
   const isActionDisabled = disabled || isBusy;
   const isProposeAllActiveBatch = id === 'propose-all' && batchMode;
-
-  let busyLabel = label;
-  if (id === 'push-enhancements' && pushStatus === 'pushing') busyLabel = 'PUSHING...';
-  else if (id === 'deploy-new-repo' && deployStatus === 'deploying') busyLabel = 'DEPLOYING...';
-  else if (id === 'reboot-system' && rebootStatus === 'rebooting') busyLabel = 'REBOOTING...';
-  else if (id === 'undo-mutation' && undoStatus === 'undoing') busyLabel = 'UNDOING...';
-  else if (id === 'bulk-commit' && bulkCommitStatus === 'committing') busyLabel = 'COMMITTING...';
 
   const handleClick = useCallback(() => {
     onAction(id);
@@ -294,23 +306,22 @@ export default function QuickActions({
   onSaturationLevelChange,
 }: QuickActionsProps) {
 
-  // Memoized callback handlers to avoid allocation overhead during renders
   const handleLazyAssClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onEngageLazyAssCycle) onEngageLazyAssCycle();
+    onEngageLazyAssCycle?.();
   }, [onEngageLazyAssCycle]);
 
   const handleHallucinationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (onHallucinationLevelChange) onHallucinationLevelChange(Number(e.target.value));
+    onHallucinationLevelChange?.(Number(e.target.value));
   }, [onHallucinationLevelChange]);
 
   const handleSaturationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (onSaturationLevelChange) onSaturationLevelChange(Number(e.target.value));
+    onSaturationLevelChange?.(Number(e.target.value));
   }, [onSaturationLevelChange]);
 
   const handleCycleSelectChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    if (e.target.value && onCycleAmountChange) {
-      onCycleAmountChange(Number(e.target.value));
+    if (e.target.value) {
+      onCycleAmountChange?.(Number(e.target.value));
     }
   }, [onCycleAmountChange]);
 
@@ -417,7 +428,7 @@ export default function QuickActions({
           </div>
         </div>
 
-        {/* Reconfiguration Panel (Risk, Hallucination, Saturation, Cycles) */}
+        {/* Reconfiguration Panel */}
         <div id="reconfigure-button" className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1.5 p-2 bg-black/60 border border-red-950/20 rounded">
           
           {/* Risk Level Selector */}
