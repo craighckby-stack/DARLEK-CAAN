@@ -4,7 +4,7 @@ import { useState, useEffect, type JSX } from 'react';
 import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-interface LoadingScreenProps {
+interface LoadingScreenProperties {
   readonly message: string;
 }
 
@@ -12,7 +12,7 @@ interface LoadingScreenProps {
  * Terminal-styled loading indicator maintaining visual continuity
  * during client-side hydration and dynamic bundle resolution.
  */
-function LoadingScreen({ message }: LoadingScreenProps): JSX.Element {
+function LoadingScreen({ message }: LoadingScreenProperties): JSX.Element {
   return (
     <div
       className="min-h-screen flex items-center justify-center font-mono text-xs"
@@ -25,7 +25,7 @@ function LoadingScreen({ message }: LoadingScreenProps): JSX.Element {
   );
 }
 
-const MainPage = dynamic(() => import('@/components/MainPage'), {
+const DynamicMainPage = dynamic(() => import('@/components/MainPage'), {
   ssr: false,
   loading: () => <LoadingScreen message="[DARLEK CAAN] SYNAPSE INJECTION IN PROGRESS..." />,
 });
@@ -35,17 +35,17 @@ const MainPage = dynamic(() => import('@/components/MainPage'), {
  * and rendering the core application safely within an ErrorBoundary.
  */
 export default function PageClient(): JSX.Element {
-  const [isMounted, setIsMounted] = useState<boolean>(false);
+  const [hasMounted, setHasMounted] = useState<boolean>(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    setHasMounted(true);
   }, []);
 
-  const content = isMounted ? (
-    <MainPage />
+  const applicationContent = hasMounted ? (
+    <DynamicMainPage />
   ) : (
     <LoadingScreen message="[DARLEK CAAN] INITIALIZING COGNITIVE DOMINANCE ENGINE..." />
   );
 
-  return <ErrorBoundary>{content}</ErrorBoundary>;
+  return <ErrorBoundary>{applicationContent}</ErrorBoundary>;
 }
