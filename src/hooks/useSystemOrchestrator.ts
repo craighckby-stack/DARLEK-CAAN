@@ -6,6 +6,8 @@ export interface UseSystemOrchestratorReturn {
   readonly latency: number;
 }
 
+const HANDSHAKE_DELAY_MS = 150;
+
 export const useSystemOrchestrator = (state: SystemState): UseSystemOrchestratorReturn => {
   const [isReady, setIsReady] = useState<boolean>(false);
   const [latency, setLatency] = useState<number>(0);
@@ -19,17 +21,18 @@ export const useSystemOrchestrator = (state: SystemState): UseSystemOrchestrator
     };
   }, []);
 
-  const handleHandshake = useCallback(() => {
-    const start = performance.now();
-    let timer: ReturnType<typeof setTimeout> | null = null;
+  const executeHandshake = useCallback((): (() => void) => {
+    const startTime = performance.now();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     try {
-      timer = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         if (!isMountedRef.current) return;
-        const computedLatency = performance.now() - start;
+        
+        const computedLatency = performance.now() - startTime;
         setLatency(computedLatency);
         setIsReady(true);
-      }, 150);
+      }, HANDSHAKE_DELAY_MS);
     } catch (error) {
       if (isMountedRef.current) {
         setIsReady(false);
@@ -39,16 +42,16 @@ export const useSystemOrchestrator = (state: SystemState): UseSystemOrchestrator
     }
 
     return () => {
-      if (timer) {
-        clearTimeout(timer);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
   }, []);
 
   useEffect(() => {
-    const cleanup = handleHandshake();
-    return cleanup;
-  }, [state.evolutionCycle, handleHandshake]);
+    const cleanupHandshake = executeHandshake();
+    return cleanupHandshake;
+  }, [state.evolutionCycle, executeHandshake]);
 
   return { isReady, latency };
 };
