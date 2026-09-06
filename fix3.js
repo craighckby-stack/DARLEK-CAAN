@@ -10,15 +10,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-/**
- * Pattern configuration interface for code transformations.
- * @typedef {Object} TransformationConfig
- * @property {string} relativePath - Target file path relative to current working directory.
- * @property {RegExp} pattern - Regular expression matching target pattern.
- * @property {string} replacement - Escaped replacement string.
- */
-
-/** @type {Readonly<TransformationConfig>} */
+/** @type {Readonly<{relativePath: string, pattern: RegExp, replacement: string}>} */
 const CONFIG = Object.freeze({
   relativePath: 'src/app/api/evolution/propose/route.ts',
   pattern: /siphonedCodeContext\}\n```\n\$\{fileContent/g,
@@ -39,27 +31,13 @@ function isPathSecure(baseDir, targetPath) {
 }
 
 /**
- * Safely retrieves file statistics, handling non-existent paths gracefully.
- * 
- * @param {string} filePath - Absolute path to the file.
- * @returns {import('fs').Stats | null} The file stats or null if unavailable.
- */
-function getFileStatsOrNull(filePath) {
-  try {
-    return fs.lstatSync(filePath);
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Executes an idempotent, resilient code patch operation on the target route file.
  * Performs strict path validation, traversal protection, zero-write bypass, and comprehensive error containment.
  * 
  * @returns {boolean} True if the file was modified, false otherwise.
  */
 function applyEvolutionPatch() {
-  const baseDir = path.resolve(process.cwd());
+  const baseDir = path.resolve();
   const resolvedPath = path.resolve(baseDir, CONFIG.relativePath);
 
   if (!isPathSecure(baseDir, resolvedPath)) {
@@ -68,8 +46,10 @@ function applyEvolutionPatch() {
     return false;
   }
 
-  const stats = getFileStatsOrNull(resolvedPath);
-  if (!stats) {
+  let stats;
+  try {
+    stats = fs.lstatSync(resolvedPath);
+  } catch {
     console.warn(`[EMG Core] Target file omitted - non-existent path: "${resolvedPath}"`);
     return false;
   }
@@ -105,8 +85,7 @@ function applyEvolutionPatch() {
     console.log(`[EMG Core] Sovereign transformation applied successfully to "${CONFIG.relativePath}".`);
     return true;
   } catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    console.error(`[EMG Core] Critical failure during file transformation execution: ${err.message}`);
+    console.error(`[EMG Core] Critical failure during file transformation execution: ${error instanceof Error ? error.message : error}`);
     process.exitCode = 1;
     return false;
   }
