@@ -23,6 +23,9 @@ const MUTATION_ACTION = 'get-mutation-history';
 const EMPTY_MUTATIONS: MutationRecord[] = [];
 const FETCH_HEADERS = { 'Content-Type': 'application/json' };
 
+/**
+ * Fetches and validates mutation history records from the backend API.
+ */
 async function fetchMutationHistory(
   sessionId: string,
   signal: AbortSignal
@@ -44,23 +47,16 @@ async function fetchMutationHistory(
   const data = (await response.json()) as BrainApiResponse;
   const rawMutations = data?.mutations;
 
-  if (!Array.isArray(rawMutations)) {
+  if (!Array.isArray(rawMutations) || rawMutations.length === 0) {
     return EMPTY_MUTATIONS;
   }
 
-  const len = rawMutations.length;
-  if (len === 0) {
-    return EMPTY_MUTATIONS;
-  }
-
-  const optimizedArray = new Array(len);
-  for (let i = 0; i < len; ++i) {
-    optimizedArray[i] = rawMutations[i] as MutationRecord;
-  }
-
-  return optimizedArray;
+  return rawMutations as MutationRecord[];
 }
 
+/**
+ * Custom React hook for fetching and managing session mutation history data.
+ */
 export function useMutationData(
   sessionId: string | null | undefined,
   trigger?: number
