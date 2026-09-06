@@ -14,31 +14,38 @@ export interface GitHubHeaders extends Readonly<Record<string, string>> {
   readonly 'Content-Type': 'application/json';
 }
 
-const HEADER_CACHE = new Map<string, GitHubHeaders>();
+const headerCache = new Map<string, GitHubHeaders>();
 
-export const DEFAULT_HEADERS = (token: string): GitHubHeaders => {
+/**
+ * Validates and normalizes a GitHub authentication token.
+ */
+function assertValidToken(token: unknown): asserts token is string {
   if (typeof token !== 'string') {
     throw new TypeError('A valid string token is required to construct GitHub API headers.');
   }
 
-  const cached = HEADER_CACHE.get(token);
-  if (cached !== undefined) {
-    return cached;
+  if (token.trim().length === 0) {
+    throw new TypeError('A valid, non-empty string token is required to construct GitHub API headers.');
+  }
+}
+
+/**
+ * Generates or retrieves cached standardized GitHub API headers.
+ */
+export const DEFAULT_HEADERS = (token: string): GitHubHeaders => {
+  assertValidToken(token);
+
+  const cachedHeaders = headerCache.get(token);
+  if (cachedHeaders !== undefined) {
+    return cachedHeaders;
   }
 
-  if (token.length === 0 || token.charCodeAt(0) === 32) {
-    const trimmed = token.trim();
-    if (trimmed.length === 0) {
-      throw new TypeError('A valid, non-empty string token is required to construct GitHub API headers.');
-    }
-  }
-
-  const headers: GitHubHeaders = Object.freeze({
+  const newHeaders: GitHubHeaders = Object.freeze({
     Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
   });
 
-  HEADER_CACHE.set(token, headers);
-  return headers;
+  headerCache.set(token, newHeaders);
+  return newHeaders;
 };
