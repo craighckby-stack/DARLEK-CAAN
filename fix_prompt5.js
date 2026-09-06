@@ -14,7 +14,7 @@ const ALLOWED_BASE_DIR = path.resolve('src/app/api/evolution');
 const TARGET_RELATIVE_PATH = path.join('src', 'app', 'api', 'evolution', 'propose', 'route.ts');
 
 // Pre-compiled regex and static replacement buffer to eliminate runtime compilation overhead
-const MALFORMED_BLOCK_REGEX = /\\`\\`\\`tsx\\n\/\/ Complete proposed code for the active file goes here\.\\n\/\/ MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`\}``````tsx\/\/ Complete proposed code for the active file goes here\.\/\/ MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS```/;
+const MALFORMED_BLOCK_REGEX = /\\`\\`\\`tsx\\n\/\/ Complete proposed code for the active file goes here\.\\n\/\/ MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`\}``````tsx\/\/ Complete proposed code for the active file goes here\.\/\/ MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS/;
 const PRISTINE_REPLACEMENT = "\\`\\`\\`\\n`";
 
 /**
