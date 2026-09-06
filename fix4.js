@@ -5,32 +5,28 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-const fs = require('fs');
-const path = require('path');
+'use strict';
 
-// Resolve path securely and validate input boundaries
-const targetPath = path.resolve('src/app/api/evolution/propose/route.ts');
-const normalizedPath = path.normalize(targetPath);
+const { readFileSync, writeFileSync, statSync } = require('fs');
+const { resolve, normalize, sep } = require('path');
 
-// Ensure the path stays within expected project boundaries to prevent path traversal
-if (!normalizedPath.startsWith(path.resolve('src'))) {
+const TARGET_REL = 'src/app/api/evolution/propose/route.ts';
+const BASE_DIR = resolve('src');
+const targetPath = normalize(resolve(TARGET_REL));
+
+if (!targetPath.startsWith(BASE_DIR + sep) && targetPath !== BASE_DIR) {
     throw new Error('Security Violation: Access denied to path outside target boundary.');
 }
 
-// Read file with explicit UTF-8 encoding and bounded size checks
-const stats = fs.statSync(normalizedPath);
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit to prevent memory overflow
-if (stats.size > MAX_FILE_SIZE) {
+const stats = statSync(targetPath);
+if (stats.size > 10485760) {
     throw new Error('Security Violation: File size exceeds safe memory thresholds.');
 }
 
-let code = fs.readFileSync(normalizedPath, 'utf8');
+let code = readFileSync(targetPath, 'utf8');
 
-// Strict pattern replacement using safer string escaping and boundaries
 const targetPattern = /siphonedCodeContext\}\r?\n```\r?\n\$\{fileContent/g;
-const replacementString = "siphonedCodeContext}\n\\`\\`\\`\n${fileContent";
-
 if (targetPattern.test(code)) {
-    code = code.replace(targetPattern, replacementString);
-    fs.writeFileSync(normalizedPath, code, 'utf8');
+    code = code.replace(targetPattern, 'siphonedCodeContext}\n\\`\\`\\`\n${fileContent');
+    writeFileSync(targetPath, code, 'utf8');
 }
