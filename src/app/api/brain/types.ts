@@ -1,19 +1,19 @@
 /**
  * @file src/app/api/brain/types.ts
  * @module NeuralCode/BrainTypes
- * @version 49.1.0
+ * @version 49.2.0
  * @description Sovereign type definitions for neural mutations and cognitive health metrics.
  */
 
 /**
- * Represents the lifecycle status of a neural code mutation.
+ * Represents the current execution lifecycle status of a neural code mutation.
  * @public
  */
 export type MutationStatus = 'pending' | 'applied' | 'rejected';
 
 /**
  * Immutable payload structure describing a code mutation event.
- * Enforces strict readonly boundaries for memory efficiency and state predictability.
+ * Enforces strict readonly boundaries for optimal memory efficiency and state predictability.
  * @public
  */
 export interface MutationPayload {
@@ -25,7 +25,7 @@ export interface MutationPayload {
 }
 
 /**
- * Quantitative telemetry metrics measuring structural and semantic health.
+ * Quantitative telemetry metrics measuring structural integrity and semantic health.
  * @public
  */
 export interface HealthMetrics {
