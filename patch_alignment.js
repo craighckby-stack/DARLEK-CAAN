@@ -1,7 +1,7 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "patch_alignment.js"
- * Objective: Enhance READABILITY via modern idioms, descriptive naming, and modular decomposition.
+ * Objective: PERFORMANCE - High execution speed, memory footprint reduction, avoiding unnecessary allocations.
  */
 
 'use strict';
@@ -29,35 +29,47 @@ const EDGE_GOVERNANCE_VALIDATION_BLOCK = `
     }`;
 const CHECK_COUNTER_REPLACEMENT = `${CHECK_COUNTER_TARGET}\n${EDGE_GOVERNANCE_VALIDATION_BLOCK}`;
 
+/** Pre-compiled RegExp cache for zero-allocation pattern generation. */
+const REGEXP_CACHE = new Map();
+
 /**
- * Escapes special regex characters in a string for safe RegExp construction.
- * @param {string} rawString - The raw string to escape.
- * @returns {string} The escaped safe string.
+ * Retrieves a cached global RegExp for the given target string, eliminating dynamic compilation overhead.
+ * @param {string} target - The exact substring to locate.
+ * @returns {RegExp} The compiled global RegExp.
  */
-function escapeRegExp(rawString) {
-  return rawString.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function getCachedRegExp(target) {
+  let pattern = REGEXP_CACHE.get(target);
+  if (pattern === undefined) {
+    pattern = new RegExp(target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    REGEXP_CACHE.set(target, pattern);
+  } else {
+    pattern.lastIndex = 0;
+  }
+  return pattern;
 }
 
 /**
- * Performs a safe string replacement on source code utilizing escaped targets.
+ * Performs a high-performance string replacement utilizing cached RegExp patterns.
  * @param {string} sourceCode - The original source code content.
  * @param {string} target - The exact substring to locate and replace.
  * @param {string} replacement - The replacement content.
  * @returns {string} The updated source code.
  */
 function injectPatch(sourceCode, target, replacement) {
-  const pattern = new RegExp(escapeRegExp(target), 'g');
-  return sourceCode.replace(pattern, replacement);
+  return sourceCode.replace(getCachedRegExp(target), replacement);
 }
 
 /**
- * Applies architectural patch alignments to the target AGI engine source code.
+ * Applies architectural patch alignments to the target AGI engine source code with minimal memory allocation.
  */
 function applyPatchAlignment() {
   const originalSource = readFileSync(TARGET_FILE_PATH, 'utf8');
 
-  let updatedSource = injectPatch(originalSource, OVERSEER_PATCH_TARGET, OVERSEER_PATCH_REPLACEMENT);
-  updatedSource = injectPatch(updatedSource, CHECK_COUNTER_TARGET, CHECK_COUNTER_REPLACEMENT);
+  const updatedSource = injectPatch(
+    injectPatch(originalSource, OVERSEER_PATCH_TARGET, OVERSEER_PATCH_REPLACEMENT),
+    CHECK_COUNTER_TARGET,
+    CHECK_COUNTER_REPLACEMENT
+  );
 
   writeFileSync(TARGET_FILE_PATH, updatedSource, 'utf8');
 }
