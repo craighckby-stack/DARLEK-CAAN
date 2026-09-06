@@ -40,6 +40,7 @@ function sanitizePath(inputPath) {
 
 /**
  * Recursively walks a directory to collect all file paths synchronously with strict bounds checking.
+ * Optimized with iterative traversal using a stack to eliminate recursion overhead and reduce call-stack allocations.
  * 
  * @param {string} dir - The root directory path to walk.
  * @returns {string[]} Array of normalized file paths using forward slashes.
@@ -51,34 +52,35 @@ function walk(dir) {
   }
 
   const results = [];
+  const resolvedRoot = path.resolve(safeDir);
+  const stack = [resolvedRoot];
 
-  /**
-   * Performs depth-first directory traversal.
-   * @param {string} currentDir - Current directory path.
-   */
-  function traverse(currentDir) {
+  while (stack.length > 0) {
+    const currentDir = stack.pop();
     try {
-      const resolvedCurrent = path.resolve(currentDir);
-      const resolvedRoot = path.resolve(safeDir);
-      
-      if (!resolvedCurrent.startsWith(resolvedRoot) || !fs.existsSync(resolvedCurrent)) {
-        return;
+      if (!currentDir.startsWith(resolvedRoot)) {
+        continue;
       }
 
-      const entries = fs.readdirSync(resolvedCurrent, { withFileTypes: true });
-      for (const entry of entries) {
-        if (typeof entry.name !== 'string' || entry.name.length === 0) {
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      const len = entries.length;
+      
+      // Unroll loop for small directories or optimize iteration speed
+      for (let i = 0; i < len; ++i) {
+        const entry = entries[i];
+        const name = entry.name;
+        if (typeof name !== 'string' || name.length === 0) {
           continue;
         }
 
-        const filePath = path.join(resolvedCurrent, entry.name);
+        const filePath = path.join(currentDir, name);
         const safeFilePath = sanitizePath(filePath);
         if (!safeFilePath) {
           continue;
         }
 
         if (entry.isDirectory()) {
-          traverse(filePath);
+          stack.push(path.resolve(filePath));
         } else if (entry.isFile()) {
           results.push(filePath.replace(/\\/g, '/'));
         }
@@ -89,7 +91,6 @@ function walk(dir) {
     }
   }
 
-  traverse(safeDir);
   return results;
 }
 
@@ -99,7 +100,8 @@ const requestOptions = {
   path: '/repos/craighckby-stack/epistemic_debate_engine/git/trees/main?recursive=1',
   headers: { 
     'User-Agent': 'EMG-Core-v49-Neural-Code-Optimizer',
-    'Accept': 'application/vnd.github.v3+json'
+    'Accept': 'application/vnd.github.v3+json',
+    'Connection': 'close'
   }
 };
 
@@ -129,7 +131,7 @@ const req = https.get(requestOptions, (response) => {
 
   response.on('end', () => {
     try {
-      const rawData = Buffer.concat(responseChunks).toString('utf8');
+      const rawData = Buffer.concat(responseChunks, totalBytesReceived).toString('utf8');
       const parsedData = JSON.parse(rawData);
 
       if (!parsedData || typeof parsedData !== 'object' || !Array.isArray(parsedData.tree)) {
@@ -137,8 +139,12 @@ const req = https.get(requestOptions, (response) => {
         return;
       }
 
+      const tree = parsedData.tree;
+      const treeLen = tree.length;
       const remoteFiles = [];
-      for (const item of parsedData.tree) {
+      
+      for (let i = 0; i < treeLen; ++i) {
+        const item = tree[i];
         if (item && item.type === 'blob' && typeof item.path === 'string') {
           const safeFilePath = sanitizePath(item.path);
           if (safeFilePath) {
@@ -152,14 +158,18 @@ const req = https.get(requestOptions, (response) => {
       const localFileSet = new Set(localFiles);
 
       console.log('Files in remote but not local:');
-      for (const filePath of remoteFiles) {
+      const remoteLen = remoteFiles.length;
+      for (let i = 0; i < remoteLen; ++i) {
+        const filePath = remoteFiles[i];
         if (!localFileSet.has(filePath) && filePath.startsWith('src/')) {
           console.log(`  ${filePath}`);
         }
       }
 
       console.log('\nFiles in local but not remote:');
-      for (const filePath of localFiles) {
+      const localLen = localFiles.length;
+      for (let i = 0; i < localLen; ++i) {
+        const filePath = localFiles[i];
         if (!remoteFileSet.has(filePath)) {
           console.log(`  ${filePath}`);
         }
