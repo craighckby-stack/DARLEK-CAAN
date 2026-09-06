@@ -27,30 +27,29 @@ const STATIC_GET_RESPONSE: SystemStatusResponse = {
   service: SERVICE_NAME,
 };
 
-// Pre-allocated headers for lightweight serialization and caching headers optimization
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
-};
+} as const;
 
 /**
- * Creates an ISO timestamp for API responses with optimized allocation.
+ * Generates an ISO timestamp string.
  */
-@inline
 function getCurrentTimestamp(): string {
   return new Date().toISOString();
 }
 
 /**
- * Safely parses the request body if present, ignoring invalid JSON and optimizing text stream reads.
+ * Safely parses the request JSON body if the content type is application/json.
  */
-async function parseOptionalJsonBody(req: NextRequest): Promise<unknown> {
-  const contentType = req.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
+async function parseOptionalJsonBody(request: NextRequest): Promise<unknown> {
+  const contentType = request.headers.get('content-type');
+  
+  if (!contentType?.includes('application/json')) {
     return null;
   }
   
   try {
-    return await req.json();
+    return await request.json();
   } catch {
     return null;
   }
@@ -60,9 +59,9 @@ export async function GET(): Promise<NextResponse<SystemStatusResponse>> {
   return NextResponse.json(STATIC_GET_RESPONSE, { headers: JSON_HEADERS });
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse<ScaffoldSuccessResponse | ErrorResponse>> {
+export async function POST(request: NextRequest): Promise<NextResponse<ScaffoldSuccessResponse | ErrorResponse>> {
   try {
-    await parseOptionalJsonBody(req);
+    await parseOptionalJsonBody(request);
 
     const successPayload: ScaffoldSuccessResponse = {
       success: true,
