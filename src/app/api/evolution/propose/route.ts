@@ -9,54 +9,68 @@ export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
 interface NonCodeResult {
-  isNonCode: boolean;
-  reason: string;
+  readonly isNonCode: boolean;
+  readonly reason: string;
 }
 
 interface NewFilePayload {
-  path: string;
-  content: string;
+  readonly path: string;
+  readonly content: string;
 }
 
 interface RejectionMemoryItem {
-  filePath: string;
-  riskScore: number;
-  reason: string;
-  analysis: string;
+  readonly filePath: string;
+  readonly riskScore: number;
+  readonly reason: string;
+  readonly analysis: string;
 }
 
 interface UserRepoItem {
-  isGlobalSiphon?: boolean;
-  fullName?: string;
-  name?: string;
-  description?: string;
-  language?: string;
+  readonly isGlobalSiphon?: boolean;
+  readonly fullName?: string;
+  readonly name?: string;
+  readonly description?: string;
+  readonly language?: string;
 }
 
 interface GitTreeItem {
-  type: string;
-  path: string;
+  readonly type: string;
+  readonly path: string;
 }
 
 interface SanityViolation {
-  severity: string;
-  message: string;
+  readonly severity: string;
+  readonly message: string;
 }
 
 interface ParsedMutationResponse {
-  analysis?: string;
-  riskScore?: number;
-  affectedFiles?: string[];
-  newFiles?: NewFilePayload[];
-  proposedCode?: string;
+  readonly analysis?: string;
+  readonly riskScore?: number;
+  readonly affectedFiles?: readonly string[];
+  readonly newFiles?: readonly NewFilePayload[];
+  readonly proposedCode?: string;
 }
 
 interface ExtendedProposeBody extends ProposeBody {
-  sessionId?: string;
-  userReposContext?: UserRepoItem[];
-  isArchitecturalGenesis?: boolean;
-  hallucinationLevel?: number;
-  repoFiles?: string[];
+  readonly sessionId?: string;
+  readonly userReposContext?: readonly UserRepoItem[];
+  readonly isArchitecturalGenesis?: boolean;
+  readonly hallucinationLevel?: number;
+  readonly repoFiles?: readonly string[];
+}
+
+interface PromptContext {
+  readonly rejectionContext: string;
+  readonly appliedMutationsContext: string;
+  readonly userReposContextStr: string;
+  readonly repoFilesContext: string;
+  readonly proposeSystemPrompt: string;
+}
+
+interface ParsedLlmResult {
+  readonly parsedResponse: ParsedMutationResponse | null;
+  readonly proposedCode: string;
+  readonly analysis: string;
 }
 
 const FALLBACK_SIPHON_SOURCE = 'craighckby-stack/DARLEK-CAAN-Cognitive-Engine';
@@ -155,7 +169,7 @@ function isNonCodeContent(content: string): NonCodeResult {
   const hasCodeMarkers = [
     '{', '}', ';', 'const ', 'import ', 'export ', 
     'function ', 'class ', '//', '/*', '<div', 'import('
-  ].some(marker => sample.includes(marker));
+  ].some((marker) => sample.includes(marker));
 
   if (hasCodeMarkers) {
     return { isNonCode: false, reason: '' };
@@ -178,7 +192,7 @@ function isNonCodeContent(content: string): NonCodeResult {
 
   const lines = content.split('\n');
   if (lines.length <= 3 && content.length > 5000) {
-    const looksLikeMinifiedCode = ['function', 'var ', 'const ', '{', ';'].some(keyword => content.includes(keyword));
+    const looksLikeMinifiedCode = ['function', 'var ', 'const ', '{', ';'].some((keyword) => content.includes(keyword));
     if (!looksLikeMinifiedCode) {
       return { isNonCode: true, reason: 'File appears to be minified/binary data (very few lines, very long)' };
     }
@@ -207,24 +221,24 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
       throw new Error(`Failed to fetch tree: ${treeResponse.status}`);
     }
     
-    const treeData = await treeResponse.json() as { tree?: GitTreeItem[] };
+    const treeData = await treeResponse.json() as { readonly tree?: readonly GitTreeItem[] };
     if (!treeData.tree || !Array.isArray(treeData.tree)) {
       throw new Error('Invalid tree format');
     }
 
-    const codeFiles = treeData.tree.filter((file: GitTreeItem) => 
+    const codeFiles = treeData.tree.filter((file) => 
       file.type === 'blob' && 
       /\.(ts|tsx|js|jsx|py|go|rs|json)$/.test(file.path) &&
-      !['node_modules', 'dist', '.next'].some(excludedDir => file.path.includes(excludedDir))
+      !['node_modules', 'dist', '.next'].some((excludedDir) => file.path.includes(excludedDir))
     );
 
     if (codeFiles.length === 0) {
       return '';
     }
 
-    const preferredFiles = codeFiles.filter((file: GitTreeItem) => {
+    const preferredFiles = codeFiles.filter((file) => {
       const pathLower = file.path.toLowerCase();
-      return ['core', 'agent', 'debate', 'engine'].some(keyword => pathLower.includes(keyword));
+      return ['core', 'agent', 'debate', 'engine'].some((keyword) => pathLower.includes(keyword));
     });
     
     const filesToFetch = preferredFiles.length > 0 ? preferredFiles.slice(0, 3) : codeFiles.slice(0, 3);
@@ -232,10 +246,14 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
     const siphonPromises = filesToFetch.map(async (file) => {
       try {
         const contentResponse = await fetch(`${GITHUB_API_BASE}/${FALLBACK_SIPHON_SOURCE}/contents/${file.path}`, { headers });
-        if (!contentResponse.ok) return null;
+        if (!contentResponse.ok) {
+          return null;
+        }
         
-        const contentData = await contentResponse.json() as { content?: string };
-        if (!contentData.content) return null;
+        const contentData = await contentResponse.json() as { readonly content?: string };
+        if (!contentData.content) {
+          return null;
+        }
         
         const rawCode = Buffer.from(contentData.content, 'base64').toString('utf8');
         return `\n\n--- SIPHONED SOURCE: ${FALLBACK_SIPHON_SOURCE} | File: ${file.path} ---\n${rawCode.slice(0, 5000)}\n------------------------------------------------\n`;
@@ -245,7 +263,7 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
     });
 
     const results = await Promise.all(siphonPromises);
-    return results.filter(Boolean).join('');
+    return results.filter((result): result is string => Boolean(result)).join('');
   } catch (error) {
     console.warn('[Siphon Fetch] Failed to fetch live repo code:', error);
     return '';
@@ -255,32 +273,20 @@ async function fetchAIProjectSiphon(token?: string): Promise<string> {
 /**
  * Constructs prompt sections based on operational flags and contextual telemetry.
  */
-function buildPromptContext(body: ExtendedProposeBody): {
-  rejectionContext: string;
-  appliedMutationsContext: string;
-  userReposContextStr: string;
-  repoFilesContext: string;
-  proposeSystemPrompt: string;
-} {
-  const { rejectionMemory, sessionId, userReposContext, isArchitecturalGenesis, repoFiles } = body;
+function buildPromptContext(body: ExtendedProposeBody): PromptContext {
+  const { rejectionMemory, userReposContext, isArchitecturalGenesis, repoFiles } = body;
 
   const rejectionContext = rejectionMemory && rejectionMemory.length > 0
     ? `\n\nPREVIOUS REJECTIONS (learn from these — avoid repeating mistakes):\n${rejectionMemory
         .slice(0, 5)
-        .map((item: RejectionMemoryItem) => `  - File: ${item.filePath} | Risk: ${item.riskScore}/10 | Reason: ${item.reason} | Analysis: ${item.analysis.slice(0, 100)}`)
+        .map((item) => `  - File: ${item.filePath} | Risk: ${item.riskScore}/10 | Reason: ${item.reason} | Analysis: ${item.analysis.slice(0, 100)}`)
         .join('\n')}\n\nIMPORTANT: If you are proposing changes to a file that was previously rejected, take a MORE CONSERVATIVE approach. Focus on smaller, safer improvements.`
     : '';
-
-  let appliedMutationsContext = '';
-  if (sessionId) {
-    // Session mutation lookup deferred to execution scope if needed, 
-    // or passed via pre-resolved state. Handled asynchronously in POST.
-  }
 
   const userReposContextStr = userReposContext && userReposContext.length > 0
     ? `\n\nUSER'S PORTFOLIO & GLOBAL SIPHON CONTEXT:\n${userReposContext
         .slice(0, 100)
-        .map((repo: UserRepoItem) => `  - [${repo.isGlobalSiphon ? 'GLOBAL' : 'USER'}] ${repo.fullName || repo.name}: ${repo.description || 'No description'} (${repo.language || 'Unknown language'})`)
+        .map((repo) => `  - [${repo.isGlobalSiphon ? 'GLOBAL' : 'USER'}] ${repo.fullName || repo.name}: ${repo.description || 'No description'} (${repo.language || 'Unknown language'})`)
         .join('\n')}\n`
     : '';
 
@@ -335,7 +341,7 @@ Format your response exactly like this:
 
   return {
     rejectionContext,
-    appliedMutationsContext,
+    appliedMutationsContext: '',
     userReposContextStr,
     repoFilesContext,
     proposeSystemPrompt,
@@ -345,11 +351,7 @@ Format your response exactly like this:
 /**
  * Extracts structured JSON and code responses from raw LLM output text.
  */
-function parseLlmResponse(rawText: string, fallbackCode: string): {
-  parsedResponse: ParsedMutationResponse | null;
-  proposedCode: string;
-  analysis: string;
-} {
+function parseLlmResponse(rawText: string, fallbackCode: string): ParsedLlmResult {
   let parsedResponse: ParsedMutationResponse | null = null;
   let proposedCode = '';
   let analysis = 'Analysis complete.';
@@ -398,10 +400,16 @@ function parseLlmResponse(rawText: string, fallbackCode: string): {
   return { parsedResponse, proposedCode, analysis };
 }
 
+/**
+ * Handles GET requests to check service health.
+ */
 export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ status: 'online', service: 'EVOLUTION_PROPOSE_API' });
 }
 
+/**
+ * Handles POST requests for cognitive mutation proposals.
+ */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await safeReqJson<ExtendedProposeBody>(req, {} as ExtendedProposeBody);
@@ -451,11 +459,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const githubToken = apiKeys?.github;
-    let siphonedCodeContext = await fetchAIProjectSiphon(githubToken);
-    
-    if (!siphonedCodeContext) {
-      siphonedCodeContext = AI_PROJECT_FALLBACK_SIPHON;
-    }
+    const siphonedCodeContext = (await fetchAIProjectSiphon(githubToken)) || AI_PROJECT_FALLBACK_SIPHON;
 
     const userPrompt = `Analyze this file and propose improvements:${promptContext.rejectionContext}${appliedMutationsContext}${promptContext.userReposContextStr}${promptContext.repoFilesContext}
 
@@ -495,7 +499,7 @@ ${fileContent.slice(0, MAX_PROPOSE_CONTENT_LENGTH)}
     const rawText = llmResult.text.trim();
     const parsedResult = parseLlmResponse(rawText, fileContent);
     let { proposedCode, analysis } = parsedResult;
-    const parsedResponse = parsedResult.parsedResponse;
+    const { parsedResponse } = parsedResult;
 
     if (proposedCode === fileContent) {
       const isHeaderableExt = /\.(ts|tsx|js|jsx|css|scss)$/i.test(filePath);
@@ -506,10 +510,10 @@ ${fileContent.slice(0, MAX_PROPOSE_CONTENT_LENGTH)}
       }
     }
 
-    const newFiles: NewFilePayload[] = Array.isArray(parsedResponse?.newFiles) ? parsedResponse.newFiles : [];
+    const newFiles: readonly NewFilePayload[] = Array.isArray(parsedResponse?.newFiles) ? parsedResponse.newFiles : [];
     const repoFiles = Array.isArray(body.repoFiles) ? body.repoFiles : [];
     
-    const sanityCheck = await mainWorker.validateSanity(fileContent, proposedCode, filePath, repoFiles, newFiles);
+    const sanityCheck = await mainWorker.validateSanity(fileContent, proposedCode, filePath, repoFiles, [...newFiles]);
 
     let finalRiskScore = Math.min(10, Math.max(1, parsedResponse?.riskScore || 3));
     let finalAnalysis = analysis || 'Analysis complete.';
