@@ -1,7 +1,7 @@
 /**
  * @file src/lib/github-client.ts
- * @version v49.1.0-EMG-SOVEREIGN
- * @description Highly optimized, zero-allocation-overhead GitHub API client utilizing pre-allocated header mutations and fast string construction.
+ * @version v49.2.0-EMG-SOVEREIGN
+ * @description Readable, modular, and modern GitHub API client utilizing pristine idioms and clear architectural boundaries.
  */
 
 export interface GitHubRequestOptions extends RequestInit {
@@ -12,8 +12,33 @@ export interface GitHubClientInterface {
   request(token: string, url: string, options?: GitHubRequestOptions): Promise<Response>;
 }
 
-// Pre-cached static Accept header value to prevent string allocation churn on high-frequency calls
-const DEFAULT_ACCEPT = 'application/vnd.github.v3+json';
+const GITHUB_API_BASE_URL = 'https://api.github.com';
+const DEFAULT_GITHUB_ACCEPT_HEADER = 'application/vnd.github.v3+json';
+
+/**
+ * Normalizes relative or absolute GitHub URL paths into a fully qualified API endpoint.
+ */
+function buildGitHubEndpoint(url: string): string {
+  const isRelativePath = url.startsWith('/');
+  return isRelativePath ? `${GITHUB_API_BASE_URL}${url}` : `${GITHUB_API_BASE_URL}/${url}`;
+}
+
+/**
+ * Ensures request headers are instantiated as a Headers instance with required authentication and defaults.
+ */
+function prepareRequestHeaders(token: string, customHeaders?: Record<string, string> | Headers): Headers {
+  const headers = customHeaders instanceof Headers 
+    ? customHeaders 
+    : new Headers(customHeaders);
+
+  headers.set('Authorization', `Bearer ${token}`);
+  
+  if (!headers.has('Accept')) {
+    headers.set('Accept', DEFAULT_GITHUB_ACCEPT_HEADER);
+  }
+
+  return headers;
+}
 
 export const GitHubClient: GitHubClientInterface = {
   async request(token: string, url: string, options: GitHubRequestOptions = {}): Promise<Response> {
@@ -24,33 +49,19 @@ export const GitHubClient: GitHubClientInterface = {
       throw new TypeError('EMG-CORE-ERR: Target URL path is required for GitHubClient requests.');
     }
 
-    // Optimized string slice and template construction avoiding intermediary allocations
-    const endpoint = url.charCodeAt(0) === 47 /* '/' */
-      ? `https://api.github.com${url}`
-      : `https://api.github.com/${url}`;
+    const endpoint = buildGitHubEndpoint(url);
+    const headers = prepareRequestHeaders(token, options.headers);
 
-    // Mutate or instantiate Headers efficiently without redundant spread operators
-    let headers: Headers;
-    if (options.headers instanceof Headers) {
-      headers = options.headers;
-    } else {
-      headers = new Headers(options.headers as Record<string, string>);
-    }
-
-    headers.set('Authorization', `Bearer ${token}`);
-    if (!headers.has('Accept')) {
-      headers.set('Accept', DEFAULT_ACCEPT);
-    }
-
-    // Direct object assignment bypassing full object spread clones
-    options.headers = headers;
+    const sanitizedOptions: RequestInit = {
+      ...options,
+      headers,
+    };
 
     try {
-      return await fetch(endpoint, options as RequestInit);
+      return await fetch(endpoint, sanitizedOptions);
     } catch (error: unknown) {
-      throw new Error(
-        `[EMG-CORE] GitHubClient network failure for endpoint "${endpoint}": ${error instanceof Error ? error.message : String(error)}`
-      );
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`[EMG-CORE] GitHubClient network failure for endpoint "${endpoint}": ${errorMessage}`);
     }
   },
 };
