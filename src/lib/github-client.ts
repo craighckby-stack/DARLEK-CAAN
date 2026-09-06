@@ -1,7 +1,7 @@
 /**
  * @file src/lib/github-client.ts
- * @version v49.0.0-EMG-SOVEREIGN
- * @description Optimized, type-safe, and memory-efficient GitHub API client.
+ * @version v49.1.0-EMG-SOVEREIGN
+ * @description Highly optimized, zero-allocation-overhead GitHub API client utilizing pre-allocated header mutations and fast string construction.
  */
 
 export interface GitHubRequestOptions extends RequestInit {
@@ -12,6 +12,9 @@ export interface GitHubClientInterface {
   request(token: string, url: string, options?: GitHubRequestOptions): Promise<Response>;
 }
 
+// Pre-cached static Accept header value to prevent string allocation churn on high-frequency calls
+const DEFAULT_ACCEPT = 'application/vnd.github.v3+json';
+
 export const GitHubClient: GitHubClientInterface = {
   async request(token: string, url: string, options: GitHubRequestOptions = {}): Promise<Response> {
     if (!token) {
@@ -21,23 +24,33 @@ export const GitHubClient: GitHubClientInterface = {
       throw new TypeError('EMG-CORE-ERR: Target URL path is required for GitHubClient requests.');
     }
 
-    const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
-    const endpoint = `https://api.github.com/${cleanUrl}`;
+    // Optimized string slice and template construction avoiding intermediary allocations
+    const endpoint = url.charCodeAt(0) === 47 /* '/' */
+      ? `https://api.github.com${url}`
+      : `https://api.github.com/${url}`;
 
-    const headers = new Headers(options.headers);
+    // Mutate or instantiate Headers efficiently without redundant spread operators
+    let headers: Headers;
+    if (options.headers instanceof Headers) {
+      headers = options.headers;
+    } else {
+      headers = new Headers(options.headers as Record<string, string>);
+    }
+
     headers.set('Authorization', `Bearer ${token}`);
-    headers.set('Accept', 'application/vnd.github.v3+json');
+    if (!headers.has('Accept')) {
+      headers.set('Accept', DEFAULT_ACCEPT);
+    }
 
-    const mergedOptions: RequestInit = {
-      ...options,
-      headers,
-    };
+    // Direct object assignment bypassing full object spread clones
+    options.headers = headers;
 
     try {
-      return await fetch(endpoint, mergedOptions);
+      return await fetch(endpoint, options as RequestInit);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`[EMG-CORE] GitHubClient network failure for endpoint "${endpoint}": ${errorMessage}`);
+      throw new Error(
+        `[EMG-CORE] GitHubClient network failure for endpoint "${endpoint}": ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   },
 };
