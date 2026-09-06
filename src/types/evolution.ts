@@ -1,24 +1,54 @@
 /**
  * @file src/types/evolution.ts
  * @module EMG Core v49 Neural Code and Documentation Optimizer Engine
- * @description Highly optimized, memory-efficient, and type-safe type definitions for quantum nodes and evolution snapshots.
+ * @description Type-safe structural contracts for quantum state vectors and evolution history snapshots.
  */
 
 /**
- * Represents a high-performance quantum node with strict state typing and asynchronous collapse handling.
+ * Generic dictionary type representing the internal state mapping of a quantum node.
  */
-export interface IQuantumNode<TState extends Record<string, unknown> = Record<string, unknown>> {
+export type QuantumNodeState = Record<string, unknown>;
+
+/**
+ * Represents a high-performance quantum node with strict state typing and asynchronous collapse handling.
+ *
+ * @template TState - Structure of the internal state vector contained by the node.
+ */
+export interface IQuantumNode<TState extends QuantumNodeState = QuantumNodeState> {
+  /**
+   * Immutable state vector describing the current superposition or resolved state.
+   */
   readonly stateVector: Readonly<TState>;
+
+  /**
+   * Unique identifier designating the entanglement channel or peer relationship.
+   */
   readonly entanglementKey: string;
+
+  /**
+   * Asynchronously triggers quantum state collapse into a finalized baseline.
+   *
+   * @returns A promise that resolves once state stabilization is complete.
+   */
   collapse(): Promise<void>;
 }
 
 /**
- * Represents an immutable evolution snapshot capturing system state transitions.
- * Utilizes fixed tuple typing and readonly arrays for zero-allocation performance guarantees.
+ * Represents an immutable snapshot capturing discrete evolutionary system transitions.
  */
 export interface EvolutionSnapshot {
+  /**
+   * Milliseconds elapsed since Unix epoch at the instant the snapshot was recorded.
+   */
   readonly timestamp: number;
+
+  /**
+   * Cryptographic digest or hash verifying state integrity at this snapshot boundary.
+   */
   readonly checksum: string;
+
+  /**
+   * Read-only collection of file paths modified or affected during this evolutionary cycle.
+   */
   readonly affectedFiles: readonly string[];
 }
