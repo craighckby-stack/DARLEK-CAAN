@@ -1,16 +1,30 @@
 # GitHub API Integration Module
 
-## Architecture
+> **Executive Summary:** The GitHub API Integration Module acts as the core data ingestion layer for the DARLEK CANN ecosystem. It interfaces with the GitHub REST API v3 to execute file-level operations, powering self-refactoring and repository state analysis for the `sovereign-kernel`.
 
-This module serves as the primary data ingestion layer for the DARLEK CANN ecosystem. It interfaces directly with the GitHub REST API v3 to facilitate file-level operations required for agentic code evolution.
+---
 
-## Workflow
+## ⚡ Quick Reference
 
-1. **Validation**: Incoming requests are validated against `ReadFileSchema`.
-2. **Execution**: The fetch request is executed with a 15-second timeout protection mechanism.
-3. **Transformation**: Payload undergoes Base64 decoding and metadata extraction.
-4. **Response**: A structured JSON payload is returned containing both the file content and the SHA for precise version tracking.
+| Feature | Specification |
+| :--- | :--- |
+| **Protocol** | GitHub REST API v3 |
+| **Timeout Protection** | 15 seconds |
+| **Data Processing** | Base64 Decoding & Metadata Extraction |
+| **Primary Consumer** | `sovereign-kernel` |
 
-## Integration
+---
 
-This module is utilized directly by the `sovereign-kernel` to pull repository states for self-refactoring and analysis.
+## 🔄 Execution Workflow
+
+1. **Validation:** Requests pass through strict schema checks (`ReadFileSchema`).
+2. **Execution:** Network requests execute with an enforced 15-second timeout safeguard.
+3. **Transformation:** Payloads undergo Base64 decoding alongside critical metadata extraction.
+4. **Response:** Structured JSON is returned, embedding file content and the precise SHA for version tracking.
+
+---
+
+## 🔗 System Integration
+
+* **Consumer:** `sovereign-kernel`
+* **Purpose:** Pulls explicit repository states to facilitate autonomous code evolution and runtime analysis.
