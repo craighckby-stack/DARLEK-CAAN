@@ -18,11 +18,22 @@ if (!SHA_HASH_PATTERN.test(COMMIT_SHA)) {
   throw new Error('CRITICAL SECURITY: Invalid COMMIT_SHA format detected.');
 }
 
+const BASE_WORKSPACE_DIRECTORY = path.resolve('.');
+
 const SYSTEM_CONFIG = Object.freeze({
   targetUrl: `https://raw.githubusercontent.com/craighckby-stack/DARLEK_CAAN_ENGINE/${COMMIT_SHA}/src/app/page.tsx`,
   targetPath: path.resolve('src/app/page.tsx'),
   minLineCountThreshold: 1000,
   maxContentLength: 10 * 1024 * 1024 // 10MB defensive upper bound
+});
+
+const REQUEST_OPTIONS = Object.freeze({
+  hostname: 'raw.githubusercontent.com',
+  path: `/craighckby-stack/DARLEK_CAAN_ENGINE/${COMMIT_SHA}/src/app/page.tsx`,
+  method: 'GET',
+  headers: Object.freeze({
+    'User-Agent': 'DARLEK-CANN-Optimizer/4.9'
+  })
 });
 
 /**
@@ -52,23 +63,13 @@ function validateAndParseUrl(rawRequestUrl) {
  */
 function fetchContent(rawRequestUrl) {
   return new Promise((resolve, reject) => {
-    let parsedUrl;
     try {
-      parsedUrl = validateAndParseUrl(rawRequestUrl);
+      validateAndParseUrl(rawRequestUrl);
     } catch (err) {
       return reject(err);
     }
 
-    const requestOptions = Object.freeze({
-      hostname: parsedUrl.hostname,
-      path: parsedUrl.pathname + parsedUrl.search,
-      method: 'GET',
-      headers: Object.freeze({
-        'User-Agent': 'DARLEK-CANN-Optimizer/4.9'
-      })
-    });
-
-    const networkRequest = https.request(requestOptions, (responseStream) => {
+    const networkRequest = https.request(REQUEST_OPTIONS, (responseStream) => {
       const { statusCode } = responseStream;
 
       if (statusCode !== 200) {
@@ -103,10 +104,41 @@ function fetchContent(rawRequestUrl) {
  * @param {string} targetFileSystemPath - The filesystem path to validate.
  */
 function ensureWorkspaceContainment(targetFileSystemPath) {
-  const baseWorkspaceDirectory = path.resolve('.');
-  if (!targetFileSystemPath.startsWith(baseWorkspaceDirectory)) {
+  if (!targetFileSystemPath.startsWith(BASE_WORKSPACE_DIRECTORY)) {
     throw new Error('Security violation: Target path escapes root workspace directory.');
   }
+}
+
+/**
+ * Counts the number of newline characters directly in a string without creating an array of substrings.
+ * @param {string} str - The target string.
+ * @returns {number} The estimated line count.
+ */
+function countLines(str) {
+  let count = 1;
+  let index = str.indexOf('\n');
+  while (index !== -1) {
+    count++;
+    index = str.indexOf('\n', index + 1);
+  }
+  return count;
+}
+
+/**
+ * Retrieves the first N lines from a string without generating heavy split arrays.
+ * @param {string} str - The target string.
+ * @param {number} maxLines - Maximum lines to retrieve.
+ * @returns {string} The substring containing the first N lines.
+ */
+function getFirstNLines(str, maxLines) {
+  let newlineCount = 0;
+  let index = -1;
+  for (let i = 0; i < maxLines; i++) {
+    index = str.indexOf('\n', index + 1);
+    if (index === -1) break;
+    newlineCount++;
+  }
+  return index === -1 ? str : str.slice(0, index);
 }
 
 /**
@@ -117,12 +149,12 @@ async function executeDownloadPipeline() {
   try {
     console.log(`Downloading page.tsx from commit ${COMMIT_SHA}...`);
     const fileContent = await fetchContent(SYSTEM_CONFIG.targetUrl);
-    const contentLines = fileContent.split('\n');
+    
+    const lineCount = countLines(fileContent);
+    console.log(`Downloaded ${lineCount} lines. First 5 lines:`);
+    console.log(getFirstNLines(fileContent, 5));
 
-    console.log(`Downloaded ${contentLines.length} lines. First 5 lines:`);
-    console.log(contentLines.slice(0, 5).join('\n'));
-
-    if (contentLines.length <= SYSTEM_CONFIG.minLineCountThreshold) {
+    if (lineCount <= SYSTEM_CONFIG.minLineCountThreshold) {
       console.log(`Warning: Downloaded file has less than ${SYSTEM_CONFIG.minLineCountThreshold} lines, did not overwrite local file.`);
       return;
     }
