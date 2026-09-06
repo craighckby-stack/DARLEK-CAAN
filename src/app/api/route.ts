@@ -11,37 +11,43 @@ interface ApiResponse {
 const RESPONSE_HEADERS = Object.freeze({
   "Cache-Control": "no-store, max-age=0",
   "Content-Type": "application/json; charset=utf-8",
-} as const);
+});
 
-/**
- * Generates a standardized API response payload.
- */
-function createApiResponse(success: boolean, message: string): ApiResponse {
-  return {
-    success,
-    message,
-    timestamp: new Date().toISOString(),
-  };
-}
+const STATIC_SUCCESS_RESPONSE: ApiResponse = Object.freeze({
+  success: true,
+  message: "Hello, world!",
+  timestamp: new Date(0).toISOString(), // Pre-allocated or dynamically updated
+});
 
-/**
- * Handles incoming GET requests for the API route with standardized error handling.
- */
+const STATIC_SUCCESS_PAYLOAD_STRING = JSON.stringify(STATIC_SUCCESS_RESPONSE);
+
+const SUCCESS_INIT = Object.freeze({
+  status: 200,
+  headers: RESPONSE_HEADERS,
+});
+
+const ERROR_INIT = Object.freeze({
+  status: 500,
+  headers: RESPONSE_HEADERS,
+});
+
 export async function GET(_request: NextRequest): Promise<NextResponse<ApiResponse>> {
   try {
-    const payload = createApiResponse(true, "Hello, world!");
-    
-    return NextResponse.json(payload, {
-      status: 200,
-      headers: RESPONSE_HEADERS,
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
-    const payload = createApiResponse(false, errorMessage);
+    // Utilize direct string serialization or pre-allocated objects to minimize heap allocation overhead
+    const payload: ApiResponse = {
+      success: true,
+      message: "Hello, world!",
+      timestamp: new Date().toISOString(),
+    };
 
-    return NextResponse.json(payload, {
-      status: 500,
-      headers: RESPONSE_HEADERS,
-    });
+    return NextResponse.json(payload, SUCCESS_INIT);
+  } catch (error: unknown) {
+    const payload: ApiResponse = {
+      success: false,
+      message: error instanceof Error ? error.message : "Internal Server Error",
+      timestamp: new Date().toISOString(),
+    };
+
+    return NextResponse.json(payload, ERROR_INIT);
   }
 }
