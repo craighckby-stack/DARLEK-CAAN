@@ -1,5 +1,9 @@
 import { BinaryShield } from './binaryShield';
 
+// Reusable TextEncoder/Decoder instances to eliminate repeated allocation overhead
+const TEXT_ENCODER = new TextEncoder();
+const TEXT_DECODER = new TextDecoder();
+
 /**
  * Encodes a UTF-8 string to Base64 with environment-agnostic fallback safety and optimized memory handling.
  */
@@ -14,17 +18,18 @@ export function encodeBase64(str: string): string {
   
   if (typeof btoa === 'function') {
     try {
-      const bytes = new TextEncoder().encode(str);
+      const bytes = TEXT_ENCODER.encode(str);
       const len = bytes.byteLength;
-      
-      // Prevent stack overflow/performance degradation on massive arrays by batching chunks
       const CHUNK_SIZE = 0x8000;
-      let binary = '';
       
+      if (len <= CHUNK_SIZE) {
+        return btoa(String.fromCharCode.apply(null, bytes as unknown as number[]));
+      }
+
+      let binary = '';
       for (let i = 0; i < len; i += CHUNK_SIZE) {
         const chunk = bytes.subarray(i, i + CHUNK_SIZE);
-        // Explicitly map chunk elements to character codes for bulk conversion
-        binary += String.fromCharCode.apply(null, Array.from(chunk));
+        binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
       }
       
       return btoa(binary);
@@ -54,11 +59,19 @@ export function decodeBase64(b64: string): string {
       const len = binary.length;
       const bytes = new Uint8Array(len);
       
-      for (let i = 0; i < len; i++) {
+      // Loop unrolling for high-throughput string-to-byte conversion
+      let i = 0;
+      for (; i < len - 3; i += 4) {
+        bytes[i] = binary.charCodeAt(i);
+        bytes[i + 1] = binary.charCodeAt(i + 1);
+        bytes[i + 2] = binary.charCodeAt(i + 2);
+        bytes[i + 3] = binary.charCodeAt(i + 3);
+      }
+      for (; i < len; i++) {
         bytes[i] = binary.charCodeAt(i);
       }
       
-      return new TextDecoder().decode(bytes);
+      return TEXT_DECODER.decode(bytes);
     } catch {
       return '';
     }
@@ -91,7 +104,7 @@ export class NeuralCodec {
    * Decodes and optionally unshields encrypted transmission packets back into strongly typed payloads.
    */
   public static async decode<T = unknown>(encoded: string, shield?: BinaryShield): Promise<T> {
-    if (typeof encoded !== 'string' || encoded.trim() === '') {
+    if (typeof encoded !== 'string' || encoded.length === 0) {
       throw new Error('NeuralCodec decode received empty or invalid input payload.');
     }
 
@@ -102,7 +115,6 @@ export class NeuralCodec {
         const packet = JSON.parse(encoded);
         raw = await shield.decryptPacket(packet);
       } catch {
-        // Fallback to standard base64 decoding if packet parsing or decryption fails
         raw = decodeBase64(encoded);
       }
     } else {
@@ -125,7 +137,7 @@ export function minifyCode(code: string, path: string): string {
     return '';
   }
 
-  if (typeof path === 'string' && path.endsWith('.json')) {
+  if (typeof path === 'string' && path.charCodeAt(path.length - 1) === 110 && path.endsWith('.json')) {
     try {
       return JSON.stringify(JSON.parse(code));
     } catch {
