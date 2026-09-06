@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
-
 import { cn } from "@/lib/utils"
 
 export interface AvatarProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> {
@@ -17,16 +16,16 @@ export interface AvatarFallbackProps extends React.ComponentPropsWithoutRef<type
   readonly className?: string
 }
 
+const AVATAR_BASE_CLASS = "relative flex size-8 shrink-0 overflow-hidden rounded-full"
+const AVATAR_IMAGE_BASE_CLASS = "aspect-square size-full"
+const AVATAR_FALLBACK_BASE_CLASS = "bg-muted flex size-full items-center justify-center rounded-full"
+
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
   AvatarProps
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () =>
-      cn(
-        "relative flex size-8 shrink-0 overflow-hidden rounded-full",
-        className
-      ),
+    () => (className ? `${AVATAR_BASE_CLASS} ${className}` : AVATAR_BASE_CLASS),
     [className]
   )
 
@@ -46,7 +45,7 @@ const AvatarImage = React.forwardRef<
   AvatarImageProps
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () => cn("aspect-square size-full", className),
+    () => (className ? `${AVATAR_IMAGE_BASE_CLASS} ${className}` : AVATAR_IMAGE_BASE_CLASS),
     [className]
   )
 
@@ -66,11 +65,7 @@ const AvatarFallback = React.forwardRef<
   AvatarFallbackProps
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () =>
-      cn(
-        "bg-muted flex size-full items-center justify-center rounded-full",
-        className
-      ),
+    () => (className ? cn(AVATAR_FALLBACK_BASE_CLASS, className) : AVATAR_FALLBACK_BASE_CLASS),
     [className]
   )
 
