@@ -32,8 +32,7 @@ const PATCH_CONFIGS = Object.freeze([
  * @returns {void}
  */
 function validateTargetSignatures(sourceContent, filePath) {
-    for (let i = 0; i < PATCH_CONFIGS.length; i++) {
-        const config = PATCH_CONFIGS[i];
+    for (const config of PATCH_CONFIGS) {
         if (!sourceContent.includes(config.search)) {
             console.warn(`[EMG-v49] Warning: ${config.name} not found in ${filePath}`);
         }
@@ -47,12 +46,10 @@ function validateTargetSignatures(sourceContent, filePath) {
  * @returns {string} The updated file content.
  */
 function applyPatches(sourceContent) {
-    let content = sourceContent;
-    for (let i = 0; i < PATCH_CONFIGS.length; i++) {
-        const config = PATCH_CONFIGS[i];
-        content = content.replace(config.search, config.replacement);
-    }
-    return content;
+    return PATCH_CONFIGS.reduce(
+        (content, config) => content.replace(config.search, config.replacement),
+        sourceContent
+    );
 }
 
 /**
