@@ -8,13 +8,13 @@ export const dynamic = 'force-dynamic';
 
 type IssueSeverity = 'high' | 'medium' | 'low';
 
-interface StaticIssue {
+export interface StaticIssue {
   type: string;
   severity: IssueSeverity;
   message: string;
 }
 
-interface AnalyzeImpactBody {
+export interface AnalyzeImpactBody {
   originalCode: string;
   proposedCode: string;
   filePath: string;
@@ -42,7 +42,7 @@ Programmatic string only. Keep under 150 words.
 If clean, output exactly: STATUS: PASS
 If broken, output exactly: STATUS: FAIL followed by a concise line-separated list of architectural breaks.`;
 
-// Pre-compiled regex cache for maximum execution speed and zero allocation overhead on repetitive scans
+// Pre-compiled regex patterns for execution efficiency
 const EXPORT_REGEX = /export\s+(?:default\s+)?(?:function|class|const|let|var|type|interface|enum)\s+(\w+)/g;
 const DEFINITION_REGEX = /(?:function|class)\s+(\w+)/g;
 const IMPORT_REGEX = /import\s+.*?from\s+['"](.+?)['"]/g;
@@ -53,7 +53,7 @@ const TRY_CATCH_REGEX = /try\s*\{/g;
 
 // --- Static Analysis Helpers ---
 
-function extractMatches(code: string, regex: RegExp, groupIndex: number = 1): string[] {
+function extractMatches(code: string, regex: RegExp, groupIndex = 1): string[] {
   regex.lastIndex = 0;
   const matches: string[] = [];
   let match: RegExpExecArray | null;
@@ -76,16 +76,9 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
   const issues: StaticIssue[] = [];
 
   // 1. Export Analysis
-  const originalExports = extractMatches(originalCode, EXPORT_REGEX);
-  const proposedExports = extractMatches(proposedCode, EXPORT_REGEX);
-  
-  const removedExports: string[] = [];
-  for (let i = 0; i < originalExports.length; i++) {
-    const exp = originalExports[i];
-    if (!proposedExports.includes(exp)) {
-      removedExports.push(exp);
-    }
-  }
+  const originalExports = new Set(extractMatches(originalCode, EXPORT_REGEX));
+  const proposedExports = new Set(extractMatches(proposedCode, EXPORT_REGEX));
+  const removedExports = Array.from(originalExports).filter(exp => !proposedExports.has(exp));
 
   if (removedExports.length > 0) {
     issues.push({
@@ -96,16 +89,11 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
   }
 
   // 2. Internal Definition Analysis
-  const originalFuncs = extractMatches(originalCode, DEFINITION_REGEX);
-  const proposedFuncs = extractMatches(proposedCode, DEFINITION_REGEX);
-  
-  const removedFuncs: string[] = [];
-  for (let i = 0; i < originalFuncs.length; i++) {
-    const func = originalFuncs[i];
-    if (!proposedFuncs.includes(func) && !removedExports.includes(func)) {
-      removedFuncs.push(func);
-    }
-  }
+  const originalFuncs = new Set(extractMatches(originalCode, DEFINITION_REGEX));
+  const proposedFuncs = new Set(extractMatches(proposedCode, DEFINITION_REGEX));
+  const removedFuncs = Array.from(originalFuncs).filter(
+    func => !proposedFuncs.has(func) && !removedExports.includes(func)
+  );
 
   if (removedFuncs.length > 0) {
     issues.push({
@@ -116,24 +104,11 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
   }
 
   // 3. Import Analysis
-  const originalImports = extractMatches(originalCode, IMPORT_REGEX);
-  const proposedImports = extractMatches(proposedCode, IMPORT_REGEX);
+  const originalImports = new Set(extractMatches(originalCode, IMPORT_REGEX));
+  const proposedImports = new Set(extractMatches(proposedCode, IMPORT_REGEX));
   
-  const newImports: string[] = [];
-  for (let i = 0; i < proposedImports.length; i++) {
-    const imp = proposedImports[i];
-    if (!originalImports.includes(imp)) {
-      newImports.push(imp);
-    }
-  }
-
-  const removedImports: string[] = [];
-  for (let i = 0; i < originalImports.length; i++) {
-    const imp = originalImports[i];
-    if (!proposedImports.includes(imp)) {
-      removedImports.push(imp);
-    }
-  }
+  const newImports = Array.from(proposedImports).filter(imp => !originalImports.has(imp));
+  const removedImports = Array.from(originalImports).filter(imp => !proposedImports.has(imp));
 
   if (removedImports.length > 0) {
     issues.push({
@@ -217,16 +192,15 @@ function truncateCode(code: string): string {
 }
 
 function buildResponse(staticIssues: StaticIssue[], llmAnalysis: string, llmProvider: string) {
-  let highCount = 0;
-  let mediumCount = 0;
-  let lowCount = 0;
+  const severityCounts = staticIssues.reduce(
+    (acc, issue) => {
+      acc[issue.severity]++;
+      return acc;
+    },
+    { high: 0, medium: 0, low: 0 }
+  );
 
-  for (let i = 0; i < staticIssues.length; i++) {
-    const sev = staticIssues[i].severity;
-    if (sev === 'high') highCount++;
-    else if (sev === 'medium') mediumCount++;
-    else if (sev === 'low') lowCount++;
-  }
+  const { high: highCount, medium: mediumCount, low: lowCount } = severityCounts;
 
   const overallRisk = highCount > 0 ? 'HIGH' : mediumCount > 2 ? 'MEDIUM' : 'LOW';
   const llmSummaryPart = llmAnalysis ? ` LLM review: ${llmProvider}.` : ' No LLM available — static analysis only.';
@@ -301,10 +275,7 @@ export async function POST(req: NextRequest) {
       temperature: LLM_TEMPERATURE,
     });
 
-    const llmAnalysis = llmResult.text ?? '';
-    const llmProvider = llmResult.provider ?? '';
-
-    return buildResponse(staticIssues, llmAnalysis, llmProvider);
+    return buildResponse(staticIssues, llmResult.text ?? '', llmResult.provider ?? '');
   } catch (error: unknown) {
     console.error('Analyze impact error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
