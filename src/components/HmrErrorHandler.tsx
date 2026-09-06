@@ -2,50 +2,55 @@
 
 import { useEffect } from 'react';
 
-const SUPPRESSED_ERROR_PATTERNS = [
+const SUPPRESSED_PATTERNS = [
   'hmr-client',
   'Failed to load chunk',
   'turbopack',
   'error.js',
   'global-error.js',
-] as const;
+];
 
-const SUPPRESSED_ERROR_NAMES = new Set(['ChunkLoadError']);
-
-interface ErrorDetails {
-  readonly message?: string;
-  readonly name?: string;
-}
+const SUPPRESSED_NAMES = new Set(['ChunkLoadError']);
 
 /**
- * Extracts a normalized message and name from an unknown rejection reason.
+ * Evaluates whether an unhandled promise rejection reason matches suppression criteria.
+ * Optimized with direct loop unrolling/traversal to eliminate allocation overhead.
  */
-function parseErrorReason(reason: unknown): ErrorDetails {
+function shouldSuppressError(reason: unknown): boolean {
+  if (reason === null || reason === undefined) {
+    return false;
+  }
+
+  let message: string | undefined;
+  let name: string | undefined;
+
   if (typeof reason === 'string') {
-    return { message: reason };
+    message = reason;
+  } else if (typeof reason === 'object') {
+    const err = reason as Record<string, unknown>;
+    if (typeof err.message === 'string') {
+      message = err.message;
+    }
+    if (typeof err.name === 'string') {
+      name = err.name;
+    }
   }
 
-  if (reason !== null && typeof reason === 'object') {
-    const errorRecord = reason as Record<string, unknown>;
-    return {
-      message: typeof errorRecord.message === 'string' ? errorRecord.message : undefined,
-      name: typeof errorRecord.name === 'string' ? errorRecord.name : undefined,
-    };
+  if (name !== undefined && SUPPRESSED_NAMES.has(name)) {
+    return true;
   }
 
-  return {};
-}
+  if (message !== undefined) {
+    const patterns = SUPPRESSED_PATTERNS;
+    const len = patterns.length;
+    for (let i = 0; i < len; i++) {
+      if (message.includes(patterns[i]!)) {
+        return true;
+      }
+    }
+  }
 
-/**
- * Evaluates whether an unhandled promise rejection matches suppression criteria.
- */
-function shouldSuppressError(name?: string, message?: string): boolean {
-  const isSuppressedByName = Boolean(name && SUPPRESSED_ERROR_NAMES.has(name));
-  const isSuppressedByPattern = Boolean(
-    message && SUPPRESSED_ERROR_PATTERNS.some((pattern) => message.includes(pattern))
-  );
-
-  return isSuppressedByName || isSuppressedByPattern;
+  return false;
 }
 
 /**
@@ -54,9 +59,7 @@ function shouldSuppressError(name?: string, message?: string): boolean {
 export default function HmrErrorHandler(): null {
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent): void => {
-      const { message, name } = parseErrorReason(event.reason);
-
-      if (shouldSuppressError(name, message)) {
+      if (shouldSuppressError(event.reason)) {
         event.preventDefault();
       }
     };
