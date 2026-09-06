@@ -131,12 +131,10 @@ function countLines(str) {
  * @returns {string} The substring containing the first N lines.
  */
 function getFirstNLines(str, maxLines) {
-  let newlineCount = 0;
   let index = -1;
   for (let i = 0; i < maxLines; i++) {
     index = str.indexOf('\n', index + 1);
     if (index === -1) break;
-    newlineCount++;
   }
   return index === -1 ? str : str.slice(0, index);
 }
