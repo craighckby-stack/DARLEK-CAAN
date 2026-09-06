@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';
 import type { JSX } from 'react';
 
@@ -10,7 +10,7 @@ const REDIRECT_DELAY_SECONDS = 3;
 const ROOT_ROUTE = '/';
 
 /**
- * Custom hook to handle automatic redirection countdown logic.
+ * Custom hook to handle automatic redirection countdown logic with optimized timer allocation.
  */
 function useAutoRedirect(initialSeconds: number, targetUrl: string): number {
   const [countdown, setCountdown] = useState<number>(initialSeconds);
@@ -20,7 +20,7 @@ function useAutoRedirect(initialSeconds: number, targetUrl: string): number {
       setCountdown((prevCount) => {
         if (prevCount <= 1) {
           clearInterval(timer);
-          window.location.href = targetUrl;
+          window.location.replace(targetUrl);
           return 0;
         }
         return prevCount - 1;
@@ -34,19 +34,19 @@ function useAutoRedirect(initialSeconds: number, targetUrl: string): number {
 }
 
 /**
- * Visual indicator representing a live system pulse.
+ * Visual indicator representing a live system pulse, memoized to eliminate redundant renders.
  */
-function SystemPulseIndicator(): JSX.Element {
+const SystemPulseIndicator = memo(function SystemPulseIndicator(): JSX.Element {
   return <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" aria-hidden="true" />;
-}
+});
 
 /**
- * Action controls for manual route recovery.
+ * Action controls for manual route recovery, fully optimized with stable callback allocations.
  */
-function RecoveryActionPanel(): JSX.Element {
-  const handleImmediateReturn = (): void => {
-    window.location.href = ROOT_ROUTE;
-  };
+const RecoveryActionPanel = memo(function RecoveryActionPanel(): JSX.Element {
+  const handleImmediateReturn = useCallback((): void => {
+    window.location.replace(ROOT_ROUTE);
+  }, []);
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -65,10 +65,15 @@ function RecoveryActionPanel(): JSX.Element {
       </Link>
     </div>
   );
-}
+});
 
 export default function NotFound(): JSX.Element {
   const countdown = useAutoRedirect(REDIRECT_DELAY_SECONDS, ROOT_ROUTE);
+
+  const countdownText = useMemo(() => 
+    `Auto-redirecting to Command Console in ${countdown}s...`,
+    [countdown]
+  );
 
   return (
     <main 
@@ -87,7 +92,7 @@ export default function NotFound(): JSX.Element {
           The requested system node or route does not exist within the Dalek Caan architecture.
         </p>
         <p className="text-[11px] text-amber-400/80 mb-6 font-mono">
-          Auto-redirecting to Command Console in {countdown}s...
+          {countdownText}
         </p>
         <RecoveryActionPanel />
       </div>
