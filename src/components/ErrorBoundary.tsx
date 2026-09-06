@@ -10,6 +10,11 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
+interface ParsedErrorDetails {
+  errorMessage: string;
+  isFirestoreError: boolean;
+}
+
 const CHUNK_RELOAD_COOLDOWN_MS = 10000;
 const LAST_CHUNK_RELOAD_KEY = 'last_chunk_reload';
 
@@ -57,7 +62,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     window.location.href = '/';
   };
 
-  private parseErrorDetails(error: Error | null): { errorMessage: string; isFirestoreError: boolean } {
+  private parseErrorDetails(error: Error | null): ParsedErrorDetails {
     if (!error?.message) {
       return { errorMessage: 'An unexpected error occurred.', isFirestoreError: false };
     }
