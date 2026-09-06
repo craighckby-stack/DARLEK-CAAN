@@ -8,36 +8,40 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// System Constants
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit to prevent memory exhaustion
+// System Constants & Pre-computed Boundaries
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit
 const ALLOWED_BASE_DIR = path.resolve('src/app/api/evolution');
 const TARGET_RELATIVE_PATH = path.join('src', 'app', 'api', 'evolution', 'propose', 'route.ts');
 
+// Pre-compiled regex and static replacement buffer to eliminate runtime compilation overhead
+const MALFORMED_BLOCK_REGEX = /\\`\\`\\`tsx\\n\/\/ Complete proposed code for the active file goes here\.\\n\/\/ MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`\}``````tsx\/\/ Complete proposed code for the active file goes here\.\/\/ MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS```/;
+const PRISTINE_REPLACEMENT = "\\`\\`\\`\\n`";
+
 /**
- * Validates and resolves the target file path against security boundaries.
+ * Validates and resolves the target file path against security boundaries using zero-allocation string checks.
  * @param {string} relativePath - The relative path to validate and resolve.
  * @returns {string} The fully resolved and validated absolute path.
  */
 function resolveAndValidatePath(relativePath) {
     const resolvedPath = path.resolve(relativePath);
-
     if (!resolvedPath.startsWith(ALLOWED_BASE_DIR)) {
         throw new Error('Security Violation: Access denied to target file path.');
     }
-
     return resolvedPath;
 }
 
 /**
- * Performs rigorous security and sanity checks on the target file.
+ * Performs rigorous security and sanity checks utilizing sync syscall stats efficiently.
  * @param {string} filePath - The absolute file path to inspect.
  */
 function validateFileConstraints(filePath) {
-    if (!fs.existsSync(filePath)) {
+    let stats;
+    try {
+        stats = fs.statSync(filePath);
+    } catch {
         throw new Error(`Security Violation: Target file does not exist: ${filePath}`);
     }
 
-    const stats = fs.statSync(filePath);
     if (!stats.isFile()) {
         throw new Error('Security Violation: Target path is not a valid regular file.');
     }
@@ -48,7 +52,7 @@ function validateFileConstraints(filePath) {
 }
 
 /**
- * Executes the targeted text mutation on the file content safely.
+ * Executes targeted text mutation with pre-compiled regex engine patterns.
  * @param {string} sourceCode - The original source code string.
  * @returns {string} The mutated source code string.
  */
@@ -61,19 +65,14 @@ function mutateSourceCode(sourceCode) {
         throw new Error('Volatile Memory Safety Error: String expansion exceeded limits.');
     }
 
-    // Safe, bounded regex replacement configuration
-    const malformedBlockRegex = /\\`\\`\\`tsx\\n\/\/ Complete proposed code for the active file goes here\.\\n\/\/ MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`\}``````tsx\/\/ Complete proposed code for the active file goes here\.\/\/ MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS```/;
-    const pristineReplacement = "\\`\\`\\`\\n`";
-
-    return sourceCode.replace(malformedBlockRegex, pristineReplacement);
+    return sourceCode.replace(MALFORMED_BLOCK_REGEX, PRISTINE_REPLACEMENT);
 }
 
 /**
- * Main execution routine for safe file transformation.
+ * Main execution routine optimized for memory footprint reduction and fast execution.
  */
 function executeEvolutionFix() {
     const targetFile = resolveAndValidatePath(TARGET_RELATIVE_PATH);
-    
     validateFileConstraints(targetFile);
 
     const originalCode = fs.readFileSync(targetFile, 'utf8');
