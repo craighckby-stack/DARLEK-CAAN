@@ -1,26 +1,51 @@
 require('dotenv').config({ path: '.env' });
 const { GoogleGenAI } = require('@google/genai');
 
-// Cache the singleton instance to eliminate redundant object allocations and initialization overhead
+const CONFIG = Object.freeze({
+  MODEL_NAME: 'gemini-2.5-flash',
+  TEST_PROMPT: 'Hello',
+});
+
 let cachedClient = null;
 
 /**
+ * Retrieves the GEMINI_API_KEY environment variable after strict validation.
+ * @throws {Error} If GEMINI_API_KEY is missing, non-string, or blank.
+ * @returns {string} Validated API key.
+ */
+function getValidatedApiKey() {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+    throw new Error('CRITICAL: GEMINI_API_KEY environment variable is missing, null, or malformed.');
+  }
+
+  return apiKey.trim();
+}
+
+/**
  * Initializes and validates the Google GenAI client instance using a cached singleton pattern.
- * @throws {Error} If GEMINI_API_KEY is missing from the environment.
+ * @throws {Error} If GEMINI_API_KEY validation fails.
  * @returns {GoogleGenAI} The initialized GoogleGenAI client instance.
  */
 function createGenAIClient() {
   if (cachedClient !== null) {
     return cachedClient;
   }
-  
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
-    throw new Error('CRITICAL: GEMINI_API_KEY environment variable is missing, null, or malformed.');
-  }
-  
+
+  const apiKey = getValidatedApiKey();
   cachedClient = new GoogleGenAI({ apiKey });
+
   return cachedClient;
+}
+
+/**
+ * Helper to safely extract message string from thrown errors or unknown objects.
+ * @param {unknown} error - The caught exception.
+ * @returns {string} Human-readable error message.
+ */
+function formatErrorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**
@@ -31,27 +56,29 @@ function createGenAIClient() {
  */
 async function testGeminiConnection() {
   let ai;
+
   try {
     ai = createGenAIClient();
   } catch (initError) {
-    console.error('ERROR [Initialization Failed]:', initError instanceof Error ? initError.message : initError);
+    console.error('ERROR [Initialization Failed]:', formatErrorMessage(initError));
     process.exitCode = 1;
     return;
   }
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: 'Hello',
+      model: CONFIG.MODEL_NAME,
+      contents: CONFIG.TEST_PROMPT,
     });
 
-    if (!response || typeof response.text !== 'string') {
+    const responseText = response?.text;
+    if (typeof responseText !== 'string' || responseText.trim() === '') {
       throw new Error('Received malformed or empty response structure from Gemini API.');
     }
 
-    console.log('SUCCESS:', response.text);
-  } catch (error) {
-    console.error('ERROR [Execution Failed]:', error instanceof Error ? error.message : error);
+    console.log('SUCCESS:', responseText);
+  } catch (executionError) {
+    console.error('ERROR [Execution Failed]:', formatErrorMessage(executionError));
     process.exitCode = 1;
   }
 }
