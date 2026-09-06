@@ -17,6 +17,7 @@ const Label = React.memo(
     LabelProps
   >(({ className, ...props }, ref) => {
     const computedClassName = React.useMemo(() => {
+      if (!className) return DEFAULT_LABEL_CLASSES
       return cn(DEFAULT_LABEL_CLASSES, className)
     }, [className])
 
@@ -31,6 +32,6 @@ const Label = React.memo(
   })
 )
 
-Label.displayName = LabelPrimitive.Root.displayName ?? "Label"
+Label.displayName = "Label"
 
 export { Label }
