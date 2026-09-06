@@ -8,32 +8,21 @@ function resolveGlobalContext() {
   if (typeof globalThis !== 'undefined') {
     return globalThis;
   }
-  
   if (typeof self !== 'undefined') {
     return self;
   }
-
   if (typeof window !== 'undefined') {
     return window;
   }
-
-  return undefined;
+  return void 0;
 }
 
 /**
  * Initializes the React Server Components (RSC) server manifest on the global execution context.
  */
-(function initializeRscServerManifest() {
+!(function initializeRscServerManifest() {
   const globalContext = resolveGlobalContext();
-
-  if (!globalContext) {
-    return;
+  if (globalContext && !globalContext.__RSC_SERVER_MANIFEST) {
+    globalContext.__RSC_SERVER_MANIFEST = '{"node":{},"edge":{},"encryptionKey":"process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY"}';
   }
-
-  // Pre-serialize the static manifest payload to eliminate runtime JSON.stringify overhead and allocations
-  globalContext.__RSC_SERVER_MANIFEST = JSON.stringify({
-    node: {},
-    edge: {},
-    encryptionKey: 'process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY',
-  });
 })();
