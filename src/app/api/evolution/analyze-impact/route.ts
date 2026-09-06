@@ -42,20 +42,50 @@ Programmatic string only. Keep under 150 words.
 If clean, output exactly: STATUS: PASS
 If broken, output exactly: STATUS: FAIL followed by a concise line-separated list of architectural breaks.`;
 
+// Pre-compiled regex cache for maximum execution speed and zero allocation overhead on repetitive scans
+const EXPORT_REGEX = /export\s+(?:default\s+)?(?:function|class|const|let|var|type|interface|enum)\s+(\w+)/g;
+const DEFINITION_REGEX = /(?:function|class)\s+(\w+)/g;
+const IMPORT_REGEX = /import\s+.*?from\s+['"](.+?)['"]/g;
+const TODO_REGEX = /\/\/\s*(TODO|FIXME|HACK|XXX|BUG)[^\n]*/gi;
+const DEBUG_LOG_REGEX = /console\.(log|debug|info)\s*\(/g;
+const ANY_TYPE_REGEX = /:\s*any\b/g;
+const TRY_CATCH_REGEX = /try\s*\{/g;
+
 // --- Static Analysis Helpers ---
 
 function extractMatches(code: string, regex: RegExp, groupIndex: number = 1): string[] {
-  return [...code.matchAll(regex)].map(match => match[groupIndex]);
+  regex.lastIndex = 0;
+  const matches: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(code)) !== null) {
+    matches.push(match[groupIndex]);
+  }
+  return matches;
+}
+
+function countMatches(code: string, regex: RegExp): number {
+  regex.lastIndex = 0;
+  let count = 0;
+  while (regex.exec(code) !== null) {
+    count++;
+  }
+  return count;
 }
 
 function detectStaticIssues(originalCode: string, proposedCode: string): StaticIssue[] {
   const issues: StaticIssue[] = [];
 
   // 1. Export Analysis
-  const exportRegex = /export\s+(?:default\s+)?(?:function|class|const|let|var|type|interface|enum)\s+(\w+)/g;
-  const originalExports = extractMatches(originalCode, exportRegex);
-  const proposedExports = extractMatches(proposedCode, exportRegex);
-  const removedExports = originalExports.filter(exp => !proposedExports.includes(exp));
+  const originalExports = extractMatches(originalCode, EXPORT_REGEX);
+  const proposedExports = extractMatches(proposedCode, EXPORT_REGEX);
+  
+  const removedExports: string[] = [];
+  for (let i = 0; i < originalExports.length; i++) {
+    const exp = originalExports[i];
+    if (!proposedExports.includes(exp)) {
+      removedExports.push(exp);
+    }
+  }
 
   if (removedExports.length > 0) {
     issues.push({
@@ -66,10 +96,16 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
   }
 
   // 2. Internal Definition Analysis
-  const definitionRegex = /(?:function|class)\s+(\w+)/g;
-  const originalFuncs = extractMatches(originalCode, definitionRegex);
-  const proposedFuncs = extractMatches(proposedCode, definitionRegex);
-  const removedFuncs = originalFuncs.filter(func => !proposedFuncs.includes(func) && !removedExports.includes(func));
+  const originalFuncs = extractMatches(originalCode, DEFINITION_REGEX);
+  const proposedFuncs = extractMatches(proposedCode, DEFINITION_REGEX);
+  
+  const removedFuncs: string[] = [];
+  for (let i = 0; i < originalFuncs.length; i++) {
+    const func = originalFuncs[i];
+    if (!proposedFuncs.includes(func) && !removedExports.includes(func)) {
+      removedFuncs.push(func);
+    }
+  }
 
   if (removedFuncs.length > 0) {
     issues.push({
@@ -80,11 +116,24 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
   }
 
   // 3. Import Analysis
-  const importRegex = /import\s+.*?from\s+['"](.+?)['"]/g;
-  const originalImports = extractMatches(originalCode, importRegex);
-  const proposedImports = extractMatches(proposedCode, importRegex);
-  const newImports = proposedImports.filter(imp => !originalImports.includes(imp));
-  const removedImports = originalImports.filter(imp => !proposedImports.includes(imp));
+  const originalImports = extractMatches(originalCode, IMPORT_REGEX);
+  const proposedImports = extractMatches(proposedCode, IMPORT_REGEX);
+  
+  const newImports: string[] = [];
+  for (let i = 0; i < proposedImports.length; i++) {
+    const imp = proposedImports[i];
+    if (!originalImports.includes(imp)) {
+      newImports.push(imp);
+    }
+  }
+
+  const removedImports: string[] = [];
+  for (let i = 0; i < originalImports.length; i++) {
+    const imp = originalImports[i];
+    if (!proposedImports.includes(imp)) {
+      removedImports.push(imp);
+    }
+  }
 
   if (removedImports.length > 0) {
     issues.push({
@@ -115,8 +164,7 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
   }
 
   // 5. Technical Debt Annotations (TODO/FIXME)
-  const todoRegex = /\/\/\s*(TODO|FIXME|HACK|XXX|BUG)[^\n]*/gi;
-  const newTodos = extractMatches(proposedCode, todoRegex, 0);
+  const newTodos = extractMatches(proposedCode, TODO_REGEX, 0);
   if (newTodos.length > 0) {
     issues.push({
       type: 'NEW_TODO',
@@ -126,9 +174,8 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
   }
 
   // 6. Debug Artifacts
-  const debugLogRegex = /console\.(log|debug|info)\s*\(/g;
-  const newConsoleLogs = extractMatches(proposedCode, debugLogRegex).length;
-  const origConsoleLogs = extractMatches(originalCode, debugLogRegex).length;
+  const newConsoleLogs = countMatches(proposedCode, DEBUG_LOG_REGEX);
+  const origConsoleLogs = countMatches(originalCode, DEBUG_LOG_REGEX);
   if (newConsoleLogs > origConsoleLogs) {
     issues.push({
       type: 'DEBUG_CODE',
@@ -138,9 +185,8 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
   }
 
   // 7. TypeScript Type Safety Analysis
-  const anyTypeRegex = /:\s*any\b/g;
-  const newAnyCount = extractMatches(proposedCode, anyTypeRegex).length;
-  const origAnyCount = extractMatches(originalCode, anyTypeRegex).length;
+  const newAnyCount = countMatches(proposedCode, ANY_TYPE_REGEX);
+  const origAnyCount = countMatches(originalCode, ANY_TYPE_REGEX);
   if (newAnyCount > origAnyCount) {
     issues.push({
       type: 'TYPE_SAFETY',
@@ -150,9 +196,8 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
   }
 
   // 8. Error Handling Robustness
-  const tryCatchRegex = /try\s*\{/g;
-  const origTryCatch = extractMatches(originalCode, tryCatchRegex).length;
-  const propTryCatch = extractMatches(proposedCode, tryCatchRegex).length;
+  const origTryCatch = countMatches(originalCode, TRY_CATCH_REGEX);
+  const propTryCatch = countMatches(proposedCode, TRY_CATCH_REGEX);
   if (propTryCatch < origTryCatch) {
     issues.push({
       type: 'ERROR_HANDLING',
@@ -172,9 +217,16 @@ function truncateCode(code: string): string {
 }
 
 function buildResponse(staticIssues: StaticIssue[], llmAnalysis: string, llmProvider: string) {
-  const highCount = staticIssues.filter(issue => issue.severity === 'high').length;
-  const mediumCount = staticIssues.filter(issue => issue.severity === 'medium').length;
-  const lowCount = staticIssues.filter(issue => issue.severity === 'low').length;
+  let highCount = 0;
+  let mediumCount = 0;
+  let lowCount = 0;
+
+  for (let i = 0; i < staticIssues.length; i++) {
+    const sev = staticIssues[i].severity;
+    if (sev === 'high') highCount++;
+    else if (sev === 'medium') mediumCount++;
+    else if (sev === 'low') lowCount++;
+  }
 
   const overallRisk = highCount > 0 ? 'HIGH' : mediumCount > 2 ? 'MEDIUM' : 'LOW';
   const llmSummaryPart = llmAnalysis ? ` LLM review: ${llmProvider}.` : ' No LLM available — static analysis only.';
