@@ -26,6 +26,53 @@ interface MutationHistoryPanelProps {
   refreshTrigger?: number;
 }
 
+// Global lookup caches to eliminate runtime string allocation and parsing overhead
+const STATUS_COLOR_CACHE: Record<string, string> = {
+  applied: COLORS.green,
+  rejected: COLORS.dalekRed,
+  failed: COLORS.dalekRed,
+  approved: COLORS.cyan,
+  pending: COLORS.gold,
+};
+
+const PATH_NAME_CACHE = new Map<string, string>();
+const DATE_FORMAT_CACHE = new Map<string, string>();
+
+const getStatusColor = (status: string): string => {
+  return STATUS_COLOR_CACHE[status] || COLORS.textMuted;
+};
+
+const getRiskColor = (risk: number): string => {
+  if (risk <= 3) return COLORS.cyan;
+  if (risk <= 6) return COLORS.gold;
+  return COLORS.dalekRed;
+};
+
+const getCachedFileName = (filePath: string): string => {
+  if (!filePath) return 'unknown';
+  let cached = PATH_NAME_CACHE.get(filePath);
+  if (cached === undefined) {
+    const lastSlash = filePath.lastIndexOf('/');
+    cached = lastSlash !== -1 ? filePath.substring(lastSlash + 1) : filePath;
+    PATH_NAME_CACHE.set(filePath, cached);
+  }
+  return cached;
+};
+
+const getCachedFormattedDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  let cached = DATE_FORMAT_CACHE.get(dateStr);
+  if (cached === undefined) {
+    try {
+      cached = new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      cached = '';
+    }
+    DATE_FORMAT_CACHE.set(dateStr, cached);
+  }
+  return cached;
+};
+
 export default function MutationHistoryPanel({ sessionId, refreshTrigger }: MutationHistoryPanelProps) {
   const [mutations, setMutations] = useState<MutationRecord[]>([]);
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -75,7 +122,8 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
     let rejected = 0;
     let pending = 0;
 
-    for (let i = 0; i < mutations.length; i++) {
+    const len = mutations.length;
+    for (let i = 0; i < len; i++) {
       const status = mutations[i].status;
       if (status === 'applied') applied++;
       else if (status === 'rejected' || status === 'failed') rejected++;
@@ -88,30 +136,6 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
   const displayedMutations = useMemo(() => {
     return expanded ? mutations : mutations.slice(0, 3);
   }, [mutations, expanded]);
-
-  const getStatusColor = useCallback((status: string) => {
-    switch (status) {
-      case 'applied': return COLORS.green;
-      case 'rejected': case 'failed': return COLORS.dalekRed;
-      case 'approved': return COLORS.cyan;
-      case 'pending': return COLORS.gold;
-      default: return COLORS.textMuted;
-    }
-  }, []);
-
-  const getRiskColor = useCallback((risk: number) => {
-    if (risk <= 3) return COLORS.cyan;
-    if (risk <= 6) return COLORS.gold;
-    return COLORS.dalekRed;
-  }, []);
-
-  const formatDate = useCallback((dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return '';
-    }
-  }, []);
 
   if (!sessionId || mutations.length === 0) return null;
 
@@ -142,7 +166,12 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
       <div className="space-y-1.5">
         {displayedMutations.map((m) => {
           const statusCol = getStatusColor(m.status);
-          const fileName = m.filePath ? m.filePath.split('/').pop() : 'unknown';
+          const fileName = getCachedFileName(m.filePath);
+          const statusText = m.status ? m.status.toUpperCase().slice(0, 4) : 'UNK';
+          const formattedDate = getCachedFormattedDate(m.createdAt);
+          const riskColor = getRiskColor(m.riskScore);
+          const commitShort = m.commitSha ? m.commitSha.slice(0, 7) : null;
+
           return (
             <div
               key={m.id}
@@ -159,7 +188,7 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
                     letterSpacing: '0.05em',
                   }}
                 >
-                  {m.status ? m.status.toUpperCase().slice(0, 4) : 'UNK'}
+                  {statusText}
                 </span>
                 <span
                   style={{
@@ -178,19 +207,19 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
                 <span
                   style={{
                     fontSize: '8px',
-                    color: getRiskColor(m.riskScore),
+                    color: riskColor,
                     fontWeight: 600,
                   }}
                 >
                   {m.riskScore}/10
                 </span>
                 <span style={{ fontSize: '7px', color: '#444' }}>
-                  {formatDate(m.createdAt)}
+                  {formattedDate}
                 </span>
               </div>
-              {m.commitSha && (
+              {commitShort && (
                 <div style={{ fontSize: '7px', color: '#333', marginTop: '2px', paddingLeft: '2px' }}>
-                  commit: {m.commitSha.slice(0, 7)}
+                  commit: {commitShort}
                   {m.provider && ` via ${m.provider}`}
                 </div>
               )}
