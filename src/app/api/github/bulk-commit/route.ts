@@ -51,6 +51,7 @@ interface GitTreeItem {
 }
 
 const GITHUB_API_BASE = 'https://api.github.com';
+const projectRoot = resolve(process.cwd());
 
 /**
  * Creates standard HTTP headers for GitHub API communication.
@@ -67,20 +68,28 @@ function createGitHubHeaders(token: string): Record<string, string> {
  * Sanitizes all committable files to redact any accidental secrets or sensitive credentials.
  */
 function sanitizeCommittableFiles(files: CommittableFile[]): CommittableFile[] {
-  return files.map((file) => {
-    if (!file || typeof file.content !== 'string') return file;
+  const len = files.length;
+  const sanitizedFiles = new Array<CommittableFile>(len);
+  
+  for (let i = 0; i < len; i++) {
+    const file = files[i];
+    if (!file || typeof file.content !== 'string') {
+      sanitizedFiles[i] = file;
+      continue;
+    }
     
     const { sanitized, findings } = sanitizeContent(file.content);
     if (findings.length > 0) {
-      const safeLogPath = file.path.replace(/error/gi, 'err');
-      console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${safeLogPath} before bulk commit.`);
+      console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${file.path.replace(/error/gi, 'err')} before bulk commit.`);
     }
 
-    return {
-      ...file,
+    sanitizedFiles[i] = {
+      path: file.path,
       content: sanitized,
     };
-  });
+  }
+
+  return sanitizedFiles;
 }
 
 /**
@@ -110,7 +119,6 @@ async function ensureRepositoryExists(owner: string, repo: string, headers: Reco
       );
     }
 
-    // Wait briefly for GitHub asynchronous propagation of ref heads
     await new Promise<void>((resolveTimer) => setTimeout(resolveTimer, 3000));
   }
 
@@ -227,10 +235,14 @@ async function resolveBaseTreeSha(
  */
 async function writeFilesToLocalDisk(files: CommittableFile[]): Promise<void> {
   try {
-    const projectRoot = resolve(process.cwd());
-    await Promise.all(
-      files.map(async (file) => {
-        if (!file.path || typeof file.content !== 'string') return;
+    const len = files.length;
+    const promises = new Array<Promise<void>>(len);
+
+    for (let i = 0; i < len; i++) {
+      const file = files[i];
+      if (!file || !file.path || typeof file.content !== 'string') continue;
+
+      promises[i] = (async () => {
         const cleanPath = file.path.replace(/^\/+|\/+$/g, '');
         const localFilePath = resolve(projectRoot, cleanPath);
         
@@ -239,8 +251,10 @@ async function writeFilesToLocalDisk(files: CommittableFile[]): Promise<void> {
           await fs.mkdir(parentDir, { recursive: true });
           await fs.writeFile(localFilePath, file.content, 'utf-8');
         }
-      })
-    );
+      })();
+    }
+
+    await Promise.all(promises);
   } catch (diskError: unknown) {
     console.warn('[Bulk Commit] Disk write warning:', diskError);
   }
@@ -258,8 +272,12 @@ async function generateTreeItems(
   const blobUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/blobs`;
 
   try {
-    const treeItems = await Promise.all(
-      files.map(async (file): Promise<GitTreeItem> => {
+    const len = files.length;
+    const treeItemsPromises = new Array<Promise<GitTreeItem>>(len);
+
+    for (let i = 0; i < len; i++) {
+      const file = files[i];
+      treeItemsPromises[i] = (async (): Promise<GitTreeItem> => {
         const blobResponse = await fetch(blobUrl, {
           method: 'POST',
           headers,
@@ -285,9 +303,10 @@ async function generateTreeItems(
           type: 'blob',
           sha: blobData.sha,
         };
-      })
-    );
+      })();
+    }
 
+    const treeItems = await Promise.all(treeItemsPromises);
     return { items: treeItems };
   } catch (blobError: unknown) {
     const errorMessage = blobError instanceof Error ? blobError.message : 'Failed during file blob generation.';
@@ -323,29 +342,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const safeFiles = sanitizeCommittableFiles(files);
     const headers = createGitHubHeaders(token);
 
-    // 1. Verify / Auto-create repository
     const repoErrorResponse = await ensureRepositoryExists(owner, repo, headers);
     if (repoErrorResponse) return repoErrorResponse;
 
-    // 2. Resolve latest commit SHA on branch
     const branchResult = await resolveBranchCommitSha(owner, repo, branch, headers);
     if (branchResult.errorResponse) return branchResult.errorResponse;
     const latestCommitSha = branchResult.sha!;
 
-    // 3. Resolve base tree SHA
     const treeResult = await resolveBaseTreeSha(owner, repo, latestCommitSha, headers);
     if (treeResult.errorResponse) return treeResult.errorResponse;
     const baseTreeSha = treeResult.sha!;
 
-    // 4. Synchronize local disk representations (optional development cache)
     await writeFilesToLocalDisk(safeFiles);
 
-    // 5. Generate Git blobs and construct tree items
     const treeItemsResult = await generateTreeItems(owner, repo, safeFiles, headers);
     if (treeItemsResult.errorResponse) return treeItemsResult.errorResponse;
     const treeItems = treeItemsResult.items!;
 
-    // 6. Create new tree referencing base tree
     const treeUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees`;
     const createTreeResponse = await fetch(treeUrl, {
       method: 'POST',
@@ -374,7 +387,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 7. Create commit pointing to new tree and parent commit
     const createCommitUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/commits`;
     const defaultCommitMsg = `[DARLEK CANN] Bulk Commit: Staged system evolution of ${files.length} file${files.length > 1 ? 's' : ''}`;
     
@@ -406,7 +418,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 8. Update branch reference to point to new commit
     const updateRefUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/heads/${branch}`;
     const updateRefResponse = await fetch(updateRefUrl, {
       method: 'PATCH',
