@@ -9,13 +9,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const TARGET_FILE = path.normalize('src/app/api/evolution/propose/route.ts');
-const BUFFER_ENCODING = 'utf8';
+const TARGET_FILE_PATH = path.normalize('src/app/api/evolution/propose/route.ts');
+const FILE_ENCODING = 'utf8';
 
-// Compiled regex targets hoisted out of execution paths to prevent reallocation overhead
-const REGEX_TARGET = /\/\/ 1\. Try direct clean JSON parse[\s\S]*?analysis = rawText\.slice\(0, 300\) \|\| 'Analyzed file structure\.';\n      \}\n    \}/;
+// Pre-compiled regular expression targeting the legacy parsing block for replacement
+const LEGACY_PARSER_PATTERN = /\/\/ 1\. Try direct clean JSON parse[\s\S]*?analysis = rawText\.slice\(0, 300\) \|\| 'Analyzed file structure\.';\n      \}\n    \}/;
 
-const NEW_PARSER_BLOCK = `    // 1. Robust Extraction Engine (EMG Zero-Allocation Hyper-Optimized)
+const MODERN_PARSER_BLOCK = `    // 1. Robust Extraction Engine (EMG Zero-Allocation Hyper-Optimized)
     let proposedCode = '';
     let analysis = 'Analysis complete.';
     
@@ -84,25 +84,27 @@ const NEW_PARSER_BLOCK = `    // 1. Robust Extraction Engine (EMG Zero-Allocatio
     }`;
 
 /**
- * Validates file existence, reads target content, performs regex replacement, and writes the optimized parser block.
- * @throws {Error} If the target file is missing or the target pattern signature mismatches.
+ * Validates target file existence, reads its content, performs the code replacement,
+ * and writes back the updated parser block.
+ * 
+ * @throws {Error} If the target file is missing or the legacy pattern signature mismatches.
  * @returns {void}
  */
 function executeSovereignOverhaul() {
   try {
-    if (!fs.existsSync(TARGET_FILE)) {
-      throw new Error(`Target evolution route file not found at: ${TARGET_FILE}`);
+    if (!fs.existsSync(TARGET_FILE_PATH)) {
+      throw new Error(`Target evolution route file not found at: ${TARGET_FILE_PATH}`);
     }
 
-    const code = fs.readFileSync(TARGET_FILE, BUFFER_ENCODING);
+    const sourceCode = fs.readFileSync(TARGET_FILE_PATH, FILE_ENCODING);
     
-    if (!REGEX_TARGET.test(code)) {
+    if (!LEGACY_PARSER_PATTERN.test(sourceCode)) {
       throw new Error('Target extraction pattern not found in target file; signature mismatch detected.');
     }
 
-    const optimizedCode = code.replace(REGEX_TARGET, NEW_PARSER_BLOCK);
+    const optimizedSourceCode = sourceCode.replace(LEGACY_PARSER_PATTERN, MODERN_PARSER_BLOCK);
     
-    fs.writeFileSync(TARGET_FILE, optimizedCode, BUFFER_ENCODING);
+    fs.writeFileSync(TARGET_FILE_PATH, optimizedSourceCode, FILE_ENCODING);
     console.log('[EMG Core v49] robust_parser.js applied optimization successfully to target route.');
   } catch (error) {
     console.error('[EMG Core v49] Critical execution failure during parser optimization:', error);
