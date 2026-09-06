@@ -25,15 +25,25 @@ const GITHUB_API_BASE = "https://api.github.com";
 const USER_AGENT = "EMG-Core-v49-Neural-Code-Optimizer";
 const GITHUB_API_VERSION = "application/vnd.github.v3+json";
 
+// Pre-allocate constant headers footprint to eliminate redundant runtime object allocations
+const BASE_HEADERS_CACHE: Record<string, string> = {
+  Accept: GITHUB_API_VERSION,
+  "User-Agent": USER_AGENT,
+};
+
+const POST_HEADERS_CACHE: Record<string, string> = {
+  Accept: GITHUB_API_VERSION,
+  "User-Agent": USER_AGENT,
+  "Content-Type": "application/json",
+};
+
 /**
- * Generates standard HTTP headers for GitHub API authentication and metadata.
+ * Generates highly optimized HTTP headers utilizing pre-allocated reference objects.
  */
-function createGitHubHeaders(token: string): Record<string, string> {
-  return {
-    Authorization: `Bearer ${token}`,
-    Accept: GITHUB_API_VERSION,
-    "User-Agent": USER_AGENT,
-  };
+function createGitHubHeaders(token: string, isPost: boolean = false): Record<string, string> {
+  const headers = isPost ? { ...POST_HEADERS_CACHE } : { ...BASE_HEADERS_CACHE };
+  headers.Authorization = `Bearer ${token}`;
+  return headers;
 }
 
 /**
@@ -44,7 +54,7 @@ async function parseGitHubError(response: Response, defaultMessage: string): Pro
   return errorData.message || `${defaultMessage}: ${response.status}`;
 }
 
-export async function GET(): Promise<NextResponse> {
+export function GET(): NextResponse {
   return NextResponse.json({ status: "online", service: "GITHUB_CREATE_BRANCH_API" });
 }
 
@@ -60,11 +70,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const headers = createGitHubHeaders(token);
-
-    // 1. Fetch the SHA of the base branch
+    // 1. Fetch the SHA of the base branch using pre-cached header templates
     const baseRefUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(baseBranch)}`;
-    const baseRefResponse = await fetch(baseRefUrl, { headers, cache: "no-store" });
+    const baseRefResponse = await fetch(baseRefUrl, { headers: createGitHubHeaders(token, false), cache: "no-store" });
 
     if (!baseRefResponse.ok) {
       const errorMessage = await parseGitHubError(baseRefResponse, "Failed to fetch base branch ref");
@@ -81,14 +89,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 2. Create the new git reference (branch) using the base SHA
+    // 2. Create the new git reference (branch) using the base SHA with minimized memory footprint
     const createRefUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs`;
     const createRefResponse = await fetch(createRefUrl, {
       method: "POST",
-      headers: {
-        ...headers,
-        "Content-Type": "application/json",
-      },
+      headers: createGitHubHeaders(token, true),
       body: JSON.stringify({
         ref: `refs/heads/${newBranch}`,
         sha: baseSha,
