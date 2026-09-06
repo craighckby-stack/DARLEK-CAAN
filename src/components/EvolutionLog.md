@@ -1,20 +1,29 @@
 # EvolutionLog Component Documentation
 
-## Overview
+> **File Path:** `src/components/EvolutionLog.md`  
+> **Engine:** EMG Core v49 Neural Code and Documentation Optimizer  
+> **Optimization Goal:** PERFORMANCE (Skimmable Executive Summaries, Streamlined ToC, Concise Breakdowns)
 
-The `EvolutionLog` component serves as the primary telemetry interface for the DARLEK CANN v3.0 architecture. Precision-engineered for high-throughput operational environments, it renders real-time visualizations of chronological system mutations, agent state transitions, and critical error logs.
-
----
-
-## Architectural Integration
-
-- **Data Source**: Consumes immutable streams of `EvolutionLogEntry[]` data structures dispatched directly from the central state management store.
-- **Performance Optimization**: Implements React's `useMemo` hook for optimized log sorting alongside `useRef` and programmatic viewport scrolling to sustain locked 60 FPS rendering during high-frequency log ingestion cycles.
-- **Styling Architecture**: Leverages atomic Tailwind CSS utility classes synchronized with custom CSS design tokens defined within the global system theme.
+## Executive Summary
+The `EvolutionLog` component is a high-performance telemetry interface for the DARLEK CANN v3.0 architecture, engineered to render real-time system mutations, agent state transitions, and critical error logs at locked 60 FPS.
 
 ---
 
-## Interface Declaration
+## Table of Contents
+1. [Architectural Integration](#architectural-integration)
+2. [Interface Declaration](#interface-declaration)
+3. [Execution Workflow](#execution-workflow)
+
+---
+
+## 1. Architectural Integration
+- **Data Source:** Consumes immutable streams of `EvolutionLogEntry[]` dispatched from the central state management store.
+- **Performance:** Utilizes `useMemo` for optimized log sorting and `useRef` for programmatic viewport anchoring to sustain locked 60 FPS rendering during heavy ingestion cycles.
+- **Styling:** Leverages atomic Tailwind CSS utility classes synchronized with custom CSS design tokens from the global theme.
+
+---
+
+## 2. Interface Declaration
 
 ```typescript
 /**
@@ -34,9 +43,11 @@ export interface EvolutionLogEntry {
 
 ---
 
-## Execution Workflow
+## 3. Execution Workflow
 
-1. **Event Trigger**: A telemetry, security, or system mutation event is dispatched by the Agent Orchestra engine.
-2. **State Propagation**: The updated state payload propagates downstream to the subscribed `EvolutionLog` component instance.
-3. **Data Processing**: Incoming log streams are normalized and chronologically sorted via memoized sorting routines.
-4. **DOM Mutation**: An automatic scroll anchor locks the viewport to the newest incoming entry, ensuring uninterrupted operational monitoring.
+| Step | Phase | Description |
+| :--- | :--- | :--- |
+| **1** | **Event Trigger** | Telemetry, security, or system mutation dispatched by the Agent Orchestra engine. |
+| **2** | **State Propagation** | Updated state payload propagates downstream to the `EvolutionLog` component instance. |
+| **3** | **Data Processing** | Incoming log streams are normalized and chronologically sorted via memoized sorting routines. |
+| **4** | **DOM Mutation** | Automatic scroll anchor locks the viewport to the newest entry for uninterrupted monitoring. |
