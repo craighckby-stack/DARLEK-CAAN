@@ -3,11 +3,13 @@
 > **EMG Core v49 Execution:** Optimized for rapid comprehension, clean asset governance, and high-performance frontend delivery.
 
 ## Executive Summary
-The `public/` directory stores raw, unprocessed static assets (images, fonts, media) served directly to the client. This document outlines structural organization, strict naming conventions, and correct root-relative referencing methods to maintain optimal application performance.
+
+The `public/` directory stores raw, unprocessed static assets (images, fonts, and media) that are served directly to the client. This document outlines structural organization, strict naming conventions, and correct root-relative referencing methods to maintain optimal application performance.
 
 ---
 
 ## Table of Contents
+
 1. [Usage Guidelines](#usage-guidelines)
 2. [Referencing Public Assets](#referencing-public-assets)
 
@@ -15,11 +17,11 @@ The `public/` directory stores raw, unprocessed static assets (images, fonts, me
 
 ## Usage Guidelines
 
-| Category | Best Practice | Example |
-| :--- | :--- | :--- |
-| **Organization** | Group files into descriptive subdirectories as the project scales. | `images/`, `icons/`, `fonts/` |
-| **Naming** | Use lowercase, kebab-case identifiers with explicit semantics. | `company-logo.svg`, `hero-background.webp` |
-| **Performance** | Compress and properly size all assets prior to repository commitment. | Fast client-side loading times |
+| Category         | Best Practice                                                       | Example                                  |
+| :--------------- | :------------------------------------------------------------------ | :--------------------------------------- |
+| **Organization** | Group files into descriptive subdirectories as the project scales.  | `images/`, `icons/`, `fonts/`            |
+| **Naming**       | Use lowercase, kebab-case identifiers with explicit semantics.      | `company-logo.svg`, `hero-background.webp` |
+| **Performance**  | Compress and properly size all assets prior to repository addition. | Fast client-side loading times           |
 
 ---
 
