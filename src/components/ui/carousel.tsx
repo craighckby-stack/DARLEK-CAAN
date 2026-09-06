@@ -55,13 +55,16 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     },
     ref
   ) => {
-    const [carouselRef, api] = useEmblaCarousel(
-      {
+    // Memoize embla options to prevent unnecessary re-initialization allocations
+    const emblaOptions = React.useMemo(
+      () => ({
         ...opts,
-        axis: orientation === "horizontal" ? "x" : "y",
-      },
-      plugins
+        axis: orientation === "horizontal" ? "x" : "y" as const,
+      }),
+      [opts, orientation]
     )
+
+    const [carouselRef, api] = useEmblaCarousel(emblaOptions, plugins)
     const [canScrollPrev, setCanScrollPrev] = React.useState<boolean>(false)
     const [canScrollNext, setCanScrollNext] = React.useState<boolean>(false)
 
@@ -83,13 +86,13 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
       (event: React.KeyboardEvent<HTMLDivElement>) => {
         if (event.key === "ArrowLeft") {
           event.preventDefault()
-          scrollPrev()
+          api?.scrollPrev()
         } else if (event.key === "ArrowRight") {
           event.preventDefault()
-          scrollNext()
+          api?.scrollNext()
         }
       },
-      [scrollPrev, scrollNext]
+      [api]
     )
 
     React.useEffect(() => {
@@ -152,6 +155,16 @@ const CarouselContent = React.forwardRef<
 >(({ className, ...props }, ref) => {
   const { carouselRef, orientation } = useCarousel()
 
+  const contentClassName = React.useMemo(
+    () =>
+      cn(
+        "flex",
+        orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
+        className
+      ),
+    [orientation, className]
+  )
+
   return (
     <div
       ref={carouselRef}
@@ -160,11 +173,7 @@ const CarouselContent = React.forwardRef<
     >
       <div
         ref={ref}
-        className={cn(
-          "flex",
-          orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
-          className
-        )}
+        className={contentClassName}
         {...props}
       />
     </div>
@@ -178,17 +187,23 @@ const CarouselItem = React.forwardRef<
 >(({ className, ...props }, ref) => {
   const { orientation } = useCarousel()
 
+  const itemClassName = React.useMemo(
+    () =>
+      cn(
+        "min-w-0 shrink-0 grow-0 basis-full",
+        orientation === "horizontal" ? "pl-4" : "pt-4",
+        className
+      ),
+    [orientation, className]
+  )
+
   return (
     <div
       ref={ref}
       role="group"
       aria-roledescription="slide"
       data-slot="carousel-item"
-      className={cn(
-        "min-w-0 shrink-0 grow-0 basis-full",
-        orientation === "horizontal" ? "pl-4" : "pt-4",
-        className
-      )}
+      className={itemClassName}
       {...props}
     />
   )
@@ -201,19 +216,25 @@ const CarouselPrevious = React.forwardRef<
 >(({ className, variant = "outline", size = "icon", ...props }, ref) => {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel()
 
+  const prevClassName = React.useMemo(
+    () =>
+      cn(
+        "absolute size-8 rounded-full",
+        orientation === "horizontal"
+          ? "top-1/2 -left-12 -translate-y-1/2"
+          : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
+        className
+      ),
+    [orientation, className]
+  )
+
   return (
     <Button
       ref={ref}
       data-slot="carousel-previous"
       variant={variant}
       size={size}
-      className={cn(
-        "absolute size-8 rounded-full",
-        orientation === "horizontal"
-          ? "top-1/2 -left-12 -translate-y-1/2"
-          : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
-        className
-      )}
+      className={prevClassName}
       disabled={!canScrollPrev}
       onClick={scrollPrev}
       {...props}
@@ -231,19 +252,25 @@ const CarouselNext = React.forwardRef<
 >(({ className, variant = "outline", size = "icon", ...props }, ref) => {
   const { orientation, scrollNext, canScrollNext } = useCarousel()
 
+  const nextClassName = React.useMemo(
+    () =>
+      cn(
+        "absolute size-8 rounded-full",
+        orientation === "horizontal"
+          ? "top-1/2 -right-12 -translate-y-1/2"
+          : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
+        className
+      ),
+    [orientation, className]
+  )
+
   return (
     <Button
       ref={ref}
       data-slot="carousel-next"
       variant={variant}
       size={size}
-      className={cn(
-        "absolute size-8 rounded-full",
-        orientation === "horizontal"
-          ? "top-1/2 -right-12 -translate-y-1/2"
-          : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
-        className
-      )}
+      className={nextClassName}
       disabled={!canScrollNext}
       onClick={scrollNext}
       {...props}
