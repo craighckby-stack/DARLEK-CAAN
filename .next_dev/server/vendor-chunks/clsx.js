@@ -16,11 +16,11 @@ exports.modules = {
 
     const MAX_RECURSION_DEPTH = 32;
     const hasOwnProperty = Object.prototype.hasOwnProperty;
-    const FORBIDDEN_OBJECT_KEYS = Object.freeze({
+    const FORBIDDEN_OBJECT_KEYS = {
       __proto__: true,
       prototype: true,
       constructor: true
-    });
+    };
 
     /**
      * Appends a class string to an accumulator with a space separator if needed.
@@ -31,7 +31,7 @@ exports.modules = {
      */
     function appendClass(accumulator, nextValue) {
       if (!nextValue) return accumulator;
-      return accumulator ? `${accumulator} ${nextValue}` : nextValue;
+      return accumulator ? accumulator + " " + nextValue : nextValue;
     }
 
     /**
@@ -113,7 +113,7 @@ exports.modules = {
       const valueType = typeof value;
 
       if (valueType === "string") {
-        return /** @type {string} */ (value);
+        return value;
       }
 
       if (valueType === "number") {
@@ -128,8 +128,8 @@ exports.modules = {
         return "";
       }
 
-      const activeVisited = visited ?? new Set();
-      const targetObj = /** @type {object} */ (value);
+      const activeVisited = visited || new Set();
+      const targetObj = value;
 
       if (activeVisited.has(targetObj)) {
         return "";
@@ -141,7 +141,7 @@ exports.modules = {
         if (Array.isArray(value)) {
           return parseArrayValue(value, depth, activeVisited);
         }
-        return parseObjectValue(/** @type {Record<string, unknown>} */ (value));
+        return parseObjectValue(value);
       } finally {
         activeVisited.delete(targetObj);
       }
