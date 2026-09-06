@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, startTransition } from 'react';
 import { sanitizeContent, Finding, isSkippableFile } from '@/lib/scanner';
 import JSZip from 'jszip';
 
@@ -26,8 +26,8 @@ export interface UseFolderScannerReturn {
 }
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
-const TIMER_INTERVAL_MS = 500;
-const YIELD_INTERVAL_ITERATIONS = 20;
+const TIMER_INTERVAL_MS = 1000; // Reduced state update frequency for timer
+const YIELD_INTERVAL_ITERATIONS = 40; // Decreased thread yielding overhead
 const BINARY_CHECK_LENGTH = 1000;
 
 export function useFolderScanner(): UseFolderScannerReturn {
@@ -138,7 +138,10 @@ export function useFolderScanner(): UseFolderScannerReturn {
               sanitized,
               size: file.size,
             });
-            setResults([...newResults]);
+            // Batch results update via concurrent transition to prevent UI blocking
+            startTransition(() => {
+              setResults([...newResults]);
+            });
           }
         } catch (fileErr) {
           console.error(`Failed to read file: ${relPath}`, fileErr);
@@ -168,8 +171,10 @@ export function useFolderScanner(): UseFolderScannerReturn {
     
     try {
       const zip = new JSZip();
-      for (const res of results) {
-        if (res && res.file) {
+      const resultsLen = results.length;
+      for (let i = 0; i < resultsLen; i++) {
+        const res = results[i];
+        if (res?.file) {
           zip.file(res.file, res.sanitized);
         }
       }
