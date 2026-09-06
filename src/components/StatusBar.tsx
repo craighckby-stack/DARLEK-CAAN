@@ -24,6 +24,21 @@ const PROVIDERS: readonly ProviderConfig[] = [
   { id: 'github', label: 'GITHUB' },
 ] as const;
 
+// Static mapping objects to eliminate runtime conditional allocations during render mapping
+const STATUS_COLORS = {
+  connected: COLORS.cyan,
+  error: COLORS.dalekRed,
+  testing: COLORS.gold,
+  default: '#333',
+} as const;
+
+const STATUS_TEXTS = {
+  connected: 'ONLINE',
+  error: 'OFFLINE',
+  testing: 'TESTING',
+  default: 'IDLE',
+} as const;
+
 export default function StatusBar({
   connectionStatus,
   repoConfig,
@@ -49,7 +64,10 @@ export default function StatusBar({
       : 'NOT CONFIGURED';
   }, [repoConfig.owner, repoConfig.repo]);
 
-  const healthColor = HEALTH_STATUS_COLORS[overallHealth] || COLORS.textMuted;
+  const healthColor = useMemo(
+    () => HEALTH_STATUS_COLORS[overallHealth] || COLORS.textMuted,
+    [overallHealth]
+  );
 
   return (
     <div className="dalek-panel rounded-lg p-4 space-y-4">
@@ -73,23 +91,8 @@ export default function StatusBar({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {PROVIDERS.map(({ id, label }) => {
             const status = connectionStatus[id];
-            const statusColor =
-              status === 'connected'
-                ? COLORS.cyan
-                : status === 'error'
-                ? COLORS.dalekRed
-                : status === 'testing'
-                ? COLORS.gold
-                : '#333';
-            const statusText =
-              status === 'connected'
-                ? 'ONLINE'
-                : status === 'error'
-                ? 'OFFLINE'
-                : status === 'testing'
-                ? 'TESTING'
-                : 'IDLE';
-
+            const statusColor = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.default;
+            const statusText = STATUS_TEXTS[status as keyof typeof STATUS_TEXTS] || STATUS_TEXTS.default;
             const isConnected = status === 'connected';
 
             return (
