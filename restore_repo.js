@@ -1,6 +1,5 @@
 const https = require('https');
 const fs = require('fs/promises');
-const nodeFs = require('fs');
 const path = require('path');
 
 const REPOSITORY_CONFIG = Object.freeze({
@@ -12,42 +11,44 @@ const REPOSITORY_CONFIG = Object.freeze({
 });
 
 /**
- * Performs an HTTPS GET request and resolves with the response body.
+ * Performs an optimized HTTPS GET request with pre-allocated buffer sizing.
  * @param {string} url - Target URL.
  * @returns {Promise<string>} Response body payload.
  */
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
-    const options = {
-      headers: { 'User-Agent': REPOSITORY_CONFIG.userAgent }
-    };
-
-    https.get(url, options, (res) => {
-      if (res.statusCode && res.statusCode >= 400) {
+    https.get(url, { headers: { 'User-Agent': REPOSITORY_CONFIG.userAgent } }, (res) => {
+      if (res.statusCode >= 400) {
+        res.resume();
         return reject(new Error(`Request failed with status code ${res.statusCode}`));
       }
 
-      let rawData = '';
-      res.on('data', chunk => rawData += chunk);
-      res.on('end', () => resolve(rawData));
+      const chunks = [];
+      let totalLength = 0;
+
+      res.on('data', chunk => {
+        chunks.push(chunk);
+        totalLength += chunk.length;
+      });
+
+      res.on('end', () => {
+        resolve(Buffer.concat(chunks, totalLength).toString('utf8'));
+      });
     }).on('error', reject);
   });
 }
 
 /**
- * Downloads and persists a single file from the remote repository.
+ * Downloads and persists a single file from the remote repository efficiently.
  * @param {Object} fileNode - Git tree file node metadata.
  * @returns {Promise<void>}
  */
 async function restoreFile(fileNode) {
   const destinationPath = fileNode.path;
-  const targetDir = path.dirname(destinationPath);
-  
-  await fs.mkdir(targetDir, { recursive: true });
-
-  const rawFileUrl = `https://raw.githubusercontent.com/${REPOSITORY_CONFIG.owner}/${REPOSITORY_CONFIG.repo}/${REPOSITORY_CONFIG.branch}/${destinationPath}`;
   
   try {
+    await fs.mkdir(path.dirname(destinationPath), { recursive: true });
+    const rawFileUrl = `https://raw.githubusercontent.com/${REPOSITORY_CONFIG.owner}/${REPOSITORY_CONFIG.repo}/${REPOSITORY_CONFIG.branch}/${destinationPath}`;
     const fileContent = await fetchUrl(rawFileUrl);
     await fs.writeFile(destinationPath, fileContent, 'utf8');
   } catch (error) {
@@ -56,20 +57,21 @@ async function restoreFile(fileNode) {
 }
 
 /**
- * Sequentially restores an array of source files to maintain clean I/O order.
+ * Sequentially restores an array of source files with minimized overhead.
  * @param {Object[]} files - Array of file nodes to restore.
  * @returns {Promise<void>}
  */
 async function restoreFilesSequentially(files) {
-  for (const [index, file] of files.entries()) {
-    process.stdout.write(`[${index + 1}/${files.length}] Restoring: ${file.path}\r`);
-    await restoreFile(file);
+  const totalFiles = files.length;
+  for (let i = 0; i < totalFiles; ++i) {
+    process.stdout.write(`[${i + 1}/${totalFiles}] Restoring: ${files[i].path}\r`);
+    await restoreFile(files[i]);
   }
   console.log('\nALL RESTORED!');
 }
 
 /**
- * Orchestrates the repository restoration process.
+ * Orchestrates the repository restoration process with zero-redundancy parsing.
  */
 async function main() {
   const { owner, repo, branch, targetDirectoryFilter } = REPOSITORY_CONFIG;
@@ -80,13 +82,17 @@ async function main() {
     const treeJsonResponse = await fetchUrl(treeApiUrl);
     const parsedTree = JSON.parse(treeJsonResponse).tree;
 
-    if (!parsedTree || !Array.isArray(parsedTree)) {
+    if (!Array.isArray(parsedTree)) {
       throw new Error('No valid git tree found in response.');
     }
 
-    const srcFiles = parsedTree.filter(node => 
-      node.type === 'blob' && node.path.startsWith(targetDirectoryFilter)
-    );
+    const srcFiles = [];
+    for (let i = 0, len = parsedTree.length; i < len; ++i) {
+      const node = parsedTree[i];
+      if (node.type === 'blob' && node.path.startsWith(targetDirectoryFilter)) {
+        srcFiles.push(node);
+      }
+    }
 
     console.log(`Restoring ${srcFiles.length} files from ${repo} (${targetDirectoryFilter})...`);
     await restoreFilesSequentially(srcFiles);
