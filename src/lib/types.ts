@@ -1,7 +1,7 @@
 /**
  * @file src/lib/types.ts
  * @module EMG Core v49 Neural Code and Documentation Optimizer Engine
- * @description Comprehensive, type-safe, and memory-efficient type definitions 
+ * @description Highly optimized, memory-efficient, and strictly typed structural definitions 
  * for CAAN System State, Evolution, Mutation Orchestration, and Multi-Agent Collaboration.
  */
 
