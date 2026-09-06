@@ -25,26 +25,33 @@ const MUTATION_STATUS_CONFIGURATIONS: Record<MutationStatus, StatusConfiguration
     dotClassName: 'bg-green-500',
     label: 'stable',
   },
-} as const;
+};
+
+const BASE_CONTAINER_CLASS = 'flex items-center gap-1 px-2 py-1 rounded bg-black border border-white/10';
+const BASE_DOT_CLASS = 'w-2 h-2 rounded-full';
+const LABEL_CLASS = 'text-[8px] uppercase tracking-widest text-white select-none';
 
 export const MutationStatusIndicator: React.FC<MutationStatusIndicatorProps> = memo(({
   status,
-  className = '',
+  className,
 }) => {
-  const currentStatusConfig = MUTATION_STATUS_CONFIGURATIONS[status] ?? MUTATION_STATUS_CONFIGURATIONS.stable;
+  const config = MUTATION_STATUS_CONFIGURATIONS[status] ?? MUTATION_STATUS_CONFIGURATIONS.stable;
+  
+  const containerClassName = className 
+    ? `${BASE_CONTAINER_CLASS} ${className}` 
+    : BASE_CONTAINER_CLASS;
+
+  const dotClassName = `${BASE_DOT_CLASS} ${config.dotClassName}`;
 
   return (
     <div 
-      className={`flex items-center gap-1 px-2 py-1 rounded bg-black border border-white/10 ${className}`}
+      className={containerClassName}
       role="status"
       aria-label={`Mutation status: ${status}`}
     >
-      <div 
-        className={`w-2 h-2 rounded-full ${currentStatusConfig.dotClassName}`} 
-        aria-hidden="true" 
-      />
-      <span className="text-[8px] uppercase tracking-widest text-white select-none">
-        {currentStatusConfig.label}
+      <div className={dotClassName} aria-hidden="true" />
+      <span className={LABEL_CLASS}>
+        {config.label}
       </span>
     </div>
   );
