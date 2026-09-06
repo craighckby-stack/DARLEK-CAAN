@@ -25,13 +25,13 @@ export interface SystemEnvironmentConfig {
   readonly PORT: number;
 }
 
-const ALLOWED_NODE_ENVS = new Set<string>(['development', 'production', 'test']);
-const ALLOWED_SANDBOX_LEVELS = new Set<string>(['strict', 'permissive', 'zero-leak']);
-const ALLOWED_LOG_LEVELS = new Set<string>(['debug', 'info', 'warn', 'error']);
+const ALLOWED_NODE_ENVS = ['development', 'production', 'test'] as const;
+const ALLOWED_SANDBOX_LEVELS = ['strict', 'permissive', 'zero-leak'] as const;
+const ALLOWED_LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 
-const ALLOWED_NODE_ENVS_ARR = ['development', 'production', 'test'] as const;
-const ALLOWED_SANDBOX_LEVELS_ARR = ['strict', 'permissive', 'zero-leak'] as const;
-const ALLOWED_LOG_LEVELS_ARR = ['debug', 'info', 'warn', 'error'] as const;
+const ALLOWED_NODE_ENVS_SET = new Set<string>(ALLOWED_NODE_ENVS);
+const ALLOWED_SANDBOX_LEVELS_SET = new Set<string>(ALLOWED_SANDBOX_LEVELS);
+const ALLOWED_LOG_LEVELS_SET = new Set<string>(ALLOWED_LOG_LEVELS);
 
 export class EnvironmentValidator {
   private static instance: EnvironmentValidator;
@@ -70,42 +70,43 @@ export class EnvironmentValidator {
     return resolvedValue;
   }
 
+  private parseNumeric(value: string | undefined, fallback: number, isInteger = false): number {
+    if (value === undefined) {
+      return fallback;
+    }
+    const parsed = isInteger ? Number.parseInt(value, 10) : Number(value);
+    return Number.isNaN(parsed) ? fallback : parsed;
+  }
+
   private validate(): SystemEnvironmentConfig {
     const env = process.env;
 
     const nodeEnv = this.validateEnum(
       env.NODE_ENV,
       'development',
+      ALLOWED_NODE_ENVS_SET,
       ALLOWED_NODE_ENVS,
-      ALLOWED_NODE_ENVS_ARR,
       'NODE_ENV'
     );
 
     const sandboxIsolation = this.validateEnum(
       env.SANDBOX_ISOLATION_LEVEL,
       'zero-leak',
+      ALLOWED_SANDBOX_LEVELS_SET,
       ALLOWED_SANDBOX_LEVELS,
-      ALLOWED_SANDBOX_LEVELS_ARR,
       'SANDBOX_ISOLATION_LEVEL'
     );
 
     const logLevel = this.validateEnum(
       env.LOG_LEVEL,
       'info',
+      ALLOWED_LOG_LEVELS_SET,
       ALLOWED_LOG_LEVELS,
-      ALLOWED_LOG_LEVELS_ARR,
       'LOG_LEVEL'
     );
 
-    const parsedConsensus = env.CONSENSUS_WEIGHT_THRESHOLD !== undefined
-      ? Number(env.CONSENSUS_WEIGHT_THRESHOLD)
-      : NaN;
-    const consensusWeight = Number.isNaN(parsedConsensus) ? 0.75 : parsedConsensus;
-
-    const parsedPort = env.PORT !== undefined
-      ? Number.parseInt(env.PORT, 10)
-      : NaN;
-    const port = Number.isNaN(parsedPort) ? 3000 : parsedPort;
+    const consensusWeight = this.parseNumeric(env.CONSENSUS_WEIGHT_THRESHOLD, 0.75);
+    const port = this.parseNumeric(env.PORT, 3000, true);
 
     return {
       NODE_ENV: nodeEnv,
