@@ -9,7 +9,6 @@ export const dynamic = 'force-dynamic';
 
 /** Core system enhancement files targeted for automated repository synchronization. */
 const ENHANCEMENT_FILES = [
-  // API routes
   'src/app/api/chat/route.ts',
   'src/app/api/evolution/propose/route.ts',
   'src/app/api/evolution/coherence-gate/route.ts',
@@ -25,15 +24,12 @@ const ENHANCEMENT_FILES = [
   'src/app/api/github/create-repo/route.ts',
   'src/app/api/github/branches/route.ts',
   'src/app/api/setup/test-connection/route.ts',
-  // System API
   'src/app/api/system/reboot/route.ts',
-  // Lib
   'src/lib/constants.ts',
   'src/lib/types.ts',
   'src/lib/utils.ts',
   'src/lib/db.ts',
   'src/lib/dalek-brain.ts',
-  // Components
   'src/components/StatusBar.tsx',
   'src/components/ChatPanel.tsx',
   'src/components/ChatMessage.tsx',
@@ -44,11 +40,9 @@ const ENHANCEMENT_FILES = [
   'src/components/SaturationMetrics.tsx',
   'src/components/MutationDiffView.tsx',
   'src/components/MutationHistoryPanel.tsx',
-  // Pages
   'src/app/page.tsx',
   'src/app/layout.tsx',
   'src/app/globals.css',
-  // Schema
   'prisma/schema.prisma',
 ] as const;
 
@@ -78,7 +72,7 @@ interface GitTreeItem {
   content: string;
 }
 
-/** Builds standardized request headers for GitHub API interactions. */
+// Pre-cached static GitHub headers template generator
 function createGitHubHeaders(token: string): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`,
@@ -87,7 +81,6 @@ function createGitHubHeaders(token: string): Record<string, string> {
   };
 }
 
-/** Verifies repository existence and provisions it automatically if missing. */
 async function ensureRepositoryExists(owner: string, repo: string, headers: Record<string, string>): Promise<NextResponse | null> {
   const verifyResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
 
@@ -116,7 +109,6 @@ async function ensureRepositoryExists(owner: string, repo: string, headers: Reco
   return null;
 }
 
-/** Resolves the target branch SHA, creating the branch from main if necessary. */
 async function resolveBranchSha(
   owner: string,
   repo: string,
@@ -159,7 +151,6 @@ async function resolveBranchSha(
   return null;
 }
 
-/** Resolves the base tree SHA corresponding to a specific commit SHA. */
 async function resolveBaseTreeSha(
   owner: string,
   repo: string,
@@ -179,7 +170,6 @@ async function resolveBaseTreeSha(
   return null;
 }
 
-/** Collects, sanitizes, and writes dynamic custom files and standard enhancement files. */
 function collectTreeItemsAndDetails(
   files: CustomFilePayload[] | undefined,
   projectRoot: string
@@ -187,10 +177,12 @@ function collectTreeItemsAndDetails(
   const treeItemsMap = new Map<string, GitTreeItem>();
   const pushDetails: PushDetail[] = [];
 
-  // 1. Process explicit dynamic files payload if provided
-  if (Array.isArray(files)) {
-    for (const customFile of files) {
+  if (Array.isArray(files) && files.length > 0) {
+    const len = files.length;
+    for (let i = 0; i < len; i++) {
+      const customFile = files[i];
       if (!customFile?.path || typeof customFile.content !== 'string') continue;
+      
       const cleanPath = customFile.path.replace(/^\/+|\/+$/g, '');
       const { sanitized: safeContent } = sanitizeContent(customFile.content);
 
@@ -217,9 +209,11 @@ function collectTreeItemsAndDetails(
     }
   }
 
-  // 2. Process standard local enhancement files
-  for (const filePath of ENHANCEMENT_FILES) {
+  const enhancementLen = ENHANCEMENT_FILES.length;
+  for (let i = 0; i < enhancementLen; i++) {
+    const filePath = ENHANCEMENT_FILES[i];
     const localPath = join(projectRoot, filePath);
+    
     if (!existsSync(localPath)) {
       if (!treeItemsMap.has(filePath)) {
         pushDetails.push({ file: filePath, success: false, error: 'File not found locally' });
@@ -272,18 +266,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return repoErrorResponse;
     }
 
-    const refSha = await resolveBranchSha(owner, repo, branch, headers);
-    const baseTreeSha = await resolveBaseTreeSha(owner, repo, refSha, headers);
+    const [refSha, projectRoot] = await Promise.all([
+      resolveBranchSha(owner, repo, branch, headers),
+      Promise.resolve(resolve(process.cwd()))
+    ]);
 
-    const projectRoot = resolve(process.cwd());
+    const baseTreeSha = await resolveBaseTreeSha(owner, repo, refSha, headers);
     const { treeItemsMap, pushDetails } = collectTreeItemsAndDetails(files, projectRoot);
     const treeItems = Array.from(treeItemsMap.values());
 
-    if (treeItems.length === 0) {
+    const treeItemsLength = treeItems.length;
+    if (treeItemsLength === 0) {
       return NextResponse.json({ error: 'No files valid for push' }, { status: 400 });
     }
 
-    // Create a new git tree in a single request
     const treeBody: Record<string, unknown> = { tree: treeItems };
     if (baseTreeSha) {
       treeBody.base_tree = baseTreeSha;
@@ -303,8 +299,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const treeData = await treeResponse.json();
     const newTreeSha: string = treeData.sha;
 
-    // Create commit
-    const commitMsg = `[DARLEK CANN] Deploy State Backup: ${treeItems.length} core files`;
+    const commitMsg = `[DARLEK CANN] Deploy State Backup: ${treeItemsLength} core files`;
     const commitBody = {
       message: commitMsg,
       tree: newTreeSha,
@@ -325,7 +320,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const createdCommitData = await createCommitResponse.json();
     const newCommitSha: string = createdCommitData.sha;
 
-    // Update branch head reference
     const updateRefResponse = refSha
       ? await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
           method: 'PATCH',
@@ -346,17 +340,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
+    let failedCount = 0;
+    const detailsLen = pushDetails.length;
+    for (let i = 0; i < detailsLen; i++) {
+      if (!pushDetails[i].success) failedCount++;
+    }
+
     return NextResponse.json({
       success: true,
-      pushed: treeItems.length,
-      failed: pushDetails.filter((d) => !d.success).length,
+      pushed: treeItemsLength,
+      failed: failedCount,
       total: ENHANCEMENT_FILES.length,
       commitSha: newCommitSha,
-      summary: `${treeItems.length}/${ENHANCEMENT_FILES.length} active system files securely backup-committed to ${owner}/${repo}@${branch} under single commit: ${newCommitSha.slice(
+      summary: `${treeItemsLength}/${ENHANCEMENT_FILES.length} active system files securely backup-committed to ${owner}/${repo}@${branch} under single commit: ${newCommitSha.slice(
         0,
         7
       )}`,
-      results: pushDetails.map((d) => ({ file: d.file, success: d.success, error: d.error })),
+      results: pushDetails,
     });
   } catch (error: unknown) {
     console.error('Push enhancements error:', error);
