@@ -18,7 +18,7 @@ export interface CodeFile {
 export class MainWorkerPool {
   private readonly concurrencyLimit: number;
   private activeCount = 0;
-  private readonly queue: Array<() => Promise<void>> = [];
+  private readonly queue: Array<() => void> = [];
 
   constructor(concurrencyLimit = 4) {
     this.concurrencyLimit = Math.max(1, Math.floor(concurrencyLimit));
@@ -27,18 +27,16 @@ export class MainWorkerPool {
   /**
    * Enqueues a task and returns a promise that resolves with the result.
    */
-  private async enqueue<T>(taskFn: () => Promise<T>): Promise<T> {
+  private enqueue<T>(taskFn: () => Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const wrappedTask = async (): Promise<void> => {
         try {
-          // Yield to event loop using setImmediate if available for optimal micro-task interleaving
           if (typeof setImmediate === 'function') {
             await new Promise<void>((r) => setImmediate(r));
           } else {
             await new Promise<void>((r) => setTimeout(r, 0));
           }
-          const result = await taskFn();
-          resolve(result);
+          resolve(await taskFn());
         } catch (error) {
           reject(error instanceof Error ? error : new Error(String(error)));
         } finally {
@@ -57,7 +55,7 @@ export class MainWorkerPool {
       const nextTask = this.queue.shift();
       if (nextTask) {
         this.activeCount++;
-        void nextTask();
+        nextTask();
       }
     }
   }
@@ -65,29 +63,25 @@ export class MainWorkerPool {
   /**
    * Offloads AST Diff Gate analysis to the worker pool.
    */
-  public async analyzeAstDiff(
+  public analyzeAstDiff(
     originalCode: string,
     proposedCode: string,
     filePath: string
   ): Promise<AstDiffResult> {
-    return this.enqueue(async () => {
-      return runAstDiffGate(originalCode, proposedCode, filePath);
-    });
+    return this.enqueue(() => runAstDiffGate(originalCode, proposedCode, filePath));
   }
 
   /**
    * Offloads Structural Sanity Validation to the worker pool.
    */
-  public async validateSanity(
+  public validateSanity(
     originalCode: string,
     proposedCode: string,
     filePath: string,
     repoFiles: CodeFile[],
     newFiles: CodeFile[]
   ): Promise<StructuralSanityResult> {
-    return this.enqueue(async () => {
-      return validateStructuralSanity(originalCode, proposedCode, filePath, repoFiles, newFiles);
-    });
+    return this.enqueue(() => validateStructuralSanity(originalCode, proposedCode, filePath, repoFiles, newFiles));
   }
 }
 
