@@ -4,37 +4,15 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-const BADGE_BASE_STYLES = [
-  "inline-flex items-center justify-center",
-  "rounded-md border px-2 py-0.5",
-  "text-xs font-medium w-fit whitespace-nowrap shrink-0",
-  "gap-1 [&>svg]:size-3 [&>svg]:pointer-events-none",
-  "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-  "aria-invalid:ring-destructive/25 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-  "transition-[color,box-shadow] overflow-hidden",
-].join(" ")
+const BADGE_BASE_STYLES = "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 gap-1 [&>svg]:size-3 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/25 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden"
 
 const badgeVariants = cva(BADGE_BASE_STYLES, {
   variants: {
     variant: {
-      default: [
-        "border-transparent bg-primary text-primary-foreground",
-        "[a&]:hover:bg-primary/90",
-      ].join(" "),
-      secondary: [
-        "border-transparent bg-secondary text-secondary-foreground",
-        "[a&]:hover:bg-secondary/90",
-      ].join(" "),
-      destructive: [
-        "border-transparent bg-destructive text-white",
-        "[a&]:hover:bg-destructive/90",
-        "focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
-        "dark:bg-destructive/60",
-      ].join(" "),
-      outline: [
-        "text-foreground",
-        "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-      ].join(" "),
+      default: "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+      secondary: "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+      destructive: "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+      outline: "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
     },
   },
   defaultVariants: {
@@ -51,13 +29,18 @@ export interface BadgeProps
   asChild?: boolean
 }
 
-function Badge({
+const MEMO_COMPONENTS = {
+  span: "span",
+  slot: Slot,
+} as const
+
+const Badge = React.memo(function Badge({
   className,
   variant,
   asChild = false,
   ...restProps
 }: BadgeProps) {
-  const Component = asChild ? Slot : "span"
+  const Component = asChild ? MEMO_COMPONENTS.slot : MEMO_COMPONENTS.span
 
   return (
     <Component
@@ -66,6 +49,8 @@ function Badge({
       {...restProps}
     />
   )
-}
+})
+
+Badge.displayName = "Badge"
 
 export { Badge, badgeVariants }
