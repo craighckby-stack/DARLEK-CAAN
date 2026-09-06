@@ -1,20 +1,31 @@
 # Public Assets Directory (`public/`)
 
-The `public/` directory is designated for storing public-facing static assets—such as images, fonts, icons, and media files—that are served directly to the client without processing or transformation by the core asset bundler.
+> **EMG Core v49 Execution:** Optimized for rapid comprehension, clean asset governance, and high-performance frontend delivery.
+
+## Executive Summary
+The `public/` directory stores raw, unprocessed static assets (images, fonts, media) served directly to the client. This document outlines structural organization, strict naming conventions, and correct root-relative referencing methods to maintain optimal application performance.
+
+---
+
+## Table of Contents
+1. [Usage Guidelines](#usage-guidelines)
+2. [Referencing Public Assets](#referencing-public-assets)
 
 ---
 
 ## Usage Guidelines
 
-- **File Organization**: Keep assets properly categorized in descriptive subdirectories (e.g., `images/`, `icons/`, `fonts/`) as the project scales to maintain a clean and navigable workspace.
-- **Naming Conventions**: Use lowercase letters, kebab-case (hyphens instead of spaces), and descriptive identifiers for all asset files (e.g., `company-logo.svg`, `hero-background.webp`).
-- **Performance Optimization**: Ensure all rasterized images, vector graphics, and media files are compressed and appropriately sized prior to committing them to this directory to guarantee optimal application performance and fast client-side loading times.
+| Category | Best Practice | Example |
+| :--- | :--- | :--- |
+| **Organization** | Group files into descriptive subdirectories as the project scales. | `images/`, `icons/`, `fonts/` |
+| **Naming** | Use lowercase, kebab-case identifiers with explicit semantics. | `company-logo.svg`, `hero-background.webp` |
+| **Performance** | Compress and properly size all assets prior to repository commitment. | Fast client-side loading times |
 
 ---
 
 ## Referencing Public Assets
 
-When referencing assets stored in the `public/` directory within your components or templates, reference them directly from the root URL (`/`):
+Reference assets stored in the `public/` directory directly from the root URL (`/`) within your components and templates:
 
 ```html
 <!-- Example: Referencing an optimized image from the public directory -->
