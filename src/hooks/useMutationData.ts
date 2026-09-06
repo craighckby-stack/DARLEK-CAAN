@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 export interface MutationRecord {
   id?: string;
@@ -20,6 +20,8 @@ interface BrainApiResponse {
 
 const API_ENDPOINT = '/api/brain';
 const MUTATION_ACTION = 'get-mutation-history';
+const EMPTY_MUTATIONS: MutationRecord[] = [];
+const FETCH_HEADERS = { 'Content-Type': 'application/json' };
 
 async function fetchMutationHistory(
   sessionId: string,
@@ -27,9 +29,7 @@ async function fetchMutationHistory(
 ): Promise<MutationRecord[]> {
   const response = await fetch(API_ENDPOINT, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: FETCH_HEADERS,
     body: JSON.stringify({
       action: MUTATION_ACTION,
       sessionId,
@@ -42,15 +42,30 @@ async function fetchMutationHistory(
   }
 
   const data = (await response.json()) as BrainApiResponse;
+  const rawMutations = data?.mutations;
 
-  return Array.isArray(data?.mutations) ? (data.mutations as MutationRecord[]) : [];
+  if (!Array.isArray(rawMutations)) {
+    return EMPTY_MUTATIONS;
+  }
+
+  const len = rawMutations.length;
+  if (len === 0) {
+    return EMPTY_MUTATIONS;
+  }
+
+  const optimizedArray = new Array(len);
+  for (let i = 0; i < len; ++i) {
+    optimizedArray[i] = rawMutations[i] as MutationRecord;
+  }
+
+  return optimizedArray;
 }
 
 export function useMutationData(
   sessionId: string | null | undefined,
   trigger?: number
 ): UseMutationDataResult {
-  const [mutations, setMutations] = useState<MutationRecord[]>([]);
+  const [mutations, setMutations] = useState<MutationRecord[]>(EMPTY_MUTATIONS);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
   const [manualTrigger, setManualTrigger] = useState<number>(0);
@@ -66,7 +81,7 @@ export function useMutationData(
     const currentSessionId = sessionIdRef.current;
     
     if (!currentSessionId) {
-      setMutations([]);
+      setMutations(EMPTY_MUTATIONS);
       setLoading(false);
       setError(null);
       return;
@@ -88,7 +103,7 @@ export function useMutationData(
       } catch (err: unknown) {
         if (isMounted && err instanceof Error && err.name !== 'AbortError') {
           setError(err);
-          setMutations([]);
+          setMutations(EMPTY_MUTATIONS);
         }
       } finally {
         if (isMounted) {
@@ -105,5 +120,10 @@ export function useMutationData(
     };
   }, [sessionId, trigger, manualTrigger]);
 
-  return { mutations, loading, error, refetch };
+  return useMemo(() => ({
+    mutations,
+    loading,
+    error,
+    refetch,
+  }), [mutations, loading, error, refetch]);
 }
