@@ -1,66 +1,71 @@
 import type { NextRequest } from 'next/server';
 
 export interface SafeFetchResult<T> {
-  success: boolean;
-  data: T | null;
-  status: number;
-  error?: string;
+  readonly success: boolean;
+  readonly data: T | null;
+  readonly status: number;
+  readonly error?: string;
 }
 
 const WHITESPACE_REGEX = /^\s*$/;
+const MAX_ERROR_SNIPPET_LENGTH = 200;
 
-export function safeParseJson<T = unknown>(str: string | null | undefined, fallback: T = {} as T): T {
-  if (typeof str !== 'string') {
-    return fallback;
-  }
-  
+/**
+ * Validates whether a string contains actionable content beyond mere whitespace.
+ */
+function hasValidContent(str: string | null | undefined): str is string {
+  if (typeof str !== 'string') return false;
   const trimmed = str.trim();
-  if (!trimmed || WHITESPACE_REGEX.test(trimmed)) {
+  return trimmed.length > 0 && !WHITESPACE_REGEX.test(trimmed);
+}
+
+/**
+ * Safely parses a raw string payload into structured JSON, defaulting gracefully.
+ */
+export function safeParseJson<T = unknown>(str: string | null | undefined, fallback: T = {} as T): T {
+  if (!hasValidContent(str)) {
     return fallback;
   }
 
   try {
-    return JSON.parse(trimmed) as T;
+    return JSON.parse(str.trim()) as T;
   } catch {
     return fallback;
   }
 }
 
+/**
+ * Safely extracts and parses JSON payload from incoming HTTP requests.
+ */
 export async function safeReqJson<T = unknown>(req: Request | NextRequest, fallback: T = {} as T): Promise<T> {
   try {
     const text = await req.text();
-    if (!text) {
-      return fallback;
-    }
-    
-    const trimmed = text.trim();
-    if (!trimmed) {
-      return fallback;
-    }
-
-    return JSON.parse(trimmed) as T;
+    return safeParseJson(text, fallback);
   } catch {
     return fallback;
   }
 }
 
+/**
+ * Safely parses JSON from standard fetch responses, capturing raw text snippets on error.
+ */
 export async function safeResponseJson<T = unknown>(res: Response, fallback: T = {} as T): Promise<T> {
   try {
     const text = await res.text();
-    if (!text) {
+    if (!hasValidContent(text)) {
       return fallback;
     }
-    
+
     const trimmed = text.trim();
-    if (!trimmed) {
-      return fallback;
-    }
 
     try {
       return JSON.parse(trimmed) as T;
     } catch {
       if (fallback !== null && typeof fallback === 'object') {
-        const errorSnippet = trimmed.length > 200 ? trimmed.slice(0, 200) : trimmed;
+        const errorSnippet = trimmed.length > MAX_ERROR_SNIPPET_LENGTH 
+          ? trimmed.slice(0, MAX_ERROR_SNIPPET_LENGTH) 
+          : trimmed;
+          
         return Object.assign({}, fallback, { 
           error: errorSnippet, 
           rawText: trimmed 
@@ -73,6 +78,9 @@ export async function safeResponseJson<T = unknown>(res: Response, fallback: T =
   }
 }
 
+/**
+ * Executes a network fetch request with comprehensive JSON decoding and robust error safeguards.
+ */
 export async function safeFetchJson<T = unknown>(
   url: string, 
   options?: RequestInit
@@ -81,7 +89,7 @@ export async function safeFetchJson<T = unknown>(
     const res = await fetch(url, options);
     const text = await res.text();
     
-    if (!text) {
+    if (!hasValidContent(text)) {
       return {
         success: res.ok,
         data: null,
@@ -91,14 +99,6 @@ export async function safeFetchJson<T = unknown>(
     }
 
     const trimmed = text.trim();
-    if (!trimmed) {
-      return {
-        success: res.ok,
-        data: null,
-        status: res.status,
-        error: res.ok ? undefined : `HTTP ${res.status} Empty Response`,
-      };
-    }
 
     try {
       const json = JSON.parse(trimmed);
