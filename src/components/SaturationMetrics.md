@@ -1,36 +1,45 @@
 # SaturationMetrics Component Architecture
 
-## Overview
+`File Path: src/components/SaturationMetrics.md`
 
-The `SaturationMetrics` component is a core telemetry module within the `unitary-core` diagnostic suite. It monitors real-time cognitive load, structural integrity, and operational health across distributed agent swarms using zero-latency visual indicators.
+## Executive Summary
+The `SaturationMetrics` component is a high-performance telemetry module within the `unitary-core` diagnostic suite, providing real-time visualization of cognitive load, structural integrity, and operational health for distributed agent swarms.
 
-## Integration and Architecture
+---
 
-- **Inputs**: Consumes the strongly typed `SaturationMetrics` interface imported from `@/lib/types`.
-- **Styling**: Utilizes `Tailwind CSS` for performant layout design alongside `Lucide-React` iconography to ensure high-contrast, low-latency visual feedback.
-- **Performance**: Implements optimized memoization patterns (`useMemo`, `useCallback`) to prevent redundant re-renders during high-frequency telemetry ingestion streams.
+## Quick Reference: Table of Contents
+1. [Architecture & Performance](#architecture--performance)
+2. [Operational Thresholds](#operational-thresholds)
+3. [Code Implementation](#code-implementation)
+
+---
+
+## Architecture & Performance
+
+- **Inputs**: Consumes the strongly typed `SaturationMetrics` interface from `@/lib/types`.
+- **Styling**: Utilizes `Tailwind CSS` and `Lucide-React` iconography for low-latency visual feedback.
+- **Optimization**: Employs React memoization (`useMemo`) to eliminate redundant re-renders during high-frequency telemetry streams.
+
+---
 
 ## Operational Thresholds
-
-The component evaluates incoming telemetry against the following standardized parameters:
 
 | Metric Parameter | Maximum Threshold | Warning Level | Critical Level |
 | :--- | :--- | :--- | :--- |
 | **Structural Change** | `5.0` | `3.5` | `4.5` |
 | **Semantic Saturation** | `0.35` | `0.25` | `0.32` |
-| **Identity Preservation** | N/A (Inverted) | N/A | Descending Values |
+| **Identity Preservation** | *Inverted* | N/A | *Descending Values* |
 
-*Note: Identity Preservation is evaluated via an inverted logic model where descending numerical values directly correlate with degraded operational states.*
+> **Note:** Identity Preservation utilizes an inverted logic model where descending numerical values directly indicate degraded operational integrity.
 
-## Code Implementation Example
+---
+
+## Code Implementation
 
 ```typescript
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import { SaturationMetrics as ISaturationMetrics } from '@/lib/types';
 
-/**
- * Properties for the SaturationMetrics telemetry rendering component.
- */
 export interface SaturationProps {
   /** Real-time telemetry data ingested from the agent swarm core */
   metrics: ISaturationMetrics;
@@ -42,14 +51,13 @@ export interface SaturationProps {
  * SaturationMetrics telemetry visualization component.
  * Monitors structural changes and semantic saturation with optimized memoization.
  */
-export const SaturationMetrics: React.FC<SaturationProps> = ({ metrics, refreshRate = 1000 }) => {
-  // Memoized threshold calculation to prevent redundant processing
+export const SaturationMetrics: React.FC<SaturationProps> = ({ metrics }) => {
   const isCritical = useMemo(() => {
     return metrics.structuralChange >= 4.5 || metrics.semanticSaturation >= 0.32;
   }, [metrics]);
 
   return (
-    <div className="p-4 bg-slate-900 text-slate-100 rounded-lg border border-slate-800">
+    <div className={`p-4 bg-slate-900 text-slate-100 rounded-lg border ${isCritical ? 'border-red-500' : 'border-slate-800'}`}>
       <h3 className="text-sm font-semibold tracking-wider uppercase">Swarm Saturation Telemetry</h3>
       <div className="mt-2 grid grid-cols-2 gap-4">
         <div>
