@@ -25,21 +25,24 @@ interface CoherenceGateBody {
   newFiles?: Array<{ path: string; content?: string }>;
 }
 
-interface ThresholdCheck {
-  name: string;
-  value: number;
-  threshold: number;
-  max: number;
-  inverted: boolean;
-}
-
 export const dynamic = 'force-dynamic';
 
 const MAX_SAFE_RISK_SCORE = 7;
 const MAX_SAFE_AFFECTED_FILES = 5;
 const MAX_WARNING_METRICS_TOLERANCE = 3;
 
-function normalizeSaturation(saturation: SaturationMetrics = {}) {
+const DEFAULT_SATURATION = Object.freeze({
+  structuralChange: 0,
+  semanticSaturation: 0,
+  velocity: 0,
+  identityPreservation: 1,
+  capabilityAlignment: 1,
+  crossFileImpact: 0,
+});
+
+type NormalizedSaturation = typeof DEFAULT_SATURATION;
+
+function normalizeSaturation(saturation: SaturationMetrics = {}): NormalizedSaturation {
   return {
     structuralChange: saturation.structuralChange ?? 0,
     semanticSaturation: saturation.semanticSaturation ?? 0,
@@ -62,81 +65,70 @@ async function collectSanityViolations(
   }
 
   const sanity = await mainWorker.validateSanity(originalCode, proposedCode, filePath, repoFiles, newFiles);
-  if (sanity.passed || !Array.isArray(sanity.violations)) {
+  if (sanity.passed || !Array.isArray(sanity.violations) || sanity.violations.length === 0) {
     return [];
   }
 
-  return sanity.violations
-    .filter((violation) => violation.severity === 'high')
-    .map((violation) => `STRUCTURAL SANITY BLOCK: ${violation.message}`);
+  const violations = sanity.violations;
+  const len = violations.length;
+  const result: string[] = [];
+
+  for (let i = 0; i < len; i++) {
+    const v = violations[i];
+    if (v.severity === 'high') {
+      result.push(`STRUCTURAL SANITY BLOCK: ${v.message}`);
+    }
+  }
+
+  return result;
 }
 
-function evaluateThresholds(saturation: ReturnType<typeof normalizeSaturation>): { failures: string[]; hasWarning: boolean } {
+function evaluateThresholds(saturation: NormalizedSaturation): { failures: string[]; hasWarning: boolean } {
   const failures: string[] = [];
   let hasWarning = false;
 
-  const checks: ThresholdCheck[] = [
-    {
-      name: 'Structural Change',
-      value: saturation.structuralChange,
-      threshold: SATURATION_THRESHOLDS.structuralChange.critical,
-      max: SATURATION_THRESHOLDS.structuralChange.max,
-      inverted: false,
-    },
-    {
-      name: 'Semantic Saturation',
-      value: saturation.semanticSaturation,
-      threshold: SATURATION_THRESHOLDS.semanticSaturation.critical,
-      max: SATURATION_THRESHOLDS.semanticSaturation.max,
-      inverted: false,
-    },
-    {
-      name: 'Velocity',
-      value: saturation.velocity,
-      threshold: SATURATION_THRESHOLDS.velocity.critical,
-      max: SATURATION_THRESHOLDS.velocity.max,
-      inverted: false,
-    },
-    {
-      name: 'Identity Preservation',
-      value: saturation.identityPreservation,
-      threshold: SATURATION_THRESHOLDS.identityPreservation.critical,
-      max: SATURATION_THRESHOLDS.identityPreservation.max,
-      inverted: true,
-    },
-    {
-      name: 'Cross-File Impact',
-      value: saturation.crossFileImpact,
-      threshold: SATURATION_THRESHOLDS.crossFileImpact.critical,
-      max: SATURATION_THRESHOLDS.crossFileImpact.max,
-      inverted: false,
-    },
-  ];
+  const tStruct = SATURATION_THRESHOLDS.structuralChange;
+  if (saturation.structuralChange >= tStruct.critical) {
+    failures.push(`Structural Change at critical level (${saturation.structuralChange}/${tStruct.max}). System cannot absorb more change.`);
+    hasWarning = true;
+  }
 
-  for (const check of checks) {
-    const isExceeded = check.inverted
-      ? check.value <= check.threshold
-      : check.value >= check.threshold;
+  const tSemantic = SATURATION_THRESHOLDS.semanticSaturation;
+  if (saturation.semanticSaturation >= tSemantic.critical) {
+    failures.push(`Semantic Saturation at critical level (${saturation.semanticSaturation}/${tSemantic.max}). System cannot absorb more change.`);
+    hasWarning = true;
+  }
 
-    if (isExceeded) {
-      failures.push(`${check.name} at critical level (${check.value}/${check.max}). System cannot absorb more change.`);
-      hasWarning = true;
-    }
+  const tVelocity = SATURATION_THRESHOLDS.velocity;
+  if (saturation.velocity >= tVelocity.critical) {
+    failures.push(`Velocity at critical level (${saturation.velocity}/${tVelocity.max}). System cannot absorb more change.`);
+    hasWarning = true;
+  }
+
+  const tIdentity = SATURATION_THRESHOLDS.identityPreservation;
+  if (saturation.identityPreservation <= tIdentity.critical) {
+    failures.push(`Identity Preservation at critical level (${saturation.identityPreservation}/${tIdentity.max}). System cannot absorb more change.`);
+    hasWarning = true;
+  }
+
+  const tCross = SATURATION_THRESHOLDS.crossFileImpact;
+  if (saturation.crossFileImpact >= tCross.critical) {
+    failures.push(`Cross-File Impact at critical level (${saturation.crossFileImpact}/${tCross.max}). System cannot absorb more change.`);
+    hasWarning = true;
   }
 
   return { failures, hasWarning };
 }
 
-function evaluateCumulativeStress(saturation: ReturnType<typeof normalizeSaturation>): { failures: string[]; hasWarning: boolean } {
-  const warningChecks = [
-    saturation.structuralChange >= SATURATION_THRESHOLDS.structuralChange.warning,
-    saturation.semanticSaturation >= SATURATION_THRESHOLDS.semanticSaturation.warning,
-    saturation.velocity >= SATURATION_THRESHOLDS.velocity.warning,
-    saturation.identityPreservation <= SATURATION_THRESHOLDS.identityPreservation.warning,
-    saturation.crossFileImpact >= SATURATION_THRESHOLDS.crossFileImpact.warning,
-  ];
+function evaluateCumulativeStress(saturation: NormalizedSaturation): { failures: string[]; hasWarning: boolean } {
+  let warningCount = 0;
 
-  const warningCount = warningChecks.filter(Boolean).length;
+  if (saturation.structuralChange >= SATURATION_THRESHOLDS.structuralChange.warning) warningCount++;
+  if (saturation.semanticSaturation >= SATURATION_THRESHOLDS.semanticSaturation.warning) warningCount++;
+  if (saturation.velocity >= SATURATION_THRESHOLDS.velocity.warning) warningCount++;
+  if (saturation.identityPreservation <= SATURATION_THRESHOLDS.identityPreservation.warning) warningCount++;
+  if (saturation.crossFileImpact >= SATURATION_THRESHOLDS.crossFileImpact.warning) warningCount++;
+
   if (warningCount >= MAX_WARNING_METRICS_TOLERANCE) {
     return {
       failures: [`Cumulative stress: ${warningCount}/5 metrics at warning level. System needs rest.`],
@@ -147,8 +139,10 @@ function evaluateCumulativeStress(saturation: ReturnType<typeof normalizeSaturat
   return { failures: [], hasWarning: false };
 }
 
+const ONLINE_RESPONSE = NextResponse.json({ status: 'online', service: 'EVOLUTION_COHERENCE_GATE_API' });
+
 export async function GET(): Promise<NextResponse> {
-  return NextResponse.json({ status: 'online', service: 'EVOLUTION_COHERENCE_GATE_API' });
+  return ONLINE_RESPONSE;
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -162,50 +156,53 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const failures: string[] = [];
     let saturationWarning = false;
 
-    // Rule 0: Deterministic Structural Sanity Check (Non-bypassable)
     const sanityFailures = await collectSanityViolations(originalCode, proposedCode, filePath, repoFiles, newFiles);
-    failures.push(...sanityFailures);
+    if (sanityFailures.length > 0) {
+      failures.push(...sanityFailures);
+    }
 
     if (bypassGate) {
+      const hasFailures = failures.length > 0;
       return NextResponse.json({
         passed: true,
-        reason: failures.length > 0
+        reason: hasFailures
           ? `COHERENCE GATE PASSED (OVERRIDE): Approved by operator with warnings [${failures.join('; ')}].`
           : 'COHERENCE GATE PASSED: Approved by system operator.',
         riskScore,
-        saturationWarning: saturationWarning || failures.length > 0,
-        failures: failures.length > 0 ? failures : undefined,
+        saturationWarning: saturationWarning || hasFailures,
+        failures: hasFailures ? failures : undefined,
       } satisfies CoherenceGateResult & { failures?: string[] });
     }
 
-    // Rule 1: Risk score check — block anything above threshold
     if (riskScore > MAX_SAFE_RISK_SCORE) {
       failures.push(`Risk score ${riskScore}/10 exceeds maximum threshold ${MAX_SAFE_RISK_SCORE}. Mutation DENIED.`);
     }
 
-    // Rule 2: Saturation thresholds — check each metric
     const thresholdEvaluation = evaluateThresholds(saturation);
-    failures.push(...thresholdEvaluation.failures);
+    if (thresholdEvaluation.failures.length > 0) {
+      failures.push(...thresholdEvaluation.failures);
+    }
     if (thresholdEvaluation.hasWarning) {
       saturationWarning = true;
     }
 
-    // Rule 3: Cross-file impact — warn if many files affected
     if (affectedFiles.length > MAX_SAFE_AFFECTED_FILES) {
       failures.push(`Mutation affects ${affectedFiles.length} files — exceeds safe cross-file impact limit of ${MAX_SAFE_AFFECTED_FILES}.`);
       saturationWarning = true;
     }
 
-    // Rule 4: Cumulative saturation stress — if multiple metrics hit warning level
     const cumulativeEvaluation = evaluateCumulativeStress(saturation);
-    failures.push(...cumulativeEvaluation.failures);
+    if (cumulativeEvaluation.failures.length > 0) {
+      failures.push(...cumulativeEvaluation.failures);
+    }
     if (cumulativeEvaluation.hasWarning) {
       saturationWarning = true;
     }
 
+    const hasFailed = failures.length > 0;
     const result: CoherenceGateResult = {
-      passed: failures.length === 0,
-      reason: failures.length > 0
+      passed: !hasFailed,
+      reason: hasFailed
         ? `COHERENCE GATE BLOCKED:\n${failures.join('\n')}`
         : 'COHERENCE GATE PASSED: All thresholds within safe limits. Mutation authorized.',
       riskScore,
