@@ -1,7 +1,7 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "patch_prompt_json.js"
- * Optimization Goal: PERFORMANCE - Execution speed, memory footprint reduction, caching, avoiding unnecessary allocations, loop unrolling where sensible, and data structure efficiency.
+ * Optimization Goal: READABILITY - Focus on pristine modern idioms, descriptive naming, modular decomposition, and clean architectural clarity.
  */
 
 'use strict';
@@ -9,8 +9,9 @@
 const { readFileSync, writeFileSync, existsSync } = require('node:fs');
 const { resolve } = require('node:path');
 
-const TARGET_STR_1 = 'Your response MUST be in this exact JSON format (no markdown, no code fences):';
-const REPLACEMENT_STR_1 = `Your response MUST contain two parts:
+const TARGET_STRICT_JSON_PROMPT = 'Your response MUST be in this exact JSON format (no markdown, no code fences):';
+
+const REPLACEMENT_DUAL_FORMAT_PROMPT = `Your response MUST contain two parts:
 1. A JSON object with your analysis and other metadata.
 2. A Markdown code block containing the complete proposed code.
 
@@ -38,11 +39,11 @@ Format your response exactly like this:
 
 const LEGACY_JSON_SCHEMA_PATTERN = /\{\s*"analysis": "Specific analysis[\s\S]*?"newFiles": \[\s*\{\s*"path": "relative\/path\/to\/new-file\.ts",\s*"content": "Full source code content of the new file to create"\s*\}\s*\]\s*\}/;
 
-const TARGET_STR_3 = 'Your response MUST be in this exact JSON format:{';
-const REPLACEMENT_STR_3 = 'Your response MUST contain a JSON block and a Code block:';
+const TARGET_INLINE_JSON_PROMPT = 'Your response MUST be in this exact JSON format:{';
+const REPLACEMENT_INLINE_JSON_PROMPT = 'Your response MUST contain a JSON block and a Code block:';
 
 /**
- * Validates target path without intermediate string allocations (.trim() avoided when possible).
+ * Validates that the provided target path is a non-empty string.
  * 
  * @param {string} targetFilePath - The file path to validate.
  * @throws {TypeError} If the path is not a valid non-empty string.
@@ -54,10 +55,10 @@ function validateTargetPath(targetFilePath) {
 }
 
 /**
- * Resolves and verifies the existence of the target file using direct bindings.
+ * Resolves the given path and verifies that the file exists on disk.
  * 
  * @param {string} targetFilePath - The relative or absolute path.
- * @returns {string} The fully resolved file path.
+ * @returns {string} The fully resolved absolute file path.
  * @throws {Error} If the file does not exist.
  */
 function resolveExistingFile(targetFilePath) {
@@ -71,7 +72,7 @@ function resolveExistingFile(targetFilePath) {
 }
 
 /**
- * Reads source code text from disk safely with pre-bound encoding options.
+ * Reads source code text from disk safely using UTF-8 encoding.
  * 
  * @param {string} resolvedPath - The absolute file path.
  * @returns {string} The file contents.
@@ -101,7 +102,7 @@ function writeSourceCode(resolvedPath, updatedCode) {
 }
 
 /**
- * Applies text mutations with minimal intermediate allocations and optimized conditional branches.
+ * Applies text mutations to upgrade prompt formats and strip legacy schema patterns.
  * 
  * @param {string} code - The original source code content.
  * @returns {string} The transformed source code.
@@ -109,23 +110,23 @@ function writeSourceCode(resolvedPath, updatedCode) {
 function transformPromptContent(code) {
   let transformedCode = code;
 
-  if (transformedCode.includes(TARGET_STR_1)) {
-    transformedCode = transformedCode.replace(TARGET_STR_1, REPLACEMENT_STR_1);
+  if (transformedCode.includes(TARGET_STRICT_JSON_PROMPT)) {
+    transformedCode = transformedCode.replace(TARGET_STRICT_JSON_PROMPT, REPLACEMENT_DUAL_FORMAT_PROMPT);
   }
 
   if (LEGACY_JSON_SCHEMA_PATTERN.test(transformedCode)) {
     transformedCode = transformedCode.replace(LEGACY_JSON_SCHEMA_PATTERN, '');
   }
 
-  if (transformedCode.includes(TARGET_STR_3)) {
-    transformedCode = transformedCode.replace(TARGET_STR_3, REPLACEMENT_STR_3);
+  if (transformedCode.includes(TARGET_INLINE_JSON_PROMPT)) {
+    transformedCode = transformedCode.replace(TARGET_INLINE_JSON_PROMPT, REPLACEMENT_INLINE_JSON_PROMPT);
   }
 
   return transformedCode;
 }
 
 /**
- * Executes a robust, fault-tolerant text replacement on the target source file.
+ * Executes a robust, fault-tolerant text replacement workflow on the target source file.
  * 
  * @param {string} targetFilePath - Relative or absolute path to the file to patch.
  * @returns {void}
