@@ -2,14 +2,16 @@
 
 /**
  * Resolves the universal global execution context safely across diverse runtimes.
- * @returns {typeof globalThis | Window | NodeJS.Global | unknown} The resolved global object.
+ * @returns {typeof globalThis} The resolved global object.
  */
 function resolveGlobalScope() {
-  return typeof globalThis !== 'undefined' ? globalThis
-    : typeof self !== 'undefined' ? self
-    : typeof window !== 'undefined' ? window
-    : typeof global !== 'undefined' ? global
-    : this;
+  return typeof globalThis === 'undefined'
+    ? (typeof self === 'undefined'
+        ? (typeof window === 'undefined'
+            ? (typeof global === 'undefined' ? this : global)
+            : window)
+        : self)
+    : globalThis;
 }
 
 /**
@@ -18,13 +20,13 @@ function resolveGlobalScope() {
 (function initializeSsgManifest() {
   const globalScope = resolveGlobalScope();
 
-  if (!globalScope || (typeof globalScope !== 'object' && typeof globalScope !== 'function')) {
+  if (globalScope === null || (typeof globalScope !== 'object' && typeof globalScope !== 'function')) {
     return;
   }
 
   try {
     Object.defineProperty(globalScope, '__SSG_MANIFEST', {
-      value: new (typeof Set === 'function' ? Set : Array)(),
+      value: typeof Set === 'function' ? new Set() : [],
       writable: true,
       enumerable: true,
       configurable: true
