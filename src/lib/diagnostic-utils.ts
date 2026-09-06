@@ -5,17 +5,20 @@
  */
 
 const EVOLUTION_PREFIX = '[DARLEK-CANN-EVOLUTION]';
+const INVALID_MSG_WARNING = `${EVOLUTION_PREFIX}: Invalid message type passed to logEvolution`;
+
+// Cached regex to prevent redundant allocations during high-frequency parsing
+const COMMENT_REGEX = /\/\/[^\r\n]*(\r?\n|$)/g;
 
 /**
  * Logs an evolution diagnostic message with a standardized prefix.
  * 
- * @throws {TypeError} If the message is not a string (safely caught and handled).
  * @param {string} msg - The message to log.
  * @returns {void}
  */
 export const logEvolution = (msg: string): void => {
   if (typeof msg !== 'string') {
-    console.warn(`${EVOLUTION_PREFIX}: Invalid message type passed to logEvolution`);
+    console.warn(INVALID_MSG_WARNING);
     return;
   }
   console.log(`${EVOLUTION_PREFIX}: ${msg}`);
@@ -23,7 +26,7 @@ export const logEvolution = (msg: string): void => {
 
 /**
  * Sanitizes source code by removing single-line comments efficiently.
- * Uses an optimized regular expression designed to handle various line endings.
+ * Uses a pre-compiled regex and early exits for memory and CPU optimization.
  * 
  * @param {string} code - The source code string to sanitize.
  * @returns {string} The sanitized source code without single-line comments.
@@ -32,6 +35,5 @@ export const sanitizeCode = (code: string): string => {
   if (typeof code !== 'string' || code.length === 0) {
     return '';
   }
-  // Highly optimized regex stripping out single-line comments while preserving structural line breaks
-  return code.replace(/\/\/[^\r\n]*(\r?\n|$)/g, '$1');
+  return code.replace(COMMENT_REGEX, '$1');
 };
