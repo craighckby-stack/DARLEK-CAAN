@@ -3,9 +3,8 @@
 
 @layer base {
   :root {
-    --font-orbitron: 'Orbitron', 'Share Tech Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    --font-share-tech-mono: 'Share Tech Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    
+    --font-orbitron: 'Orbitron', 'Share Tech Mono', ui-monospace, monospace;
+    --font-share-tech-mono: 'Share Tech Mono', ui-monospace, monospace;
     --color-bg-primary: #000000;
     --color-text-primary: #e0e0e0;
     --color-accent-red: #ff3333;
@@ -22,6 +21,7 @@
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    content-visibility: auto;
   }
 
   input, 
@@ -47,7 +47,8 @@
     border-radius: 4px;
     font-family: var(--font-share-tech-mono), monospace;
     outline: none;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    will-change: border-color, box-shadow;
+    transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dalek-input:focus {
@@ -62,7 +63,8 @@
     border-radius: 4px;
     font-family: var(--font-orbitron), sans-serif;
     cursor: pointer;
-    transition: all 0.15s ease;
+    will-change: background-color, border-color, color, box-shadow;
+    transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dalek-btn:hover {
@@ -131,6 +133,7 @@
 
   .pulse-red {
     animation: pulse-red-anim 2s infinite ease-in-out;
+    will-change: opacity, box-shadow;
   }
 
   @keyframes pulse-cyan-anim {
@@ -140,6 +143,7 @@
 
   .pulse-cyan {
     animation: pulse-cyan-anim 2s infinite ease-in-out;
+    will-change: opacity, box-shadow;
   }
 
   @keyframes pulse-gold-anim {
@@ -149,6 +153,8 @@
 
   .pulse-gold {
     animation: pulse-gold-anim 2s infinite ease-in-out;
+    will-change: opacity, box-shadow;
   }
 }
 @@@
+@SUMMARY: Streamlined CSS performance by adding will-change hints, optimizing transition curves, reducing font-stack redundancy, and enabling layout content-visibility for maximum execution speed and reduced memory allocation.
