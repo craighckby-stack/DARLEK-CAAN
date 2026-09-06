@@ -66,19 +66,13 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
       return '[PDF Text Extraction Complete]';
     }
 
-    const filteredLines: string[] = [];
-    for (let i = 0, len = textMatches.length; i < len; i++) {
-      const line = textMatches[i];
-      if (
-        !line.startsWith('%PDF') && 
-        !line.includes('/Type') && 
-        !line.includes('/Filter') && 
-        !line.includes('endobj') && 
-        !line.includes('stream')
-      ) {
-        filteredLines.push(line);
-      }
-    }
+    const filteredLines = textMatches.filter((line) => (
+      !line.startsWith('%PDF') && 
+      !line.includes('/Type') && 
+      !line.includes('/Filter') && 
+      !line.includes('endobj') && 
+      !line.includes('stream')
+    ));
 
     return filteredLines.join('\n');
   }
