@@ -10,15 +10,7 @@
 const https = require('https');
 const { URL } = require('url');
 
-/**
- * Interface specification for fetch options.
- * @typedef {Object} RequestOptions
- * @property {string} url - Target HTTP endpoint.
- * @property {number} timeout - Maximum duration in milliseconds before request abort.
- * @property {Record<string, string>} headers - Headers attached to outgoing request.
- */
-
-/** @type {Readonly<RequestOptions>} */
+/** @type {Readonly<{url: string, timeout: number, headers: Record<string, string>}>} */
 const DEFAULT_CONFIG = Object.freeze({
   url: 'https://api.github.com/repos/craighckby-stack/epistemic_debate_engine/git/trees/main?recursive=1',
   timeout: 10000,
@@ -30,6 +22,9 @@ const DEFAULT_CONFIG = Object.freeze({
 
 const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB strict safety bounds check for buffer allocation
 
+// Pre-parsed cached default URL object to avoid repetitive URL parsing overhead for the default execution path
+const DEFAULT_PARSED_URL = Object.freeze(new URL(DEFAULT_CONFIG.url));
+
 /**
  * Validates target URL scheme and host restrictions to prevent SSRF and injection vulnerabilities.
  * @param {string} inputUrl - The URL string to evaluate.
@@ -40,12 +35,16 @@ function validateAndParseUrl(inputUrl) {
     throw new Error('Target URL must be a non-empty string.');
   }
 
+  // Fast path optimization for default config URL
+  if (inputUrl === DEFAULT_CONFIG.url) {
+    return DEFAULT_PARSED_URL;
+  }
+
   let parsedUrl;
   try {
     parsedUrl = new URL(inputUrl);
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    throw new Error(`Invalid URL format: ${errorMessage}`);
+    throw new Error(`Invalid URL format: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   if (parsedUrl.protocol !== 'https:') {
@@ -53,15 +52,16 @@ function validateAndParseUrl(inputUrl) {
   }
 
   const allowedHostname = 'api.github.com';
-  if (parsedUrl.hostname !== allowedHostname && !parsedUrl.hostname.endsWith(`.${allowedHostname}`)) {
-    throw new Error(`Security policy violation: Hostname '${parsedUrl.hostname}' is not permitted.`);
+  const hostname = parsedUrl.hostname;
+  if (hostname !== allowedHostname && !hostname.endsWith(`.${allowedHostname}`)) {
+    throw new Error(`Security policy violation: Hostname '${hostname}' is not permitted.`);
   }
 
   return parsedUrl;
 }
 
 /**
- * Consumes the response stream safely with bounds checking.
+ * Consumes the response stream safely with pre-allocated buffer sizing and bounds checking.
  * @param {import('http').IncomingMessage} response - The HTTP response stream.
  * @returns {Promise<string>} The concatenated response body as a UTF-8 string.
  */
@@ -81,16 +81,13 @@ function consumeResponseStream(response) {
 
     response.on('end', () => {
       try {
-        const rawData = Buffer.concat(chunks).toString('utf8');
-        resolve(rawData);
+        resolve(Buffer.concat(chunks, totalBytesReceived).toString('utf8'));
       } catch (parseError) {
         reject(parseError);
       }
     });
 
-    response.on('error', (streamErr) => {
-      reject(streamErr);
-    });
+    response.on('error', reject);
   });
 }
 
@@ -105,8 +102,7 @@ function fetchRepositoryData(targetUrl = DEFAULT_CONFIG.url) {
     try {
       parsedUrl = validateAndParseUrl(targetUrl);
     } catch (validationErr) {
-      reject(validationErr);
-      return;
+      return reject(validationErr);
     }
 
     const requestOptions = {
@@ -117,26 +113,18 @@ function fetchRepositoryData(targetUrl = DEFAULT_CONFIG.url) {
       headers: DEFAULT_CONFIG.headers
     };
 
-    const req = https.request(requestOptions, async (res) => {
+    const req = https.request(requestOptions, (res) => {
       const statusCode = res.statusCode || 0;
 
       if (statusCode < 200 || statusCode >= 300) {
         res.resume();
-        reject(new Error(`HTTP Request Failed with Status Code: ${statusCode}`));
-        return;
+        return reject(new Error(`HTTP Request Failed with Status Code: ${statusCode}`));
       }
 
-      try {
-        const rawData = await consumeResponseStream(res);
-        resolve(rawData);
-      } catch (err) {
-        reject(err);
-      }
+      consumeResponseStream(res).then(resolve, reject);
     });
 
-    req.on('error', (netErr) => {
-      reject(netErr);
-    });
+    req.on('error', reject);
 
     req.setTimeout(DEFAULT_CONFIG.timeout, () => {
       req.destroy(new Error(`Request timed out after ${DEFAULT_CONFIG.timeout}ms`));
@@ -154,7 +142,6 @@ function fetchRepositoryData(targetUrl = DEFAULT_CONFIG.url) {
     const data = await fetchRepositoryData();
     console.log(data);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.log(message);
+    console.log(err instanceof Error ? err.message : String(err));
   }
 })();
