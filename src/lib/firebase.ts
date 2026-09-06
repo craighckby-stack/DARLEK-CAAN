@@ -16,37 +16,44 @@ const firebaseConfig: ExtendedFirebaseOptions = {
   firestoreDatabaseId: process.env.NEXT_PUBLIC_FIREBASE_FIRESTORE_DATABASE_ID ?? 'dummy-db-id'
 };
 
-const existingApps = getApps();
-const app = existingApps.length === 0 ? initializeApp(firebaseConfig) : existingApps[0];
+const getOrCreateFirebaseApp = () => {
+  const existingApps = getApps();
+  return existingApps.length === 0 ? initializeApp(firebaseConfig) : existingApps[0];
+};
+
+const app = getOrCreateFirebaseApp();
 
 export const db = initializeFirestore(
   app,
-  {
-    experimentalForceLongPolling: true,
-  },
+  { experimentalForceLongPolling: true },
   firebaseConfig.firestoreDatabaseId ?? '(default)'
 );
 
 export const auth = getAuth(app);
 
-const testConnection = async (): Promise<void> => {
+const testFirestoreConnection = async (): Promise<void> => {
   try {
     await getDocFromServer(doc(db, 'world_test', 'connection'));
   } catch (error: unknown) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.warn(`Firestore service is in local/offline sandbox fallback mode: ${errorMsg}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn(`Firestore service is in local/offline sandbox fallback mode: ${errorMessage}`);
   }
 };
 
-if (!auth.currentUser) {
-  signInAnonymously(auth).catch((err: unknown) => {
-    const errObj = err as { code?: string; message?: string };
-    if (errObj?.code === 'auth/admin-restricted-operation') {
-      console.warn('Anonymous Auth is disabled in Firebase Console. Cloud features may be limited.');
-    } else {
-      console.warn(`Anonymous authentication is in sandbox/offline fallback mode: ${errObj?.message ?? String(err)}`);
-    }
-  });
-}
+const handleAnonymousAuthFailure = (error: unknown): void => {
+  const errObj = error as { code?: string; message?: string };
+  if (errObj?.code === 'auth/admin-restricted-operation') {
+    console.warn('Anonymous Auth is disabled in Firebase Console. Cloud features may be limited.');
+  } else {
+    console.warn(`Anonymous authentication is in sandbox/offline fallback mode: ${errObj?.message ?? String(error)}`);
+  }
+};
 
-void testConnection();
+const initializeAuthentication = (): void => {
+  if (!auth.currentUser) {
+    signInAnonymously(auth).catch(handleAnonymousAuthFailure);
+  }
+};
+
+initializeAuthentication();
+void testFirestoreConnection();
