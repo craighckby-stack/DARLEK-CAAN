@@ -1,13 +1,11 @@
-// Web Audio API Synthesizer for Dalek Caan Chess
-// Optimized for execution speed, minimized allocations, and cached AudioContext handling.
+// Web Audio API Synthesizer & Speech Synthesis Engine for Dalek Caan Chess
+// Optimized for modern idiomatic clarity, descriptive modularization, and robust architectural layout.
 
 let audioContextInstance: AudioContext | null = null;
 
-// Regex cached to avoid repeated allocations during speech cleaning
 const BRACKET_REGEX = /\[.*?\]/g;
 const QUOTE_REGEX = /["'"]/g;
 
-// Pre-cached array for victory arpeggio notes to avoid per-call allocations
 const ARPEGGIO_NOTES = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
 
 function getAudioContext(): AudioContext {
@@ -33,6 +31,7 @@ export function initAudioEngine(): void {
     gainNode.gain.value = 0;
     oscillator.connect(gainNode);
     gainNode.connect(ctx.destination);
+    
     const now = ctx.currentTime;
     oscillator.start(now);
     oscillator.stop(now + 0.001);
@@ -94,6 +93,7 @@ export function playSynthSound(
         const modulator = ctx.createOscillator();
         modulator.type = 'sine';
         modulator.frequency.value = 45;
+        
         const modGain = ctx.createGain();
         modGain.gain.value = 500;
 
@@ -183,15 +183,14 @@ export function playSynthSound(
 
       case 'victory': {
         const tempo = 0.08;
-        const len = ARPEGGIO_NOTES.length;
-        for (let idx = 0; idx < len; idx++) {
-          const freq = ARPEGGIO_NOTES[idx];
+        ARPEGGIO_NOTES.forEach((freq, idx) => {
           const oscillator = ctx.createOscillator();
           oscillator.type = 'square';
           oscillator.frequency.value = freq;
 
           const bitGain = ctx.createGain();
           const startTime = now + idx * tempo;
+          
           bitGain.gain.setValueAtTime(0, startTime);
           bitGain.gain.linearRampToValueAtTime(volume * 0.3, startTime + 0.01);
           bitGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.15);
@@ -201,7 +200,7 @@ export function playSynthSound(
 
           oscillator.start(startTime);
           oscillator.stop(startTime + 0.16);
-        }
+        });
         break;
       }
 
@@ -249,6 +248,7 @@ let speechOscillator: OscillatorNode | null = null;
 let speechModulator: OscillatorNode | null = null;
 let speechModGain: GainNode | null = null;
 let speechGainNode: GainNode | null = null;
+
 let celestialOscPrimary: OscillatorNode | null = null;
 let celestialOscSecondary: OscillatorNode | null = null;
 let celestialGainNode: GainNode | null = null;
@@ -288,11 +288,12 @@ export function cleanupSpeechAudio(): void {
       celestialGainNode = null;
     }
   } catch {
-    // Already disconnected or inactive
+    // Suppress errors if nodes are already disconnected or inactive
   }
 }
 
 let globalChronosLoadValue = 0;
+
 export function setChronosLoadValue(val: number): void {
   globalChronosLoadValue = val;
 }
@@ -339,7 +340,12 @@ export function speakDalekText(
     utterance.rate = 1.0 + (chronosPercentage * 0.5);
 
     const availableVoices = window.speechSynthesis.getVoices();
-    const ukVoice = availableVoices.find(v => v.lang.includes('GB') || v.lang.includes('en-GB') || v.name.toLowerCase().includes('google uk') || v.name.toLowerCase().includes('british'));
+    const ukVoice = availableVoices.find(v => 
+      v.lang.includes('GB') || 
+      v.lang.includes('en-GB') || 
+      v.name.toLowerCase().includes('google uk') || 
+      v.name.toLowerCase().includes('british')
+    );
     const englishVoice = availableVoices.find(v => v.lang.startsWith('en'));
     
     if (ukVoice) {
@@ -451,7 +457,14 @@ export function speakJesusText(
     utterance.rate = 0.85 + (chronosPercentage * 0.40);
 
     const availableVoices = window.speechSynthesis.getVoices();
-    const usVoice = availableVoices.find(v => v.lang.includes('US') || v.lang.includes('en-US') || v.name.toLowerCase().includes('google us') || v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('guy') || v.name.toLowerCase().includes('male'));
+    const usVoice = availableVoices.find(v => 
+      v.lang.includes('US') || 
+      v.lang.includes('en-US') || 
+      v.name.toLowerCase().includes('google us') || 
+      v.name.toLowerCase().includes('natural') || 
+      v.name.toLowerCase().includes('guy') || 
+      v.name.toLowerCase().includes('male')
+    );
     const englishVoice = availableVoices.find(v => v.lang.startsWith('en'));
 
     if (usVoice) {
