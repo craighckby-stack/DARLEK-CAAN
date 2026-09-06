@@ -1,6 +1,6 @@
 "use client"
 
-import React, { memo } from "react"
+import React, { memo, type JSX } from "react"
 import { useToast } from "@/hooks/use-toast"
 import {
   Toast,
@@ -32,14 +32,19 @@ const ToastItemComponent = memo<ToastItem>(({ title, description, action, ...pro
 
 ToastItemComponent.displayName = "ToastItemComponent"
 
-export const Toaster: React.FC = memo(() => {
+export const Toaster: React.FC = memo((): JSX.Element => {
   const { toasts } = useToast()
+  const len = toasts.length
+
+  const renderedToasts = new Array(len)
+  for (let i = 0; i < len; i++) {
+    const { id, ...toastProps } = toasts[i]
+    renderedToasts[i] = <ToastItemComponent key={id} id={id} {...toastProps} />
+  }
 
   return (
     <ToastProvider>
-      {toasts.map(({ id, ...toastProps }) => (
-        <ToastItemComponent key={id} id={id} {...toastProps} />
-      ))}
+      {renderedToasts}
       <ToastViewport />
     </ToastProvider>
   )
