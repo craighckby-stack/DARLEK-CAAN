@@ -48,37 +48,54 @@ function buildGitHubHeaders(token: string): Record<string, string> {
 }
 
 async function collectProjectFiles(dir: string, base: string = ''): Promise<FileItem[]> {
-  const filesToPush: FileItem[] = [];
   let entries;
-
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
   } catch {
-    return filesToPush;
+    return [];
   }
 
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    const relativePath = base ? `${base}/${entry.name}` : entry.name;
+  const promises = entries.map(async (entry) => {
+    const entryName = entry.name;
+    const fullPath = path.join(dir, entryName);
+    const relativePath = base ? `${base}/${entryName}` : entryName;
 
-    if (EXCLUDE_DIRS.has(entry.name)) continue;
-    if (entry.name.startsWith('.') && !CONFIG_FILES.has(relativePath)) continue;
+    if (EXCLUDE_DIRS.has(entryName)) return [];
+    if (entryName.charCodeAt(0) === 46 && !CONFIG_FILES.has(relativePath)) return []; // 46 is '.'
 
     if (entry.isFile()) {
-      const ext = `.${entry.name.split('.').pop()?.toLowerCase() || ''}`;
+      const dotIndex = entryName.lastIndexOf('.');
+      const ext = dotIndex !== -1 ? entryName.substring(dotIndex).toLowerCase() : '';
       const isConfig = CONFIG_FILES.has(relativePath);
       
       if ((EXTENSIONS_TO_INCLUDE.has(ext) || isConfig) && !EXCLUDE_FILES.has(relativePath)) {
         try {
           const content = await fs.readFile(fullPath, 'utf-8');
-          filesToPush.push({ path: relativePath, content });
+          return [{ path: relativePath, content }];
         } catch {
-          // Skip unreadable files silently
+          return [];
         }
       }
+      return [];
     } else if (entry.isDirectory()) {
-      const nestedFiles = await collectProjectFiles(fullPath, relativePath);
-      filesToPush.push(...nestedFiles);
+      return collectProjectFiles(fullPath, relativePath);
+    }
+    return [];
+  });
+
+  const results = await Promise.all(promises);
+  let totalLength = 0;
+  for (let i = 0; i < results.length; i++) {
+    totalLength += results[i].length;
+  }
+  
+  const filesToPush = new Array<FileItem>(totalLength);
+  let offset = 0;
+  for (let i = 0; i < results.length; i++) {
+    const res = results[i];
+    const resLen = res.length;
+    for (let j = 0; j < resLen; j++) {
+      filesToPush[offset++] = res[j];
     }
   }
 
@@ -148,16 +165,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const headers = buildGitHubHeaders(token);
 
-    const userRes = await fetch('https://api.github.com/user', { headers });
-    if (!userRes.ok) {
+    const [userRes, existingRepoRes, filesToPush] = await Promise.all([
+      fetch('https://api.github.com/user', { headers }),
+      fetch(`https://api.github.com/repos/${token ? JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString() || '{}').login : ''}/${encodeURIComponent(repoName)}`, { headers }).catch(() => null), // Fallback handled sequentially below if needed, but fetch user first for owner login.
+      collectProjectFiles(process.cwd())
+    ]);
+
+    // Re-evaluating optimal parallel chain since owner is needed for repo check
+    const userRealRes = userRes;
+    if (!userRealRes.ok) {
       return NextResponse.json({ error: 'GitHub authentication failed' }, { status: 401 });
     }
     
-    const userData = (await userRes.json()) as GitHubUser;
+    const userData = (await userRealRes.json()) as GitHubUser;
     const owner = userData.login;
 
-    const existingRepoRes = await fetch(`https://api.github.com/repos/${owner}/${encodeURIComponent(repoName)}`, { headers });
-    let repoCreated = existingRepoRes.ok;
+    const [realExistingRepoRes, realFilesToPush] = await Promise.all([
+      fetch(`https://api.github.com/repos/${owner}/${encodeURIComponent(repoName)}`, { headers }),
+      Promise.resolve(filesToPush)
+    ]);
+
+    let repoCreated = realExistingRepoRes.ok;
     let defaultBranch = 'main';
 
     if (!repoCreated) {
@@ -181,46 +209,55 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       repoCreated = true;
     } else {
-      const repoData = (await existingRepoRes.json()) as GitHubRepo;
+      const repoData = (await realExistingRepoRes.json()) as GitHubRepo;
       defaultBranch = repoData.default_branch || 'main';
     }
 
-    const filesToPush = await collectProjectFiles(process.cwd());
-
-    if (filesToPush.length === 0) {
+    if (realFilesToPush.length === 0) {
       return NextResponse.json({ error: 'No files valid for push' }, { status: 400 });
     }
 
-    const refSha = await fetchBranchReference(owner, repoName, defaultBranch, headers);
+    const [refSha, treeRes] = await Promise.all([
+      fetchBranchReference(owner, repoName, defaultBranch, headers),
+      (async () => {
+        return null; // Will fetch base tree sha after refSha
+      })()
+    ]);
+
     const baseTreeSha = refSha ? await fetchBaseTreeSha(owner, repoName, refSha, headers) : null;
 
-    const treeItems = filesToPush.map(file => ({
-      path: file.path,
-      mode: '100644',
-      type: 'blob',
-      content: file.content,
-    }));
+    const totalFiles = realFilesToPush.length;
+    const treeItems = new Array(totalFiles);
+    for (let i = 0; i < totalFiles; i++) {
+      const file = realFilesToPush[i];
+      treeItems[i] = {
+        path: file.path,
+        mode: '100644',
+        type: 'blob',
+        content: file.content,
+      };
+    }
 
     const treeBody: Record<string, unknown> = {
       tree: treeItems,
       ...(baseTreeSha && { base_tree: baseTreeSha }),
     };
 
-    const treeRes = await fetch(`https://api.github.com/repos/${owner}/${encodeURIComponent(repoName)}/git/trees`, {
+    const actualTreeRes = await fetch(`https://api.github.com/repos/${owner}/${encodeURIComponent(repoName)}/git/trees`, {
       method: 'POST',
       headers,
       body: JSON.stringify(treeBody),
     });
 
-    if (!treeRes.ok) {
-      const errMsg = await treeRes.text();
-      return NextResponse.json({ error: `Failed to create active git tree: ${errMsg}` }, { status: treeRes.status });
+    if (!actualTreeRes.ok) {
+      const errMsg = await actualTreeRes.text();
+      return NextResponse.json({ error: `Failed to create active git tree: ${errMsg}` }, { status: actualTreeRes.status });
     }
 
-    const treeData = await treeRes.json();
+    const treeData = await actualTreeRes.json();
     const newTreeSha = treeData.sha;
 
-    const commitMsg = `[DARLEK CANN] Deploy Initial Codebase: ${filesToPush.length} source files`;
+    const commitMsg = `[DARLEK CANN] Deploy Initial Codebase: ${totalFiles} source files`;
     const commitBody = {
       message: commitMsg,
       tree: newTreeSha,
@@ -264,12 +301,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const repoUrl = `https://github.com/${owner}/${repoName}`;
     return NextResponse.json({
       success: true,
-      message: `Deploy complete to ${owner}/${repoName}. ${filesToPush.length} files pushed.`,
+      message: `Deploy complete to ${owner}/${repoName}. ${totalFiles} files pushed.`,
       repoUrl,
       fullName: `${owner}/${repoName}`,
       url: repoUrl,
-      total: filesToPush.length,
-      pushed: filesToPush.length,
+      total: totalFiles,
+      pushed: totalFiles,
       failed: 0,
       failures: [],
     });
