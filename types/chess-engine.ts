@@ -4,6 +4,15 @@
  * Optimized by EMG Core v49 Neural Code and Documentation Optimizer Engine
  */
 
+export const enum PieceTypeEnum {
+  Pawn = 0,
+  Rook = 1,
+  Knight = 2,
+  Bishop = 3,
+  Queen = 4,
+  King = 5,
+}
+
 export type PieceType = 'p' | 'r' | 'n' | 'b' | 'q' | 'k';
 export type PieceColor = 'w' | 'b';
 
@@ -11,11 +20,24 @@ export type PieceColor = 'w' | 'b';
 declare const SquareBrand: unique symbol;
 export type Square = string & { readonly [SquareBrand]: 'Square' };
 
+// Pre-allocated lookup cache for validation speedup (O(1) lookup instead of RegExp execution)
+const VALID_SQUARES: ReadonlySet<string> = (() => {
+  const set = new Set<string>();
+  const files = 'abcdefgh';
+  const ranks = '12345678';
+  for (let f = 0; f < 8; f++) {
+    for (let r = 0; r < 8; r++) {
+      set.add(files[f] + ranks[r]);
+    }
+  }
+  return set;
+})();
+
 /**
- * Type guard to validate whether a given string strictly conforms to the Square branding contract.
+ * High-performance O(1) type guard replacing RegExp execution overhead with direct set lookups.
  */
 export function isValidSquare(value: string): value is Square {
-  return /^[a-h][1-8]$/.test(value);
+  return VALID_SQUARES.has(value);
 }
 
 export interface ChessPiece {
