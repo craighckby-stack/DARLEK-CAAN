@@ -1,5 +1,11 @@
 "use strict";
 
+/**
+ * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * File Path: ".next_dev/server/vendor-chunks/class-variance-authority.js"
+ * Goal: READABILITY - Modern idioms, expressive naming, modularity, architectural clarity.
+ */
+
 exports.id = "vendor-chunks/class-variance-authority";
 exports.ids = ["vendor-chunks/class-variance-authority"];
 exports.modules = {
@@ -15,16 +21,20 @@ __webpack_require__.d(__webpack_exports__, {
 
 const clsxModule = __webpack_require__("(ssr)/./node_modules/clsx/dist/clsx.mjs");
 
+/** Keys blocked from processing to safeguard against prototype pollution vulnerabilities. */
 const PROTOTYPE_POLLUTION_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
+/** Type guard to determine if a value is a non-null object. */
 const isObject = (value) => value !== null && typeof value === "object";
 
+/** Validates whether an object owns a property safely without triggering pollution. */
 const hasOwnProp = (targetObject, key) =>
   targetObject !== null && 
   typeof targetObject === "object" && 
   !PROTOTYPE_POLLUTION_KEYS.has(key) && 
   Object.prototype.hasOwnProperty.call(targetObject, key);
 
+/** Coerces variant properties safely into string identifiers. */
 const coerceToString = (value) => {
   if (typeof value === "boolean") return value ? "true" : "false";
   if (value === 0) return "0";
@@ -34,6 +44,9 @@ const coerceToString = (value) => {
 
 const cx = clsxModule.clsx;
 
+/**
+ * Creates a class variance authority function for building dynamic CSS variant architectures.
+ */
 const cva = (baseStyle, config) => {
   const resolvedConfig = isObject(config) ? config : {};
   const { variants, defaultVariants, compoundVariants } = resolvedConfig;
@@ -47,13 +60,13 @@ const cva = (baseStyle, config) => {
     }
 
     const variantKeys = Object.keys(variants);
-    const variantKeysLen = variantKeys.length;
-    const variantClassNames = new Array(variantKeysLen);
+    const variantKeysCount = variantKeys.length;
+    const variantClassNames = new Array(variantKeysCount);
 
-    for (let i = 0; i < variantKeysLen; i++) {
-      const variantKey = variantKeys[i];
+    for (let index = 0; index < variantKeysCount; index++) {
+      const variantKey = variantKeys[index];
       if (PROTOTYPE_POLLUTION_KEYS.has(variantKey) || !Object.prototype.hasOwnProperty.call(variants, variantKey)) {
-        variantClassNames[i] = null;
+        variantClassNames[index] = null;
         continue;
       }
 
@@ -61,28 +74,28 @@ const cva = (baseStyle, config) => {
       const defaultPropValue = Object.prototype.hasOwnProperty.call(safeDefaultVariants, variantKey) ? safeDefaultVariants[variantKey] : undefined;
 
       if (propValue === null) {
-        variantClassNames[i] = null;
+        variantClassNames[index] = null;
         continue;
       }
 
       const matchedVariantKey = coerceToString(propValue) ?? coerceToString(defaultPropValue);
       if (matchedVariantKey === undefined || matchedVariantKey === null) {
-        variantClassNames[i] = null;
+        variantClassNames[index] = null;
         continue;
       }
 
       const variantGroup = variants[variantKey];
-      variantClassNames[i] = (isObject(variantGroup) && Object.prototype.hasOwnProperty.call(variantGroup, matchedVariantKey))
+      variantClassNames[index] = (isObject(variantGroup) && Object.prototype.hasOwnProperty.call(variantGroup, matchedVariantKey))
         ? variantGroup[matchedVariantKey]
         : undefined;
     }
 
     const mergedProps = { ...safeDefaultVariants };
     const propKeys = Object.keys(resolvedProps);
-    const propKeysLen = propKeys.length;
+    const propKeysCount = propKeys.length;
 
-    for (let i = 0; i < propKeysLen; i++) {
-      const key = propKeys[i];
+    for (let index = 0; index < propKeysCount; index++) {
+      const key = propKeys[index];
       if (!PROTOTYPE_POLLUTION_KEYS.has(key)) {
         const val = resolvedProps[key];
         if (val !== undefined) {
@@ -94,18 +107,18 @@ const cva = (baseStyle, config) => {
     let compoundClassNames = null;
     if (Array.isArray(compoundVariants)) {
       compoundClassNames = [];
-      const cvLen = compoundVariants.length;
+      const compoundCount = compoundVariants.length;
 
-      for (let i = 0; i < cvLen; i++) {
-        const compoundRule = compoundVariants[i];
+      for (let index = 0; index < compoundCount; index++) {
+        const compoundRule = compoundVariants[index];
         if (!isObject(compoundRule)) continue;
 
         const { class: ruleClass, className: ruleClassName, ...conditionOptions } = compoundRule;
         const conditionKeys = Object.keys(conditionOptions);
-        const ckLen = conditionKeys.length;
+        const conditionCount = conditionKeys.length;
         let isConditionMet = true;
 
-        for (let j = 0; j < ckLen; j++) {
+        for (let j = 0; j < conditionCount; j++) {
           const conditionKey = conditionKeys[j];
           if (PROTOTYPE_POLLUTION_KEYS.has(conditionKey)) {
             isConditionMet = false;
