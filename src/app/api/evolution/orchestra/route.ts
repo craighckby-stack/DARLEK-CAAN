@@ -88,6 +88,94 @@ const DEFAULT_AGENTS: AgentConfig[] = [
 const getCurrentTimestamp = (): string => new Date().toISOString();
 
 // ─────────────────────────────────────────────
+// Helper Functions: Execution & Logging
+// ─────────────────────────────────────────────
+
+function createLog(
+  type: OrchestraLog['type'],
+  message: string,
+  options?: { agent?: string; provider?: string; latencyMs?: number }
+): OrchestraLog {
+  return {
+    timestamp: getCurrentTimestamp(),
+    type,
+    message,
+    ...options,
+  };
+}
+
+async function executeParallelAgentCall(
+  agent: AgentConfig,
+  topic: string,
+  geminiKey: string,
+  logs: OrchestraLog[]
+): Promise<AgentCallResult> {
+  logs.push(createLog('call', `Initiating ${agent.name} analysis...`, { agent: agent.name }));
+
+  const userPrompt = `Analyze the following topic from your unique perspective as ${agent.name}.\n\nTOPIC:\n${topic}\n\nProvide your analysis. Be specific, insightful, and substantive. Do not merely summarize — deliver genuine analytical value.`;
+
+  try {
+    const result = await callLlm({
+      systemPrompt: agent.systemInstruction,
+      userPrompt,
+      geminiApiKey: geminiKey,
+      maxTokens: 1024,
+      temperature: 0.7,
+    });
+
+    if (result.text) {
+      logs.push(
+        createLog('response', `${agent.name} responded (${result.text.length} chars)`, {
+          agent: agent.name,
+          provider: result.provider,
+          latencyMs: result.latencyMs,
+        })
+      );
+      return {
+        agentId: agent.id,
+        agentName: agent.name,
+        response: result.text,
+        provider: result.provider,
+        latencyMs: result.latencyMs ?? 0,
+        error: null,
+      };
+    } else {
+      logs.push(
+        createLog('error', `${agent.name} — all LLM providers failed`, {
+          agent: agent.name,
+          provider: result.provider,
+          latencyMs: result.latencyMs,
+        })
+      );
+      return {
+        agentId: agent.id,
+        agentName: agent.name,
+        response: '',
+        provider: result.provider || 'None',
+        latencyMs: result.latencyMs ?? 0,
+        error: 'All LLM providers unavailable.',
+      };
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown execution error';
+    logs.push(
+      createLog('error', `${agent.name} execution error: ${errorMessage}`, {
+        agent: agent.name,
+        provider: 'System',
+      })
+    );
+    return {
+      agentId: agent.id,
+      agentName: agent.name,
+      response: '',
+      provider: 'System',
+      latencyMs: 0,
+      error: errorMessage,
+    };
+  }
+}
+
+// ─────────────────────────────────────────────
 // Route Handlers
 // ─────────────────────────────────────────────
 
@@ -112,102 +200,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Mode must be "parallel" or "debate".' }, { status: 400 });
     }
 
-    const agents: AgentConfig[] = (agentConfigs && agentConfigs.length > 0) ? agentConfigs : DEFAULT_AGENTS;
+    const agents: AgentConfig[] = agentConfigs?.length ? agentConfigs : DEFAULT_AGENTS;
     const effectiveRounds = Math.min(Math.max(1, requestedRounds), 100);
     const logs: OrchestraLog[] = [];
 
     const geminiKey = apiKeys.gemini || getDefaultGeminiKey();
-    const timestampStr = getCurrentTimestamp();
+    const truncatedTopic = topic.length > 60 ? `${topic.slice(0, 60)}...` : topic;
 
-    logs.push({
-      timestamp: timestampStr,
-      type: 'info',
-      message: `Orchestra started — mode: ${mode}, rounds: ${effectiveRounds}, topic: "${topic.length > 60 ? topic.slice(0, 60) + '...' : topic}"`,
-    });
+    logs.push(
+      createLog(
+        'info',
+        `Orchestra started — mode: ${mode}, rounds: ${effectiveRounds}, topic: "${truncatedTopic}"`
+      )
+    );
 
+    // ── PARALLEL MODE ──
     if (mode === 'parallel') {
       const results = await Promise.all(
-        agents.map(async (agent): Promise<AgentCallResult> => {
-          const callTs = getCurrentTimestamp();
-          logs.push({ timestamp: callTs, type: 'call', agent: agent.name, message: `Initiating ${agent.name} analysis...` });
-
-          const userPrompt = `Analyze the following topic from your unique perspective as ${agent.name}.\n\nTOPIC:\n${topic}\n\nProvide your analysis. Be specific, insightful, and substantive. Do not merely summarize — deliver genuine analytical value.`;
-
-          try {
-            const result = await callLlm({
-              systemPrompt: agent.systemInstruction,
-              userPrompt,
-              geminiApiKey: geminiKey,
-              maxTokens: 1024,
-              temperature: 0.7,
-            });
-
-            const respTs = getCurrentTimestamp();
-            if (result.text) {
-              logs.push({
-                timestamp: respTs,
-                type: 'response',
-                agent: agent.name,
-                provider: result.provider,
-                message: `${agent.name} responded (${result.text.length} chars)`,
-                latencyMs: result.latencyMs,
-              });
-              return {
-                agentId: agent.id,
-                agentName: agent.name,
-                response: result.text,
-                provider: result.provider,
-                latencyMs: result.latencyMs ?? 0,
-                error: null,
-              };
-            } else {
-              logs.push({
-                timestamp: respTs,
-                type: 'error',
-                agent: agent.name,
-                provider: result.provider,
-                message: `${agent.name} — all LLM providers failed`,
-                latencyMs: result.latencyMs,
-              });
-              return {
-                agentId: agent.id,
-                agentName: agent.name,
-                response: '',
-                provider: result.provider || 'None',
-                latencyMs: result.latencyMs ?? 0,
-                error: 'All LLM providers unavailable.',
-              };
-            }
-          } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Unknown execution error';
-            logs.push({
-              timestamp: getCurrentTimestamp(),
-              type: 'error',
-              agent: agent.name,
-              provider: 'System',
-              message: `${agent.name} execution error: ${errorMessage}`,
-            });
-            return {
-              agentId: agent.id,
-              agentName: agent.name,
-              response: '',
-              provider: 'System',
-              latencyMs: 0,
-              error: errorMessage,
-            };
-          }
-        })
+        agents.map((agent) => executeParallelAgentCall(agent, topic, geminiKey, logs))
       );
 
       let successfulCount = 0;
       let totalLatency = 0;
-      const mappedAgents = new Array(results.length);
-
-      for (let i = 0, len = results.length; i < len; i++) {
-        const r = results[i];
+      const mappedAgents = results.map((r) => {
         if (r.response) successfulCount++;
         totalLatency += r.latencyMs;
-        mappedAgents[i] = {
+        return {
           agentId: r.agentId,
           agentName: r.agentName,
           status: r.response ? 'responded' : 'error',
@@ -216,13 +234,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           timestamp: getCurrentTimestamp(),
           latencyMs: r.latencyMs,
         };
-      }
-
-      logs.push({
-        timestamp: getCurrentTimestamp(),
-        type: 'info',
-        message: `Parallel complete — ${successfulCount}/${agents.length} agents responded, total latency: ${totalLatency}ms`,
       });
+
+      logs.push(
+        createLog(
+          'info',
+          `Parallel complete — ${successfulCount}/${agents.length} agents responded, total latency: ${totalLatency}ms`
+        )
+      );
 
       return NextResponse.json({
         success: true,
@@ -235,26 +254,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // ── DEBATE MODE: Sequential multi-turn ──
-    const debateTurns: DebateTurn[] = new Array(effectiveRounds);
+    const debateTurns: DebateTurn[] = [];
 
     for (let round = 1; round <= effectiveRounds; round++) {
-      logs.push({ timestamp: getCurrentTimestamp(), type: 'info', message: `─── Debate Round ${round}/${effectiveRounds} ───` });
+      logs.push(createLog('info', `─── Debate Round ${round}/${effectiveRounds} ───`));
 
-      const agentsLen = agents.length;
-      const turnResponses: AgentResponseItem[] = new Array(agentsLen);
+      const turnResponses: AgentResponseItem[] = [];
 
-      for (let i = 0; i < agentsLen; i++) {
-        const agent = agents[i];
-        logs.push({ timestamp: getCurrentTimestamp(), type: 'call', agent: agent.name, message: `Round ${round} — ${agent.name} thinking...` });
+      for (const agent of agents) {
+        logs.push(createLog('call', `Round ${round} — ${agent.name} thinking...`, { agent: agent.name }));
 
         const conversationHistory: Array<{ role: string; parts: Array<{ text: string }> }> = [];
 
-        for (let t = 0, tLen = debateTurns.length; t < tLen; t++) {
-          const turn = debateTurns[t];
-          if (!turn) continue;
-          for (let respIdx = 0, respLen = turn.responses.length; respIdx < respLen; respIdx++) {
-            const resp = turn.responses[respIdx];
-            if (resp && resp.response) {
+        for (const turn of debateTurns) {
+          for (const resp of turn.responses) {
+            if (resp?.response) {
               conversationHistory.push({
                 role: 'user',
                 parts: [{ text: `[${resp.agentName}]: ${resp.response}` }],
@@ -263,7 +277,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
         }
 
-        const isFirstTurn = (round === 1 && !debateTurns[0]);
+        const isFirstTurn = round === 1 && debateTurns.length === 0;
         const currentPrompt = isFirstTurn
           ? `Analyze the following topic from your unique perspective as ${agent.name}.\n\nTOPIC:\n${topic}\n\nProvide your analysis. Be specific, insightful, and substantive.`
           : `The orchestra is in debate mode, Round ${round}/${effectiveRounds}.\n\nORIGINAL TOPIC:\n${topic}\n\n--- YOUR TURN (${agent.name}, Round ${round}) ---\nReview the prior discussion. You may:\n- Build upon points you agree with\n- Challenge positions you disagree with\n- Introduce new perspectives or data\n- Synthesize the discussion toward consensus or highlight irreconcilable differences\n\nRespond as ${agent.name}. Be substantive and move the discussion forward.`;
@@ -272,17 +286,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         let executionResult;
         try {
-          if (isFirstTurn) {
-            executionResult = await callLlm({
-              systemPrompt: agent.systemInstruction,
-              userPrompt: currentPrompt,
-              geminiApiKey: geminiKey,
-              maxTokens: 1024,
-              temperature: 0.7,
-            });
-          } else {
-            executionResult = await callLlmMultiTurn(agent.systemInstruction, conversationHistory, geminiKey, 1024);
-          }
+          executionResult = isFirstTurn
+            ? await callLlm({
+                systemPrompt: agent.systemInstruction,
+                userPrompt: currentPrompt,
+                geminiApiKey: geminiKey,
+                maxTokens: 1024,
+                temperature: 0.7,
+              })
+            : await callLlmMultiTurn(agent.systemInstruction, conversationHistory, geminiKey, 1024);
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Provider failure';
           executionResult = {
@@ -293,45 +305,43 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           };
         }
 
-        turnResponses[i] = {
+        const responseText = executionResult.text || `[${agent.name} was unable to respond — LLM unavailable]`;
+        const providerName = executionResult.provider || 'None';
+
+        turnResponses.push({
           agentId: agent.id,
           agentName: agent.name,
           status: executionResult.text ? 'responded' : 'error',
-          response: executionResult.text || `[${agent.name} was unable to respond — LLM unavailable]`,
-          provider: executionResult.provider || 'None',
+          response: responseText,
+          provider: providerName,
           timestamp: getCurrentTimestamp(),
           latencyMs: executionResult.latencyMs ?? 0,
-        };
-
-        logs.push({
-          timestamp: getCurrentTimestamp(),
-          type: executionResult.text ? 'response' : 'error',
-          agent: agent.name,
-          provider: executionResult.provider || 'None',
-          message: `${agent.name} round ${round}: ${executionResult.text ? `${executionResult.text.length} chars` : 'failed'}`,
-          latencyMs: executionResult.latencyMs,
         });
+
+        logs.push(
+          createLog(
+            executionResult.text ? 'response' : 'error',
+            `${agent.name} round ${round}: ${executionResult.text ? `${executionResult.text.length} chars` : 'failed'}`,
+            {
+              agent: agent.name,
+              provider: providerName,
+              latencyMs: executionResult.latencyMs,
+            }
+          )
+        );
       }
 
-      debateTurns[round - 1] = { round, responses: turnResponses };
+      debateTurns.push({ round, responses: turnResponses });
     }
 
-    let totalDebateResponses = 0;
-    for (let t = 0, tLen = debateTurns.length; t < tLen; t++) {
-      const turn = debateTurns[t];
-      if (!turn) continue;
-      for (let r = 0, rLen = turn.responses.length; r < rLen; r++) {
-        if (turn.responses[r].status === 'responded') {
-          totalDebateResponses++;
-        }
-      }
-    }
+    const totalDebateResponses = debateTurns.reduce(
+      (count, turn) => count + turn.responses.filter((r) => r.status === 'responded').length,
+      0
+    );
 
-    logs.push({
-      timestamp: getCurrentTimestamp(),
-      type: 'info',
-      message: `Debate complete — ${effectiveRounds} rounds, ${totalDebateResponses} total responses`,
-    });
+    logs.push(
+      createLog('info', `Debate complete — ${effectiveRounds} rounds, ${totalDebateResponses} total responses`)
+    );
 
     return NextResponse.json({
       success: true,
