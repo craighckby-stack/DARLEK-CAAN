@@ -1,7 +1,7 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "src/utils/siphon.ts"
- * Optimization: Comprehensive execution speed, memory footprint reduction, caching, allocation avoidance, and algorithmic efficiency.
+ * Optimization: Refactored for readability, modular decomposition, and clean modern TypeScript idioms.
  */
 
 export interface SiphonSource {
@@ -48,101 +48,127 @@ export const SOURCES: readonly SiphonSource[] = [
   { owner: "huggingface", repo: "transformers", branch: "main", label: "ARCHITECTURE" },
 ] as const;
 
-// Cached TextDecoder and regex to avoid reallocation overhead across loops and cycles
+// Module-level singletons and pattern matching constants
 const TEXT_DECODER = new TextDecoder();
-const WHITESPACE_REGEX = /\s/g;
-const JS_TS_REGEX = /\.(js|ts)$/;
-const MARKDOWN_FENCE_REGEX = /^```[a-z]*\n|```$/gm;
+const WHITESPACE_PATTERN = /\s/g;
+const JS_TS_EXTENSION_PATTERN = /\.(js|ts)$/;
+const MARKDOWN_FENCE_PATTERN = /^```[a-z]*\n|```$/gm;
 
 /**
- * Safely decodes base64 string content with Unicode support using cached instances.
+ * Safely decodes Base64 UTF-8 text with robust fallback strategies.
  */
 function decodeBase64Utf8(base64Content: string): string {
+  const sanitizedContent = base64Content.replace(WHITESPACE_PATTERN, "");
+
   try {
-    const cleaned = base64Content.replace(WHITESPACE_REGEX, "");
-    const binString = atob(cleaned);
-    const len = binString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binString.charCodeAt(i);
-    }
+    const binaryString = atob(sanitizedContent);
+    const bytes = Uint8Array.from(binaryString, (char) => char.charCodeAt(0));
     return TEXT_DECODER.decode(bytes);
   } catch {
     try {
-      return decodeURIComponent(escape(atob(base64Content.replace(WHITESPACE_REGEX, ""))));
+      return decodeURIComponent(escape(atob(sanitizedContent)));
     } catch {
       return "";
     }
   }
 }
 
+/**
+ * Randomly samples up to `count` elements from an array.
+ */
+function sampleArray<T>(items: readonly T[], count: number): T[] {
+  return [...items].sort(() => 0.5 - Math.random()).slice(0, count);
+}
+
+/**
+ * Constructs request headers required for GitHub API calls.
+ */
+function buildGitHubHeaders(githubToken?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+  };
+  if (githubToken) {
+    headers.Authorization = `Bearer ${githubToken}`;
+  }
+  return headers;
+}
+
+/**
+ * Queries the internal Brain AI endpoint with standard prompt structures.
+ */
+function queryBrainApi(systemInstruction: string, userPrompt: string): Promise<Response> {
+  return fetch("/api/brain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: [{ role: "user", content: userPrompt }],
+      systemInstruction,
+    }),
+  });
+}
+
+/**
+ * Fetches a random JavaScript/TypeScript source file from a specified repository target.
+ */
 export async function siphonFetchFile(
-  src: SiphonSource,
+  source: SiphonSource,
   githubToken?: string
 ): Promise<string> {
   try {
-    const headers: Record<string, string> = {
-      Accept: "application/vnd.github.v3+json",
-    };
-    if (githubToken) {
-      headers["Authorization"] = `Bearer ${githubToken}`;
-    }
+    const headers = buildGitHubHeaders(githubToken);
 
-    const treeRes = await fetch(
-      `https://api.github.com/repos/${src.owner}/${src.repo}/git/trees/${src.branch}?recursive=1`,
+    const treeResponse = await fetch(
+      `https://api.github.com/repos/${source.owner}/${source.repo}/git/trees/${source.branch}?recursive=1`,
       { headers }
     );
-    if (!treeRes.ok) return "// No JS/TS files found";
+    if (!treeResponse.ok) return "// No JS/TS files found";
 
-    const tree = (await treeRes.json()) as GitHubTreeResponse;
-    const treeItems = tree.tree;
-    if (!treeItems || !Array.isArray(treeItems)) return "// No JS/TS files found";
+    const treeData = (await treeResponse.json()) as GitHubTreeResponse;
+    const treeItems = treeData.tree;
+    if (!Array.isArray(treeItems)) return "// No JS/TS files found";
 
-    const files: GitHubBlob[] = [];
-    const len = treeItems.length;
-    for (let i = 0; i < len; i++) {
-      const f = treeItems[i];
-      if (f.type === "blob" && typeof f.path === "string" && JS_TS_REGEX.test(f.path)) {
-        files.push(f);
-      }
-    }
+    const matchingFiles = treeItems.filter(
+      (item): item is GitHubBlob =>
+        item.type === "blob" &&
+        typeof item.path === "string" &&
+        JS_TS_EXTENSION_PATTERN.test(item.path)
+    );
 
-    const fileCount = files.length;
-    if (fileCount === 0) return "// No JS/TS files found";
+    if (matchingFiles.length === 0) return "// No JS/TS files found";
 
-    const randomFile = files[(Math.random() * fileCount) | 0];
-    const contentRes = await fetch(
-      `https://api.github.com/repos/${src.owner}/${src.repo}/contents/${randomFile.path}?ref=${src.branch}`,
+    const selectedFile = matchingFiles[Math.floor(Math.random() * matchingFiles.length)];
+    const contentResponse = await fetch(
+      `https://api.github.com/repos/${source.owner}/${source.repo}/contents/${selectedFile.path}?ref=${source.branch}`,
       { headers }
     );
 
-    if (!contentRes.ok) return "// Failed to read content";
+    if (!contentResponse.ok) return "// Failed to read content";
 
-    const contentData = (await contentRes.json()) as GitHubBlob;
-    if (!contentData || typeof contentData.content !== "string") {
+    const contentData = (await contentResponse.json()) as GitHubBlob;
+    if (typeof contentData.content !== "string") {
       return "// Failed to read content";
     }
 
-    const decoded = decodeBase64Utf8(contentData.content);
-    return decoded ? decoded.slice(0, 3000) : "// Failed to read content";
+    const decodedContent = decodeBase64Utf8(contentData.content);
+    return decodedContent ? decodedContent.slice(0, 3000) : "// Failed to read content";
   } catch {
     return "// Fetch failed";
   }
 }
 
+/**
+ * Executes a single evolutionary iteration cycle combining code analysis, debate, and mutation.
+ */
 export async function siphonEvolveCycle(
   baseCode: string,
   sourceData: string,
   addLog?: (msg: string) => void
 ): Promise<string> {
   try {
-    if (addLog) addLog(`[SIPHON] Identifying structural constraints & working chunks...`);
-    const extractRes = await fetch("/api/brain", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: [{ role: "user", content: `Source to analyze:\n${sourceData}` }],
-        systemInstruction: `[ROLE] You are the AHI STACK EXTRACTOR.
+    // Phase 1: Structural Extraction
+    addLog?.("[SIPHON] Identifying structural constraints & working chunks...");
+    const extractResponse = await queryBrainApi(
+      `[ROLE] You are the AHI STACK EXTRACTOR.
 [TASK] Read the provided repository branches. Extract all raw code files (.py, .js, .ts, .json).
 [OUTPUT FORMAT] 
 Strict JSON only. No markdown fences, no extra text.
@@ -153,39 +179,33 @@ Strict JSON only. No markdown fences, no extra text.
     {"path": "file_path", "content": "raw_code_here"}
   ]
 }`,
-      }),
-    });
-    if (!extractRes.ok) return baseCode;
+      `Source to analyze:\n${sourceData}`
+    );
+    if (!extractResponse.ok) return baseCode;
 
-    const extractData = (await extractRes.json()) as BrainApiResponse;
-    const chunks = extractData.reply || "";
+    const extractData = (await extractResponse.json()) as BrainApiResponse;
+    const extractedChunks = extractData.reply || "";
 
-    if (addLog) addLog(`[SIPHON] Debating chunk viability (Hyperspace Sync)...`);
-    const debateRes = await fetch("/api/brain", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: [{ role: "user", content: `Current App Code:\n${baseCode}\n\nProposed Chunks from external source:\n${chunks}` }],
-        systemInstruction: `[ROLE] You are the AHI STACK QUARANTINE ENGINE.
+    // Phase 2: Viability Debate
+    addLog?.("[SIPHON] Debating chunk viability (Hyperspace Sync)...");
+    const debateResponse = await queryBrainApi(
+      `[ROLE] You are the AHI STACK QUARANTINE ENGINE.
 [TASK] Evaluate the extracted files. Determine if this code is dangerous, purely backup noise, or useful historical context.
 [OUTPUT FORMAT]
 Strict plain text. No markdown.
 Provide a brief PRO vs CON list.
 End with exactly one line: "VERDICT: STACK" (archive safely) or "VERDICT: PURGE" (delete permanently).`,
-      }),
-    });
-    if (!debateRes.ok) return baseCode;
+      `Current App Code:\n${baseCode}\n\nProposed Chunks from external source:\n${extractedChunks}`
+    );
+    if (!debateResponse.ok) return baseCode;
 
-    const debateData = (await debateRes.json()) as BrainApiResponse;
+    const debateData = (await debateResponse.json()) as BrainApiResponse;
     const debateOutcome = debateData.reply || "";
 
-    if (addLog) addLog(`[SIPHON] Resolving debate & integrating chosen logic...`);
-    const mutRes = await fetch("/api/brain", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: [{ role: "user", content: `Current Code:\n${baseCode}\n\nDebate Consensus / Instruction:\n${debateOutcome}\n\nTASK: Return the FULL updated code integrating the agreed upon logic. NO markdown. NO explanation.` }],
-        systemInstruction: `[ROLE] You are the AHI ARCHIVAL MUTATOR.
+    // Phase 3: Integration Mutation
+    addLog?.("[SIPHON] Resolving debate & integrating chosen logic...");
+    const mutationResponse = await queryBrainApi(
+      `[ROLE] You are the AHI ARCHIVAL MUTATOR.
 [TASK] Format the approved stacked history for inclusion at the bottom of a target stub file.
 
 [OUTPUT FORMAT]
@@ -196,97 +216,111 @@ End with exactly one line: "VERDICT: STACK" (archive safely) or "VERDICT: PURGE"
 [ZERO TRUNCATION MANDATE]
 - Include the ENTIRE raw code for the archived files.
 - Omit zero code lines. Never use placeholders.`,
-      }),
-    });
-    if (!mutRes.ok) return baseCode;
+      `Current Code:\n${baseCode}\n\nDebate Consensus / Instruction:\n${debateOutcome}\n\nTASK: Return the FULL updated code integrating the agreed upon logic. NO markdown. NO explanation.`
+    );
+    if (!mutationResponse.ok) return baseCode;
 
-    const mutData = (await mutRes.json()) as BrainApiResponse;
-    let mutated = mutData.reply || "";
-    
-    mutated = mutated.replace(MARKDOWN_FENCE_REGEX, "").trim();
-    if (!mutated) return baseCode;
-    return mutated;
-  } catch (e) {
-    console.error("AutoSiphon Error", e);
+    const mutationData = (await mutationResponse.json()) as BrainApiResponse;
+    const rawMutatedCode = mutationData.reply || "";
+    const sanitizedCode = rawMutatedCode.replace(MARKDOWN_FENCE_PATTERN, "").trim();
+
+    return sanitizedCode || baseCode;
+  } catch (error) {
+    console.error("AutoSiphon Error", error);
     return baseCode;
   }
 }
 
+/**
+ * Discovers accessible GitHub repositories and user branches for target dynamic sourcing.
+ */
+async function discoverUserSources(
+  githubToken: string,
+  addLog?: (msg: string) => void
+): Promise<SiphonSource[]> {
+  addLog?.("[SIPHON] Enumerating user GitHub repositories & branches...");
+  const discoveredSources: SiphonSource[] = [];
+
+  try {
+    const headers = buildGitHubHeaders(githubToken);
+    const userResponse = await fetch("https://api.github.com/user", { headers });
+
+    if (!userResponse.ok) return discoveredSources;
+
+    const userData = (await userResponse.json()) as GitHubUserResponse;
+    const owner = userData.login;
+    if (!owner) return discoveredSources;
+
+    const reposResponse = await fetch(
+      "https://api.github.com/user/repos?per_page=100&affiliation=owner",
+      { headers }
+    );
+
+    if (!reposResponse.ok) return discoveredSources;
+
+    const userRepos = (await reposResponse.json()) as GitHubRepo[];
+    if (!Array.isArray(userRepos) || userRepos.length === 0) return discoveredSources;
+
+    addLog?.(`[SIPHON] Found ${userRepos.length} repositories for ${owner}...`);
+
+    const sampledRepos = sampleArray(userRepos, 5);
+
+    for (const repo of sampledRepos) {
+      const branchesResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo.name}/branches?per_page=5`,
+        { headers }
+      );
+
+      if (branchesResponse.ok) {
+        const branches = (await branchesResponse.json()) as GitHubBranch[];
+        if (Array.isArray(branches)) {
+          for (const branch of branches) {
+            discoveredSources.push({
+              owner,
+              repo: repo.name,
+              branch: branch.name,
+              label: `AUTO-DISCOVERED: ${repo.name} (${branch.name})`,
+            });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    addLog?.(`[SIPHON] Failed to enumerate GitHub account: ${error}`);
+  }
+
+  return discoveredSources;
+}
+
+/**
+ * Orchestrates multi-round automated code siphoning and mutation cycles across targeted sources.
+ */
 export async function executeAutoSiphonTarget(
   currentCode: string,
   rounds: number,
   githubToken?: string,
   addLog?: (msg: string) => void
 ): Promise<string> {
-  let code = currentCode;
-  const dynamicSources: SiphonSource[] = SOURCES.slice();
+  let updatedCode = currentCode;
+  const dynamicSources: SiphonSource[] = [...SOURCES];
 
   if (githubToken) {
-    if (addLog) addLog(`[SIPHON] Enumerating user GitHub repositories & branches...`);
-    try {
-      const headers: Record<string, string> = { Authorization: `Bearer ${githubToken}`, Accept: "application/vnd.github.v3+json" };
-      const userRes = await fetch("https://api.github.com/user", { headers });
-      
-      if (userRes.ok) {
-        const userData = (await userRes.json()) as GitHubUserResponse;
-        const owner = userData.login;
-        if (owner) {
-          const reposRes = await fetch(
-            `https://api.github.com/user/repos?per_page=100&affiliation=owner`,
-            { headers }
-          );
-          
-          if (reposRes.ok) {
-            const repos = (await reposRes.json()) as GitHubRepo[];
-            const repoCount = repos ? repos.length : 0;
-            if (repoCount > 0) {
-              if (addLog) addLog(`[SIPHON] Found ${repoCount} repositories for ${owner}...`);
-              
-              const sampledRepos = repos.slice().sort(() => 0.5 - Math.random()).slice(0, 5);
-              const sampledLen = sampledRepos.length;
-              
-              for (let i = 0; i < sampledLen; i++) {
-                const repo = sampledRepos[i];
-                const branchesRes = await fetch(
-                  `https://api.github.com/repos/${owner}/${repo.name}/branches?per_page=5`,
-                  { headers }
-                );
-                if (branchesRes.ok) {
-                  const branches = (await branchesRes.json()) as GitHubBranch[];
-                  if (branches && branches.length > 0) {
-                    const branchLen = branches.length;
-                    for (let j = 0; j < branchLen; j++) {
-                      dynamicSources.push({
-                        owner,
-                        repo: repo.name,
-                        branch: branches[j].name,
-                        label: `AUTO-DISCOVERED: ${repo.name} (${branches[j].name})`,
-                      });
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      if (addLog) addLog(`[SIPHON] Failed to enumerate GitHub account: ${e}`);
+    const discovered = await discoverUserSources(githubToken, addLog);
+    dynamicSources.push(...discovered);
+  }
+
+  for (let round = 1; round <= rounds; round++) {
+    const selectedSources = sampleArray(dynamicSources, 3);
+
+    for (const source of selectedSources) {
+      addLog?.(`[SIPHON R${round}] Fetching from ${source.label}...`);
+      const sourceContent = await siphonFetchFile(source, githubToken);
+
+      addLog?.(`[SIPHON R${round}] Morphing code utilizing ${source.label} patterns...`);
+      updatedCode = await siphonEvolveCycle(updatedCode, sourceContent, addLog);
     }
   }
 
-  for (let r = 1; r <= rounds; r++) {
-    const sampledSources = dynamicSources.slice().sort(() => 0.5 - Math.random()).slice(0, 3);
-    const sLen = sampledSources.length;
-    for (let s = 0; s < sLen; s++) {
-      const src = sampledSources[s];
-      if (addLog) addLog(`[SIPHON R${r}] Fetching from ${src.label}...`);
-      const data = await siphonFetchFile(src, githubToken);
-      if (addLog) addLog(`[SIPHON R${r}] Morphing code utilizing ${src.label} patterns...`);
-      code = await siphonEvolveCycle(code, data, addLog);
-    }
-  }
-
-  if (addLog) addLog(`[SIPHON] Complete after ${rounds} rounds.`);
-  return code;
+  addLog?.(`[SIPHON] Complete after ${rounds} rounds.`);
+  return updatedCode;
 }
