@@ -53,7 +53,8 @@
         },
         "cycleCount": {
           "type": "integer",
-          "$ref": "#/definitions/SafeNumber",
+          "minimum": 0,
+          "maximum": 9007199254740991,
           "description": "Total execution loops processed, guarded against overflow."
         },
         "lastAction": {
