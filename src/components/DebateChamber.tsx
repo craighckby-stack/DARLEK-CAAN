@@ -18,6 +18,122 @@ export interface DebateChamberProps {
   epistemicRuling?: string;
 }
 
+// Sub-component optimized with React.memo to prevent unnecessary layout recalculations and DOM allocations during agent mutations
+interface AgentItemProps {
+  agent: DebateAgent & { vote?: AgentVote };
+  isActive: boolean;
+  onToggleAgent?: (agentId: string) => void;
+}
+
+const AgentItem = React.memo(function AgentItem({ agent, isActive, onToggleAgent }: AgentItemProps) {
+  const handleClick = useCallback(() => {
+    if (!isActive && onToggleAgent) {
+      onToggleAgent(agent.id);
+    }
+  }, [isActive, onToggleAgent, agent.id]);
+
+  const isAgentActive = agent.status === 'active';
+  const voteType = agent.vote?.vote;
+  
+  // Direct variable computation without object allocation loops
+  let voteColor = COLORS.gold;
+  let voteIcon = '\u25CB';
+  let voteLabel = 'ABSTAIN';
+
+  if (voteType === 'approve') {
+    voteColor = COLORS.green;
+    voteIcon = '\u2713';
+    voteLabel = 'APPROVE';
+  } else if (voteType === 'reject') {
+    voteColor = COLORS.dalekRed;
+    voteIcon = '\u2717';
+    voteLabel = 'REJECT';
+  }
+
+  const borderStyle = agent.vote ? `${voteColor}20` : COLORS.panelBorder;
+  const cursorStyle = !isActive && onToggleAgent ? 'pointer' : 'default';
+
+  return (
+    <div
+      onClick={handleClick}
+      className="px-3 py-2 rounded"
+      style={{
+        background: '#080808',
+        border: `1px solid ${borderStyle}`,
+        cursor: cursorStyle,
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className="text-xs flex-shrink-0"
+          style={{ color: isAgentActive ? agent.color : '#333' }}
+        >
+          {isAgentActive ? '\u25CF' : '\u25CB'}
+        </span>
+        <span
+          style={{
+            fontSize: '9px',
+            fontFamily: 'var(--font-orbitron), sans-serif',
+            letterSpacing: '0.05em',
+            color: isAgentActive ? '#ccc' : '#444',
+            fontWeight: isAgentActive ? 600 : 400,
+          }}
+        >
+          {agent.name}
+        </span>
+        {agent.vote && (
+          <>
+            <span
+              className="ml-auto"
+              style={{
+                fontSize: '8px',
+                color: voteColor,
+                fontFamily: 'var(--font-orbitron), sans-serif',
+                fontWeight: 700,
+                letterSpacing: '0.05em',
+              }}
+            >
+              {voteIcon} {voteLabel}
+            </span>
+            <span
+              style={{
+                fontSize: '8px',
+                color: COLORS.textMuted,
+                fontFamily: 'var(--font-orbitron), sans-serif',
+              }}
+            >
+              {agent.vote.confidence}%
+            </span>
+            <span
+              style={{
+                fontSize: '7px',
+                color: '#444',
+                fontFamily: 'var(--font-share-tech-mono), monospace',
+              }}
+            >
+              via {agent.vote.provider}
+            </span>
+          </>
+        )}
+      </div>
+      {agent.vote?.reasoning && (
+        <p
+          style={{
+            fontSize: '9px',
+            color: COLORS.textDim,
+            fontFamily: 'var(--font-share-tech-mono), monospace',
+            marginTop: '4px',
+            paddingLeft: '18px',
+            lineHeight: 1.4,
+          }}
+        >
+          &quot;{agent.vote.reasoning}&quot;
+        </p>
+      )}
+    </div>
+  );
+});
+
 export default function DebateChamber({ 
   agents, 
   onToggleAgent, 
@@ -30,31 +146,65 @@ export default function DebateChamber({
   cognitiveFriction,
   epistemicRuling 
 }: DebateChamberProps) {
-  // Memoize agent vote mappings to prevent unnecessary recomputations
+  // Optimized O(N) O(1) hash-lookup map building for votes to replace O(N*M) nested array iterations
   const agentsWithVotes = useMemo(() => {
-    return agents.map(agent => {
-      const vote = votes?.find(v => v.agentId === agent.id);
-      return { ...agent, vote };
-    });
+    if (!votes || votes.length === 0) {
+      return agents as (DebateAgent & { vote?: AgentVote })[];
+    }
+    
+    const voteMap = new Map<string, AgentVote>(votes.map(v => [v.agentId, v]));
+    const len = agents.length;
+    const result = new Array(len);
+    for (let i = 0; i < len; i++) {
+      const agent = agents[i];
+      result[i] = {
+        ...agent,
+        vote: voteMap.get(agent.id)
+      };
+    }
+    return result;
   }, [agents, votes]);
 
-  // Handle select all toggle logic safely
+  // Handle select all toggle logic safely with unrolled loop logic
   const handleSelectAllClick = useCallback(() => {
     if (!onSelectAll) return;
-    const hasIdle = agents.some(a => a.status === 'idle');
+    let hasIdle = false;
+    const len = agents.length;
+    for (let i = 0; i < len; i++) {
+      if (agents[i].status === 'idle') {
+        hasIdle = true;
+        break;
+      }
+    }
     onSelectAll(hasIdle);
   }, [onSelectAll, agents]);
 
   const isAllActive = useMemo(() => {
-    return agents.length > 0 && agents.every(a => a.status === 'active');
+    const len = agents.length;
+    if (len === 0) return false;
+    for (let i = 0; i < len; i++) {
+      if (agents[i].status !== 'active') return false;
+    }
+    return true;
   }, [agents]);
 
-  // Determine consensus display color safely
+  // Determine consensus display color safely via inline conditional map
   const consensusColor = useMemo(() => {
     if (consensus === 'APPROVE') return COLORS.green;
     if (consensus === 'REJECT') return COLORS.dalekRed;
     return COLORS.gold;
   }, [consensus]);
+
+  // Pre-calculated numeric styles
+  const consensusCoefficientWidth = useMemo(() => {
+    if (consensusCoefficient === undefined) return '0%';
+    return `${Math.max(0, Math.min(100, consensusCoefficient * 100))}%`;
+  }, [consensusCoefficient]);
+
+  const consensusCoefficientPercent = useMemo(() => {
+    if (consensusCoefficient === undefined) return 0;
+    return Math.round(consensusCoefficient * 100);
+  }, [consensusCoefficient]);
 
   return (
     <div className="dalek-panel rounded-lg p-4 space-y-3">
@@ -101,101 +251,16 @@ export default function DebateChamber({
         </div>
       </div>
 
-      {/* Agent grid with votes */}
+      {/* Agent grid with optimized sub-components */}
       <div className="grid grid-cols-1 gap-2">
-        {agentsWithVotes.map((agent) => {
-          const voteType = agent.vote?.vote;
-          const voteColor = voteType === 'approve' ? COLORS.green : voteType === 'reject' ? COLORS.dalekRed : COLORS.gold;
-          const voteIcon = voteType === 'approve' ? '\u2713' : voteType === 'reject' ? '\u2717' : '\u25CB';
-          const voteLabel = voteType === 'approve' ? 'APPROVE' : voteType === 'reject' ? 'REJECT' : 'ABSTAIN';
-
-          return (
-            <div
-              key={agent.id}
-              onClick={() => {
-                if (!isActive && onToggleAgent) {
-                  onToggleAgent(agent.id);
-                }
-              }}
-              className="px-3 py-2 rounded"
-              style={{
-                background: '#080808',
-                border: `1px solid ${agent.vote ? `${voteColor}20` : COLORS.panelBorder}`,
-                cursor: !isActive && onToggleAgent ? 'pointer' : 'default',
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-xs flex-shrink-0"
-                  style={{ color: agent.status === 'active' ? agent.color : '#333' }}
-                >
-                  {agent.status === 'active' ? '\u25CF' : '\u25CB'}
-                </span>
-                <span
-                  style={{
-                    fontSize: '9px',
-                    fontFamily: 'var(--font-orbitron), sans-serif',
-                    letterSpacing: '0.05em',
-                    color: agent.status === 'active' ? '#ccc' : '#444',
-                    fontWeight: agent.status === 'active' ? 600 : 400,
-                  }}
-                >
-                  {agent.name}
-                </span>
-                {agent.vote && (
-                  <>
-                    <span
-                      className="ml-auto"
-                      style={{
-                        fontSize: '8px',
-                        color: voteColor,
-                        fontFamily: 'var(--font-orbitron), sans-serif',
-                        fontWeight: 700,
-                        letterSpacing: '0.05em',
-                      }}
-                    >
-                      {voteIcon} {voteLabel}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '8px',
-                        color: COLORS.textMuted,
-                        fontFamily: 'var(--font-orbitron), sans-serif',
-                      }}
-                    >
-                      {agent.vote.confidence}%
-                    </span>
-                  </>
-                )}
-                {agent.vote && (
-                  <span
-                    style={{
-                      fontSize: '7px',
-                      color: '#444',
-                      fontFamily: 'var(--font-share-tech-mono), monospace',
-                    }}
-                  >
-                    via {agent.vote.provider}
-                  </span>
-                )}
-              </div>
-              {agent.vote?.reasoning && (
-                <p
-                  style={{
-                    fontSize: '9px',
-                    color: COLORS.textDim,
-                    fontFamily: 'var(--font-share-tech-mono), monospace',
-                    marginTop: '4px',
-                    paddingLeft: '18px',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  &quot;{agent.vote.reasoning}&quot;
-                </p>
-              )}
-            </div>
-          );
-        })}
+        {agentsWithVotes.map((agent) => (
+          <AgentItem
+            key={agent.id}
+            agent={agent}
+            isActive={isActive}
+            onToggleAgent={onToggleAgent}
+          />
+        ))}
       </div>
 
       {/* Dialectical Alignment Indices (Epistemic Debate Engine Upgrade) */}
@@ -219,11 +284,11 @@ export default function DebateChamber({
                   <div className="flex-1 bg-[#120512] h-1.5 rounded border border-purple-900/20 overflow-hidden">
                     <div 
                       className="bg-gradient-to-r from-purple-600 to-fuchsia-500 h-full transition-all duration-1000"
-                      style={{ width: `${Math.max(0, Math.min(100, consensusCoefficient * 100))}%` }}
+                      style={{ width: consensusCoefficientWidth }}
                     />
                   </div>
                   <span className="text-[9px] font-mono text-purple-400 font-bold">
-                    {Math.round(consensusCoefficient * 100)}%
+                    {consensusCoefficientPercent}%
                   </span>
                 </div>
               </div>
