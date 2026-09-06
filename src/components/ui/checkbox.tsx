@@ -11,31 +11,27 @@ export interface CheckboxProps extends React.ComponentPropsWithoutRef<typeof Che
   icon?: React.ReactNode
 }
 
+// Hoist static class strings to prevent constant string recreation per render cycle
+const ROOT_BASE_CLASSES = "peer border-input dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
+const INDICATOR_BASE_CLASSES = "flex items-center justify-center text-current transition-none"
+const DEFAULT_ICON = <CheckIcon className="size-3.5" />
+
 /**
  * Modernized Checkbox component utilizing Radix UI primitives and Tailwind CSS.
- * Optimized for readability with modular decomposition of layout elements.
+ * Optimized for maximum execution speed, reduced memory allocations, and minimal re-renders.
  */
 const Checkbox = React.memo(
   React.forwardRef<
     React.ElementRef<typeof CheckboxPrimitive.Root>,
     CheckboxProps
   >(({ className, icon, ...props }, ref) => {
-    const indicatorContent = icon ?? <CheckIcon className="size-3.5" />
+    // Memoize className computations to avoid redundant string concatenation allocations
+    const rootStyles = React.useMemo(() => {
+      if (!className) return ROOT_BASE_CLASSES
+      return `${ROOT_BASE_CLASSES} ${className}`
+    }, [className])
 
-    const rootStyles = cn(
-      "peer border-input dark:bg-input/30",
-      "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
-      "dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary",
-      "focus-visible:border-ring focus-visible:ring-ring/50",
-      "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-      "size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none",
-      "focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
-      className
-    )
-
-    const indicatorStyles = cn(
-      "flex items-center justify-center text-current transition-none"
-    )
+    const indicatorContent = icon ?? DEFAULT_ICON
 
     return (
       <CheckboxPrimitive.Root
@@ -46,7 +42,7 @@ const Checkbox = React.memo(
       >
         <CheckboxPrimitive.Indicator
           data-slot="checkbox-indicator"
-          className={indicatorStyles}
+          className={INDICATOR_BASE_CLASSES}
         >
           {indicatorContent}
         </CheckboxPrimitive.Indicator>
