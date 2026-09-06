@@ -3,34 +3,52 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
+/**
+ * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * File: src/lib/db.ts
+ * Description: Resilient Prisma SQLite database manager with automated self-healing 
+ * and dynamic proxy-based corruption recovery.
+ */
+
+// Global type augmentation for development hot-reloading context
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const prismaDir = path.join(process.cwd(), 'prisma');
-const dbPath = path.join(prismaDir, 'dev.db');
-const walPath = path.join(prismaDir, 'dev.db-wal');
-const shmPath = path.join(prismaDir, 'dev.db-shm');
+// Database paths configuration
+const PRISMA_DIR = path.join(process.cwd(), 'prisma');
+const DB_PATH = path.join(PRISMA_DIR, 'dev.db');
+const WAL_PATH = path.join(PRISMA_DIR, 'dev.db-wal');
+const SHM_PATH = path.join(PRISMA_DIR, 'dev.db-shm');
 
-const SQLITE_URL = `file:${dbPath}?connection_limit=1&socket_timeout=15`;
-const IS_PROD = process.env.NODE_ENV === 'production';
-const IS_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
+const SQLITE_CONNECTION_URL = `file:${DB_PATH}?connection_limit=1&socket_timeout=15`;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const IS_PRODUCTION_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
 
+// Internal singleton state
 let prismaInstance: PrismaClient | null = null;
-let isHealing = false;
-let isDbChecked = false;
+let isHealingInProgress = false;
+let isDatabaseChecked = false;
 
+/**
+ * Safely removes SQLite Write-Ahead Log (WAL) and shared memory files if they exist.
+ */
 function cleanupWalFiles(): void {
   try {
-    if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
-    if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
-  } catch {}
+    if (fs.existsSync(WAL_PATH)) fs.unlinkSync(WAL_PATH);
+    if (fs.existsSync(SHM_PATH)) fs.unlinkSync(SHM_PATH);
+  } catch {
+    // Suppress clean-up access exceptions
+  }
 }
 
+/**
+ * Retrieves or initializes the active PrismaClient singleton instance.
+ */
 function getPrismaInstance(): PrismaClient {
-  if (!isDbChecked) {
-    isDbChecked = true;
-    if (!fs.existsSync(dbPath)) {
+  if (!isDatabaseChecked) {
+    isDatabaseChecked = true;
+    if (!fs.existsSync(DB_PATH)) {
       performSelfHealing();
     }
   }
@@ -39,28 +57,31 @@ function getPrismaInstance(): PrismaClient {
     return prismaInstance;
   }
 
-  if (!IS_PROD && globalForPrisma.prisma) {
+  if (!IS_PRODUCTION && globalForPrisma.prisma) {
     prismaInstance = globalForPrisma.prisma;
     return prismaInstance;
   }
 
   prismaInstance = new PrismaClient({
     datasources: {
-      db: { url: SQLITE_URL },
+      db: { url: SQLITE_CONNECTION_URL },
     },
-    log: !IS_PROD ? ['error'] : [],
+    log: !IS_PRODUCTION ? ['error'] : [],
   });
 
-  if (!IS_PROD) {
+  if (!IS_PRODUCTION) {
     globalForPrisma.prisma = prismaInstance;
   }
 
   return prismaInstance;
 }
 
+/**
+ * Automatically wipes corrupted or missing database files and regenerates the schema via Prisma CLI.
+ */
 export function performSelfHealing(): void {
-  if (isHealing || IS_BUILD) return;
-  isHealing = true;
+  if (isHealingInProgress || IS_PRODUCTION_BUILD) return;
+  isHealingInProgress = true;
   
   try {
     console.warn('[Database Setup] Self-healing initiated. Rebuilding database schema...');
@@ -74,122 +95,139 @@ export function performSelfHealing(): void {
       staleInstance.$disconnect().catch(() => {});
     }
 
-    if (fs.existsSync(dbPath)) {
-      try { fs.unlinkSync(dbPath); } catch {}
+    if (fs.existsSync(DB_PATH)) {
+      try { fs.unlinkSync(DB_PATH); } catch {}
     }
+    
     cleanupWalFiles();
     
     try {
       execSync('npx prisma db push --accept-data-loss', { stdio: 'pipe' });
       console.log('[Database Setup] Database healing completed successfully!');
-    } catch (e) {
-      console.warn('[Database Setup] Prisma push warning:', e);
+    } catch (pushError) {
+      console.warn('[Database Setup] Prisma push warning:', pushError);
     }
-  } catch (healErr) {
-    console.error('[Database Setup] Self-healing error:', healErr);
+  } catch (healingError) {
+    console.error('[Database Setup] Self-healing error:', healingError);
   } finally {
-    isHealing = false;
+    isHealingInProgress = false;
   }
 }
 
-function isCorruptionError(err: unknown): boolean {
-  if (!err) return false;
-  const errMsg = String((err as any)?.message || (err as any)?.stack || err).toLowerCase();
-  return (
-    errMsg.includes('malformed') || 
-    errMsg.includes('corrupt') || 
-    errMsg.includes('disk image') || 
-    errMsg.includes('sqlite_corrupt') || 
-    errMsg.includes('database_closed') || 
-    errMsg.includes('connectorerror') || 
-    errMsg.includes('sqliteerror')
-  );
+/**
+ * Analyzes errors to determine if they stem from SQLite corruption or database dropouts.
+ */
+function isCorruptionError(error: unknown): boolean {
+  if (!error) return false;
+  const errorMessage = String((error as any)?.message || (error as any)?.stack || error).toLowerCase();
+  
+  return [
+    'malformed',
+    'corrupt',
+    'disk image',
+    'sqlite_corrupt',
+    'database_closed',
+    'connectorerror',
+    'sqliteerror',
+  ].some((keyword) => errorMessage.includes(keyword));
 }
 
+// Caching layer for dynamic model proxies
 const proxyCache = new Map<string | symbol, any>();
 
-function createCallableProxy(prop: string | symbol): any {
-  if (proxyCache.has(prop)) {
-    return proxyCache.get(prop);
+/**
+ * Creates a robust Proxy handler capable of capturing model invocations, 
+ * catching storage corruption anomalies, and executing automatic self-healing retries.
+ */
+function createCallableProxy(propertyKey: string | symbol): any {
+  if (proxyCache.has(propertyKey)) {
+    return proxyCache.get(propertyKey);
   }
 
-  const dummy = () => {};
+  const dummyFunction = () => {};
   
-  const proxy = new Proxy(dummy, {
+  const proxy = new Proxy(dummyFunction, {
     apply(_, __, args) {
-      const execute = async (attempt = 1): Promise<any> => {
+      const executeOperation = async (attempt = 1): Promise<any> => {
         const activePrisma = getPrismaInstance();
-        const method = (activePrisma as any)[prop];
-        if (typeof method !== 'function') {
-          throw new Error(`Prisma method "${String(prop)}" is not a function.`);
+        const targetMethod = (activePrisma as any)[propertyKey];
+        
+        if (typeof targetMethod !== 'function') {
+          throw new Error(`Prisma method "${String(propertyKey)}" is not a function.`);
         }
+        
         try {
-          const result = method.apply(activePrisma, args);
+          const result = targetMethod.apply(activePrisma, args);
           return (result && typeof result === 'object' && typeof result.then === 'function')
             ? await result
             : result;
-        } catch (err: unknown) {
-          if (isCorruptionError(err)) {
-            console.error(`[Prisma Proxy Direct] Database corruption detected on ${String(prop)}. Healing database...`);
+        } catch (error: unknown) {
+          if (isCorruptionError(error)) {
+            console.error(`[Prisma Proxy Direct] Database corruption detected on ${String(propertyKey)}. Healing database...`);
             performSelfHealing();
             if (attempt < 2) {
-              return execute(attempt + 1);
+              return executeOperation(attempt + 1);
             }
           }
-          throw err;
+          throw error;
         }
       };
-      return execute();
+      return executeOperation();
     },
 
-    get(_, subProp) {
-      if (subProp === 'then' || subProp === 'toJSON' || typeof subProp === 'symbol') {
+    get(_, subPropertyKey) {
+      if (subPropertyKey === 'then' || subPropertyKey === 'toJSON' || typeof subPropertyKey === 'symbol') {
         return undefined;
       }
 
       return function (...args: any[]) {
-        const execute = async (attempt = 1): Promise<any> => {
+        const executeModelOperation = async (attempt = 1): Promise<any> => {
           const activePrisma = getPrismaInstance();
-          const model = (activePrisma as any)[prop];
-          if (!model) {
-            throw new Error(`Prisma model or method "${String(prop)}" not found.`);
+          const modelInstance = (activePrisma as any)[propertyKey];
+          
+          if (!modelInstance) {
+            throw new Error(`Prisma model or method "${String(propertyKey)}" not found.`);
           }
-          const method = model[subProp];
-          if (typeof method !== 'function') {
-            throw new Error(`Prisma method "${String(subProp)}" on model/service "${String(prop)}" is not a function.`);
+          
+          const modelMethod = modelInstance[subPropertyKey];
+          if (typeof modelMethod !== 'function') {
+            throw new Error(`Prisma method "${String(subPropertyKey)}" on model/service "${String(propertyKey)}" is not a function.`);
           }
 
           try {
-            const result = method.apply(model, args);
+            const result = modelMethod.apply(modelInstance, args);
             return (result && typeof result === 'object' && typeof result.then === 'function')
               ? await result
               : result;
-          } catch (err: unknown) {
-            if (isCorruptionError(err)) {
-              console.error(`[Prisma Proxy Model] Database corruption detected on ${String(prop)}.${String(subProp)}. Rebuilding ...`);
+          } catch (error: unknown) {
+            if (isCorruptionError(error)) {
+              console.error(`[Prisma Proxy Model] Database corruption detected on ${String(propertyKey)}.${String(subPropertyKey)}. Rebuilding...`);
               performSelfHealing();
               if (attempt < 2) {
-                return execute(attempt + 1);
+                return executeModelOperation(attempt + 1);
               }
             }
-            throw err;
+            throw error;
           }
         };
 
-        return execute();
+        return executeModelOperation();
       };
     }
   });
 
-  proxyCache.set(prop, proxy);
+  proxyCache.set(propertyKey, proxy);
   return proxy;
 }
 
+/**
+ * Resilient database client proxy wrapper guaranteeing automatic failure recovery and transparent model access.
+ */
 export const db = new Proxy({} as PrismaClient, {
-  get(_, prop) {
-    if (prop === 'then' || prop === 'toJSON' || typeof prop === 'symbol') {
+  get(_, propertyKey) {
+    if (propertyKey === 'then' || propertyKey === 'toJSON' || typeof propertyKey === 'symbol') {
       return undefined;
     }
-    return createCallableProxy(prop);
+    return createCallableProxy(propertyKey);
   }
 });
