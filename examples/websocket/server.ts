@@ -19,7 +19,7 @@ export interface Message {
   id: string
   username: string
   content: string
-  timestamp: string // Pre-formatted ISO string to eliminate runtime Date instantiation and serialization overhead
+  timestamp: string
   type: 'user' | 'system'
 }
 
@@ -59,7 +59,7 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
   maxHttpBufferSize: 1e6
 })
 
-// O(1) lookups and cached array serialization to prevent repeated Array.from allocations
+// State Management with lazy-cache invalidation
 const users = new Map<string, User>()
 let cachedUsersArray: User[] = []
 let isUsersListDirty = true
@@ -94,7 +94,7 @@ const createUserMessage = (username: string, content: string): Message => ({
   type: 'user'
 })
 
-// Optimized zero-allocation fast-path sanitizer utilizing direct regex compilation caching
+// Zero-allocation fast-path string sanitizer using cached regex
 const CONTROL_CHARS_REGEX = /[\u0000-\u001F\u007F-\u009F]/g
 
 const sanitizeString = (input: unknown, maxLength: number): string => {
@@ -103,104 +103,92 @@ const sanitizeString = (input: unknown, maxLength: number): string => {
   return sanitized.length > maxLength ? sanitized.slice(0, maxLength) : sanitized
 }
 
+// Event Handler Handlers
+const handleTestEvent = (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: unknown): void => {
+  try {
+    console.log('Received test message:', data)
+    socket.emit('test-response', { 
+      message: 'Server received test message', 
+      data,
+      timestamp: new Date().toISOString()
+    })
+  } catch (error) {
+    console.error(`Error handling 'test' event for socket ${socket.id}:`, error)
+  }
+}
+
+const handleJoinEvent = (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: { username: string }): void => {
+  try {
+    if (!data || typeof data !== 'object') return
+
+    if (users.size >= MAX_USERS_CAPACITY && !users.has(socket.id)) return
+
+    const username = sanitizeString(data.username, MAX_USERNAME_LENGTH)
+    if (!username) return
+
+    const user: User = { id: socket.id, username }
+
+    users.set(socket.id, user)
+    markUsersDirty()
+
+    const joinMessage = createSystemMessage(`${username} joined the chat room`)
+    io.emit('user-joined', { user, message: joinMessage })
+    socket.emit('users-list', { users: getUsersList() })
+
+    console.log(`${username} joined the chat room, current online users: ${users.size}`)
+  } catch (error) {
+    console.error(`Error handling 'join' event for socket ${socket.id}:`, error)
+  }
+}
+
+const handleMessageEvent = (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: { content: string; username: string }): void => {
+  try {
+    if (!data || typeof data !== 'object') return
+
+    const content = sanitizeString(data.content, MAX_CONTENT_LENGTH)
+    const username = sanitizeString(data.username, MAX_USERNAME_LENGTH)
+
+    if (!content || !username) return
+
+    const user = users.get(socket.id)
+    if (user && user.username === username) {
+      const message = createUserMessage(username, content)
+      io.emit('message', message)
+      console.log(`${username}: ${content}`)
+    }
+  } catch (error) {
+    console.error(`Error handling 'message' event for socket ${socket.id}:`, error)
+  }
+}
+
+const handleDisconnectEvent = (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>): void => {
+  try {
+    const user = users.get(socket.id)
+
+    if (user) {
+      users.delete(socket.id)
+      markUsersDirty()
+
+      const leaveMessage = createSystemMessage(`${user.username} left the chat room`)
+      io.emit('user-left', { user: { id: socket.id, username: user.username }, message: leaveMessage })
+
+      console.log(`${user.username} left the chat room, current online users: ${users.size}`)
+    } else {
+      console.log(`User disconnected: ${socket.id}`)
+    }
+  } catch (error) {
+    console.error(`Error handling 'disconnect' event for socket ${socket.id}:`, error)
+  }
+}
+
 io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>) => {
   console.log(`User connected: ${socket.id}`)
 
-  socket.on('test', (data: unknown) => {
-    try {
-      console.log('Received test message:', data)
-      socket.emit('test-response', { 
-        message: 'Server received test message', 
-        data,
-        timestamp: new Date().toISOString()
-      })
-    } catch (error) {
-      console.error(`Error handling 'test' event for socket ${socket.id}:`, error)
-    }
-  })
-
-  socket.on('join', (data: { username: string }) => {
-    try {
-      if (!data || typeof data !== 'object') {
-        return
-      }
-
-      if (users.size >= MAX_USERS_CAPACITY && !users.has(socket.id)) {
-        return
-      }
-
-      const username = sanitizeString(data.username, MAX_USERNAME_LENGTH)
-      if (!username) {
-        return
-      }
-
-      const user: User = {
-        id: socket.id,
-        username
-      }
-
-      users.set(socket.id, user)
-      markUsersDirty()
-
-      const joinMessage = createSystemMessage(`${username} joined the chat room`)
-      io.emit('user-joined', { user, message: joinMessage })
-
-      socket.emit('users-list', { users: getUsersList() })
-
-      console.log(`${username} joined the chat room, current online users: ${users.size}`)
-    } catch (error) {
-      console.error(`Error handling 'join' event for socket ${socket.id}:`, error)
-    }
-  })
-
-  socket.on('message', (data: { content: string; username: string }) => {
-    try {
-      if (!data || typeof data !== 'object') {
-        return
-      }
-
-      const content = sanitizeString(data.content, MAX_CONTENT_LENGTH)
-      const username = sanitizeString(data.username, MAX_USERNAME_LENGTH)
-
-      if (!content || !username) {
-        return
-      }
-
-      const user = users.get(socket.id)
-
-      if (user && user.username === username) {
-        const message = createUserMessage(username, content)
-        io.emit('message', message)
-        console.log(`${username}: ${content}`)
-      }
-    } catch (error) {
-      console.error(`Error handling 'message' event for socket ${socket.id}:`, error)
-    }
-  })
-
-  socket.on('disconnect', () => {
-    try {
-      const user = users.get(socket.id)
-
-      if (user) {
-        users.delete(socket.id)
-        markUsersDirty()
-
-        const leaveMessage = createSystemMessage(`${user.username} left the chat room`)
-        io.emit('user-left', { user: { id: socket.id, username: user.username }, message: leaveMessage })
-
-        console.log(`${user.username} left the chat room, current online users: ${users.size}`)
-      } else {
-        console.log(`User disconnected: ${socket.id}`)
-      }
-    } catch (error) {
-      console.error(`Error handling 'disconnect' event for socket ${socket.id}:`, error)
-    }
-  })
-
-  socket.on('error', (error: Error) => {
-    console.error(`Socket error (${socket.id}):`, error)
-  })
+  socket.on('test', (data) => handleTestEvent(socket, data))
+  socket.on('join', (data) => handleJoinEvent(socket, data))
+  socket.on('message', (data) => handleMessageEvent(socket, data))
+  socket.on('disconnect', () => handleDisconnectEvent(socket))
+  socket.on('error', (error: Error) => console.error(`Socket error (${socket.id}):`, error))
 })
 
 httpServer.listen(PORT, () => {
@@ -209,7 +197,7 @@ httpServer.listen(PORT, () => {
 
 let isShuttingDown = false
 
-const handleShutdown = (signal: string) => {
+const handleShutdown = (signal: string): void => {
   if (isShuttingDown) return
   isShuttingDown = true
   console.log(`Received ${signal} signal, shutting down server...`)
