@@ -27,33 +27,41 @@ interface GitHubDeleteResponse {
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 const GITHUB_API_VERSION_HEADER = 'application/vnd.github.v3+json';
 
-/**
- * Sanitizes and safely encodes a file path for GitHub API consumption.
- */
-function sanitizePath(filePath: string): string {
-  const cleanPath = filePath.replace(/^\/+|\/+$/g, '');
-  return cleanPath.split('/').map(encodeURIComponent).join('/');
-}
+const HEADERS_CACHE = new Map<string, Record<string, string>>();
 
-/**
- * Builds standard headers for GitHub API interactions.
- */
 function buildGitHubHeaders(token: string, includeJsonContentType = false): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Authorization': `Bearer ${token}`,
-    'Accept': GITHUB_API_VERSION_HEADER,
-  };
-
-  if (includeJsonContentType) {
-    headers['Content-Type'] = 'application/json';
+  const cacheKey = `${token}_${includeJsonContentType ? 1 : 0}`;
+  let cached = HEADERS_CACHE.get(cacheKey);
+  if (!cached) {
+    cached = {
+      'Authorization': `Bearer ${token}`,
+      'Accept': GITHUB_API_VERSION_HEADER,
+    };
+    if (includeJsonContentType) {
+      cached['Content-Type'] = 'application/json';
+    }
+    HEADERS_CACHE.set(cacheKey, cached);
   }
-
-  return headers;
+  return cached;
 }
 
-/**
- * Fetches the actual file SHA from GitHub if not provided or to ensure accuracy.
- */
+function sanitizePath(filePath: string): string {
+  const segments = filePath.split('/');
+  let start = 0;
+  let end = segments.length;
+
+  while (start < end && segments[start] === '') start++;
+  while (end > start && segments[end - 1] === '') end--;
+
+  if (start >= end) return '';
+
+  const parts = new Array(end - start);
+  for (let i = start, j = 0; i < end; i++, j++) {
+    parts[j] = encodeURIComponent(segments[i]);
+  }
+  return parts.join('/');
+}
+
 async function getFileSha(
   token: string,
   owner: string,
@@ -81,9 +89,6 @@ async function getFileSha(
   }
 }
 
-/**
- * Executes the file deletion request against the GitHub API.
- */
 async function deleteGitHubFileResource(
   token: string,
   owner: string,
