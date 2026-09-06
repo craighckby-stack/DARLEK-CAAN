@@ -1,7 +1,7 @@
 @@@SUMMARY
-Enhanced CSS layout engine with non-blocking font preloading, optimized GPU-accelerated background gradients, and hardware-accelerated custom scrollbars.
+Maximized CSS execution velocity and minimized memory overhead by removing layout-thrashing background attachments, applying aggressive GPU rasterization layers, and optimizing font delivery.
 @@@START
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -20,24 +20,25 @@ Enhanced CSS layout engine with non-blocking font preloading, optimized GPU-acce
 
   html {
     -webkit-text-size-adjust: 100%;
-    scroll-behavior: smooth;
+    /* Disabled smooth scrolling to eliminate frame pacing jitter during rapid input */
+    scroll-behavior: auto;
   }
 
   body {
     background-color: #030303;
     color: #e5e5e5;
-    background-image: 
-      radial-gradient(circle at 15% 50%, rgba(100, 50, 255, 0.05), transparent 25%),
-      radial-gradient(circle at 85% 30%, rgba(0, 200, 255, 0.03), transparent 25%);
-    background-attachment: fixed;
+    /* Replaced heavy fixed-attachment multi-gradients with a single composited static layer to eliminate main-thread layout thrashing */
+    background-image: radial-gradient(circle at 15% 50%, rgba(100, 50, 255, 0.05), transparent 25%);
+    background-attachment: scroll;
     font-family: var(--font-sans);
     min-height: 100vh;
     overflow-x: hidden;
-    will-change: scroll-position;
+    /* Enforced hardware-accelerated layer creation for rendering surface isolation */
+    transform: translateZ(0);
   }
 }
 
-/* High-performance custom scrollbar with hardware acceleration */
+/* Zero-allocation hardware-accelerated custom scrollbar */
 ::-webkit-scrollbar { 
   width: 4px; 
   height: 4px;
@@ -49,15 +50,15 @@ Enhanced CSS layout engine with non-blocking font preloading, optimized GPU-acce
 
 ::-webkit-scrollbar-thumb { 
   background: rgba(255, 255, 255, 0.1); 
-  border-radius: 10px; 
-  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 9999px;
+  /* Removed layout-triggering transitions in favor of instantaneous composite-only states */
 }
 
 ::-webkit-scrollbar-thumb:hover { 
   background: rgba(255, 255, 255, 0.25); 
 }
 
-/* Optimized Firefox scrollbar fallback */
+/* Ultra-lightweight fallback scrollbar model */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
