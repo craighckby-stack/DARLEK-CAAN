@@ -1,7 +1,7 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "src/utils/siphon.ts"
- * Optimization: Comprehensive sovereign overhaul, high type-safety, efficient error handling, and memory optimization.
+ * Optimization: Comprehensive execution speed, memory footprint reduction, caching, allocation avoidance, and algorithmic efficiency.
  */
 
 export interface SiphonSource {
@@ -48,18 +48,28 @@ export const SOURCES: readonly SiphonSource[] = [
   { owner: "huggingface", repo: "transformers", branch: "main", label: "ARCHITECTURE" },
 ] as const;
 
+// Cached TextDecoder and regex to avoid reallocation overhead across loops and cycles
+const TEXT_DECODER = new TextDecoder();
+const WHITESPACE_REGEX = /\s/g;
+const JS_TS_REGEX = /\.(js|ts)$/;
+const MARKDOWN_FENCE_REGEX = /^```[a-z]*\n|```$/gm;
+
 /**
- * Safely decodes base64 string content with Unicode support.
+ * Safely decodes base64 string content with Unicode support using cached instances.
  */
 function decodeBase64Utf8(base64Content: string): string {
   try {
-    const cleaned = base64Content.replace(/\s/g, "");
+    const cleaned = base64Content.replace(WHITESPACE_REGEX, "");
     const binString = atob(cleaned);
-    const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0)!);
-    return new TextDecoder().decode(bytes);
+    const len = binString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binString.charCodeAt(i);
+    }
+    return TEXT_DECODER.decode(bytes);
   } catch {
     try {
-      return decodeURIComponent(escape(atob(base64Content.replace(/\s/g, ""))));
+      return decodeURIComponent(escape(atob(base64Content.replace(WHITESPACE_REGEX, ""))));
     } catch {
       return "";
     }
@@ -72,9 +82,11 @@ export async function siphonFetchFile(
 ): Promise<string> {
   try {
     const headers: Record<string, string> = {
-      ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {}),
       Accept: "application/vnd.github.v3+json",
     };
+    if (githubToken) {
+      headers["Authorization"] = `Bearer ${githubToken}`;
+    }
 
     const treeRes = await fetch(
       `https://api.github.com/repos/${src.owner}/${src.repo}/git/trees/${src.branch}?recursive=1`,
@@ -83,16 +95,22 @@ export async function siphonFetchFile(
     if (!treeRes.ok) return "// No JS/TS files found";
 
     const tree = (await treeRes.json()) as GitHubTreeResponse;
-    if (!tree.tree || !Array.isArray(tree.tree)) return "// No JS/TS files found";
+    const treeItems = tree.tree;
+    if (!treeItems || !Array.isArray(treeItems)) return "// No JS/TS files found";
 
-    const files = tree.tree.filter(
-      (f): f is Required<Pick<GitHubBlob, "path" | "type">> & GitHubBlob =>
-        f.type === "blob" && typeof f.path === "string" && /\.(js|ts)$/.test(f.path)
-    );
+    const files: GitHubBlob[] = [];
+    const len = treeItems.length;
+    for (let i = 0; i < len; i++) {
+      const f = treeItems[i];
+      if (f.type === "blob" && typeof f.path === "string" && JS_TS_REGEX.test(f.path)) {
+        files.push(f);
+      }
+    }
 
-    if (files.length === 0) return "// No JS/TS files found";
+    const fileCount = files.length;
+    if (fileCount === 0) return "// No JS/TS files found";
 
-    const randomFile = files[Math.floor(Math.random() * files.length)];
+    const randomFile = files[(Math.random() * fileCount) | 0];
     const contentRes = await fetch(
       `https://api.github.com/repos/${src.owner}/${src.repo}/contents/${randomFile.path}?ref=${src.branch}`,
       { headers }
@@ -185,7 +203,7 @@ End with exactly one line: "VERDICT: STACK" (archive safely) or "VERDICT: PURGE"
     const mutData = (await mutRes.json()) as BrainApiResponse;
     let mutated = mutData.reply || "";
     
-    mutated = mutated.replace(/^```[a-z]*\n|```$/gm, "").trim();
+    mutated = mutated.replace(MARKDOWN_FENCE_REGEX, "").trim();
     if (!mutated) return baseCode;
     return mutated;
   } catch (e) {
@@ -201,7 +219,7 @@ export async function executeAutoSiphonTarget(
   addLog?: (msg: string) => void
 ): Promise<string> {
   let code = currentCode;
-  const dynamicSources: SiphonSource[] = [...SOURCES];
+  const dynamicSources: SiphonSource[] = SOURCES.slice();
 
   if (githubToken) {
     if (addLog) addLog(`[SIPHON] Enumerating user GitHub repositories & branches...`);
@@ -220,11 +238,15 @@ export async function executeAutoSiphonTarget(
           
           if (reposRes.ok) {
             const repos = (await reposRes.json()) as GitHubRepo[];
-            if (repos && repos.length > 0) {
-              if (addLog) addLog(`[SIPHON] Found ${repos.length} repositories for ${owner}...`);
-              const sampledRepos = [...repos].sort(() => 0.5 - Math.random()).slice(0, 5);
-
-              for (const repo of sampledRepos) {
+            const repoCount = repos ? repos.length : 0;
+            if (repoCount > 0) {
+              if (addLog) addLog(`[SIPHON] Found ${repoCount} repositories for ${owner}...`);
+              
+              const sampledRepos = repos.slice().sort(() => 0.5 - Math.random()).slice(0, 5);
+              const sampledLen = sampledRepos.length;
+              
+              for (let i = 0; i < sampledLen; i++) {
+                const repo = sampledRepos[i];
                 const branchesRes = await fetch(
                   `https://api.github.com/repos/${owner}/${repo.name}/branches?per_page=5`,
                   { headers }
@@ -232,12 +254,13 @@ export async function executeAutoSiphonTarget(
                 if (branchesRes.ok) {
                   const branches = (await branchesRes.json()) as GitHubBranch[];
                   if (branches && branches.length > 0) {
-                    for (const branch of branches) {
+                    const branchLen = branches.length;
+                    for (let j = 0; j < branchLen; j++) {
                       dynamicSources.push({
                         owner,
                         repo: repo.name,
-                        branch: branch.name,
-                        label: `AUTO-DISCOVERED: ${repo.name} (${branch.name})`,
+                        branch: branches[j].name,
+                        label: `AUTO-DISCOVERED: ${repo.name} (${branches[j].name})`,
                       });
                     }
                   }
@@ -253,8 +276,10 @@ export async function executeAutoSiphonTarget(
   }
 
   for (let r = 1; r <= rounds; r++) {
-    const sampledSources = [...dynamicSources].sort(() => 0.5 - Math.random()).slice(0, 3);
-    for (const src of sampledSources) {
+    const sampledSources = dynamicSources.slice().sort(() => 0.5 - Math.random()).slice(0, 3);
+    const sLen = sampledSources.length;
+    for (let s = 0; s < sLen; s++) {
+      const src = sampledSources[s];
       if (addLog) addLog(`[SIPHON R${r}] Fetching from ${src.label}...`);
       const data = await siphonFetchFile(src, githubToken);
       if (addLog) addLog(`[SIPHON R${r}] Morphing code utilizing ${src.label} patterns...`);
