@@ -14,6 +14,19 @@ const path = require('path');
 const MAX_RESPONSE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB limit for DoS mitigation
 const BASE_WATCH_DIR = 'src';
 const RESOLVED_BASE = path.resolve(BASE_WATCH_DIR);
+const REMOTE_BLOBS_OUTPUT_FILE = 'remote_blobs.json';
+const GITHUB_TREE_API_URL = 'https://api.github.com/repos/craighckby-stack/epistemic_debate_engine/git/trees/main?recursive=1';
+
+/**
+ * Validates whether a target path resides within the authorized base directory to prevent path traversal.
+ *
+ * @param {string} targetPath - Path to validate.
+ * @returns {boolean} True if safe, false otherwise.
+ */
+function isPathWithinBase(targetPath) {
+  const resolvedTarget = path.resolve(targetPath);
+  return resolvedTarget.startsWith(RESOLVED_BASE);
+}
 
 /**
  * Recursively scans a directory for files using synchronous iteration to minimize overhead.
@@ -28,28 +41,24 @@ function walk(dirPath, accumulator = []) {
     return accumulator;
   }
 
-  const resolvedTarget = path.resolve(dirPath);
-
-  if (!resolvedTarget.startsWith(RESOLVED_BASE)) {
+  if (!isPathWithinBase(dirPath)) {
     console.error(`Security violation: Attempted path traversal outside base directory: '${dirPath}'`);
     return accumulator;
   }
 
   let entries;
   try {
-    entries = fs.readdirSync(resolvedTarget, { withFileTypes: true });
+    entries = fs.readdirSync(path.resolve(dirPath), { withFileTypes: true });
   } catch {
     return accumulator;
   }
 
-  const len = entries.length;
-  for (let i = 0; i < len; ++i) {
-    const entry = entries[i];
+  for (const entry of entries) {
     if (!entry || typeof entry.name !== 'string') {
       continue;
     }
     
-    const fullPath = path.join(resolvedTarget, entry.name);
+    const fullPath = path.join(path.resolve(dirPath), entry.name);
     if (entry.isDirectory()) {
       walk(fullPath, accumulator);
     } else if (entry.isFile()) {
@@ -58,6 +67,16 @@ function walk(dirPath, accumulator = []) {
   }
 
   return accumulator;
+}
+
+/**
+ * Filters GitHub API tree nodes, retaining only blob entities representing remote files.
+ *
+ * @param {Array<Object>} treeNodes - Array of tree nodes from the GitHub API response.
+ * @returns {Array<Object>} Filtered array of blob nodes.
+ */
+function extractRemoteBlobs(treeNodes) {
+  return treeNodes.filter((node) => node && node.type === 'blob');
 }
 
 /**
@@ -74,20 +93,11 @@ function processTreeResponse(rawData) {
       throw new TypeError('Invalid response schema: missing "tree" array');
     }
 
-    const tree = parsedData.tree;
-    const len = tree.length;
-    const remoteFiles = [];
-    
-    for (let i = 0; i < len; ++i) {
-      const node = tree[i];
-      if (node && node.type === 'blob') {
-        remoteFiles.push(node);
-      }
-    }
+    const remoteFiles = extractRemoteBlobs(parsedData.tree);
 
     walk(BASE_WATCH_DIR);
 
-    fs.writeFileSync('remote_blobs.json', JSON.stringify(remoteFiles, null, 2), {
+    fs.writeFileSync(REMOTE_BLOBS_OUTPUT_FILE, JSON.stringify(remoteFiles, null, 2), {
       encoding: 'utf8',
       mode: 0o600
     });
@@ -99,19 +109,13 @@ function processTreeResponse(rawData) {
 }
 
 /**
- * Executes remote Git repository tree fetch and handles local repository indexing.
- * Implements strict payload size limits, protocol enforcement, and response validation.
+ * Configures HTTPS request options for fetching the remote repository tree.
+ *
+ * @param {URL} parsedUrl - Parsed URL instance of the target endpoint.
+ * @returns {Object} Request configuration options.
  */
-function executeSyncCycle() {
-  const targetUrl = 'https://api.github.com/repos/craighckby-stack/epistemic_debate_engine/git/trees/main?recursive=1';
-  const parsedUrl = new URL(targetUrl);
-
-  if (parsedUrl.protocol !== 'https:') {
-    console.error('Security violation: Non-HTTPS protocol rejected.');
-    return;
-  }
-
-  const requestOptions = {
+function createRequestOptions(parsedUrl) {
+  return {
     hostname: parsedUrl.hostname,
     path: parsedUrl.pathname + parsedUrl.search,
     method: 'GET',
@@ -120,8 +124,21 @@ function executeSyncCycle() {
       'Accept': 'application/vnd.github.v3+json'
     }
   };
+}
 
-  const req = https.request(requestOptions, (res) => {
+/**
+ * Executes remote Git repository tree fetch and handles local repository indexing.
+ * Implements strict payload size limits, protocol enforcement, and response validation.
+ */
+function executeSyncCycle() {
+  const parsedUrl = new URL(GITHUB_TREE_API_URL);
+
+  if (parsedUrl.protocol !== 'https:') {
+    console.error('Security violation: Non-HTTPS protocol rejected.');
+    return;
+  }
+
+  const req = https.request(createRequestOptions(parsedUrl), (res) => {
     if (res.statusCode < 200 || res.statusCode >= 300) {
       console.error(`GitHub API HTTP request failed with status code ${res.statusCode}`);
       res.resume();
