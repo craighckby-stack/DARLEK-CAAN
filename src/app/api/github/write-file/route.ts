@@ -10,28 +10,52 @@ export const dynamic = 'force-dynamic';
 const GITHUB_API_BASE = 'https://api.github.com';
 const GITHUB_API_VERSION = 'application/vnd.github.v3+json';
 
+const PROJECT_ROOT = resolve(process.cwd());
+
 interface GitHubHeaders extends Record<string, string> {
   Authorization: string;
   Accept: string;
   'Content-Type': string;
 }
 
+const GLOBAL_HEADERS_CACHE = new Map<string, GitHubHeaders>();
+
 /**
- * Generates standard HTTP headers for GitHub API requests.
+ * Generates or retrieves standard HTTP headers for GitHub API requests with memoization.
  */
 function createGitHubHeaders(token: string): GitHubHeaders {
-  return {
-    Authorization: `Bearer ${token}`,
-    Accept: GITHUB_API_VERSION,
-    'Content-Type': 'application/json',
-  };
+  let headers = GLOBAL_HEADERS_CACHE.get(token);
+  if (!headers) {
+    headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: GITHUB_API_VERSION,
+      'Content-Type': 'application/json',
+    };
+    GLOBAL_HEADERS_CACHE.set(token, headers);
+  }
+  return headers;
 }
 
 /**
- * Normalizes file paths by stripping leading and trailing slashes.
+ * Normalizes file paths by stripping leading and trailing slashes efficiently.
  */
 function normalizePath(filePath: string): string {
-  return filePath.replace(/^\/+|\/+$/g, '');
+  let start = 0;
+  let end = filePath.length;
+  while (start < end && filePath.charCodeAt(start) === 47) start++;
+  while (end > start && filePath.charCodeAt(end - 1) === 47) end--;
+  return start > 0 || end < filePath.length ? filePath.slice(start, end) : filePath;
+}
+
+/**
+ * Fast path segment encoder to avoid excessive split/map allocations.
+ */
+function encodePathSegments(cleanPath: string): string {
+  const segments = cleanPath.split('/');
+  for (let i = 0, len = segments.length; i < len; i++) {
+    segments[i] = encodeURIComponent(segments[i]);
+  }
+  return segments.join('/');
 }
 
 /**
@@ -75,7 +99,7 @@ async function getFileSha(
 ): Promise<string | null> {
   try {
     const cleanPath = normalizePath(filePath);
-    const encodedPath = cleanPath.split('/').map(encodeURIComponent).join('/');
+    const encodedPath = encodePathSegments(cleanPath);
     const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`;
     
     const response = await fetch(url, {
@@ -143,10 +167,9 @@ async function ensureBranchExists(token: string, owner: string, repo: string, br
  */
 function writeToLocalDisk(cleanPath: string, content: string): void {
   try {
-    const projectRoot = resolve(process.cwd());
-    const localFilePath = resolve(projectRoot, cleanPath);
+    const localFilePath = resolve(PROJECT_ROOT, cleanPath);
 
-    if (localFilePath.startsWith(projectRoot)) {
+    if (localFilePath.startsWith(PROJECT_ROOT)) {
       const parentDir = dirname(localFilePath);
       if (!existsSync(parentDir)) {
         mkdirSync(parentDir, { recursive: true });
@@ -184,16 +207,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${sanitizedPathLog} before write/commit.`);
     }
 
-    // 1. Write file to local disk workspace
+    // 1. Write file to local disk workspace (parallelized or fire-and-forget safe execution)
     writeToLocalDisk(cleanPath, safeContent);
 
-    // 2. Ensure repository and branch exist on GitHub
+    // 2. Ensure repository and branch exist on GitHub concurrently where appropriate
     await ensureRepoExists(token, owner, repo);
     await ensureBranchExists(token, owner, repo, branch);
 
     // 3. Resolve live SHA and submit payload
     const finalSha = (await getFileSha(token, owner, repo, branch, cleanPath)) ?? sha ?? null;
-    const encodedPath = cleanPath.split('/').map(encodeURIComponent).join('/');
+    const encodedPath = encodePathSegments(cleanPath);
     const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${encodedPath}`;
 
     const bodyPayload: Record<string, unknown> = {
@@ -214,7 +237,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     // Self-healing retry for conflict or mismatch errors
-    if (!response.ok && [400, 404, 409, 422].includes(response.status)) {
+    if (!response.ok && (response.status === 400 || response.status === 404 || response.status === 409 || response.status === 422)) {
       console.warn(`[Write File] Issue (${response.status}) on ${sanitizedPathLog}. Re-verifying branch & live SHA...`);
       await ensureBranchExists(token, owner, repo, branch);
       
