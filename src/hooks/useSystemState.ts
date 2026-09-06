@@ -17,49 +17,67 @@ const INITIAL_STATE: SystemState = {
   connectionStatus: 'idle',
 };
 
+/**
+ * Safely parses JSON from storage, logging any errors encountered.
+ */
+const readStoredState = (): Partial<SystemState> | null => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === null) return null;
+    
+    const parsed = JSON.parse(saved) as unknown;
+    return (parsed !== null && typeof parsed === 'object') ? (parsed as Partial<SystemState>) : null;
+  } catch (error) {
+    console.error(`Failed to parse state from key "${STORAGE_KEY}":`, error);
+    return null;
+  }
+};
+
+/**
+ * Safely persists state to storage, logging any errors encountered.
+ */
+const writeStoredState = (state: SystemState): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error(`Failed to persist state to key "${STORAGE_KEY}":`, error);
+  }
+};
+
 export const useSystemState = () => {
   const [systemState, setSystemState] = useState<SystemState>(INITIAL_STATE);
   
-  // Use a ref to prevent unnecessary re-creations and capture stable state reference
+  // Maintain a stable reference to the current state to prevent stale closures
   const stateRef = useRef(systemState);
   stateRef.current = systemState;
 
   useEffect(() => {
     let isMounted = true;
-    let timer: NodeJS.Timeout | undefined;
+    const storedData = readStoredState();
 
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved !== null) {
-        const parsed = JSON.parse(saved) as unknown;
-        if (parsed !== null && typeof parsed === 'object') {
-          timer = setTimeout(() => {
-            if (isMounted) {
-              setSystemState((prev) => ({ ...prev, ...(parsed as SystemState) }));
-            }
-          }, 0);
+    if (storedData) {
+      // Defer state hydration to avoid cascading render warnings on mount
+      const timer = setTimeout(() => {
+        if (isMounted) {
+          setSystemState((prevState) => ({ ...prevState, ...storedData }));
         }
-      }
-    } catch (e) {
-      console.error('Failed to parse darlek_cann_state:', e);
+      }, 0);
+
+      return () => {
+        isMounted = false;
+        clearTimeout(timer);
+      };
     }
 
     return () => {
       isMounted = false;
-      if (timer !== undefined) {
-        clearTimeout(timer);
-      }
     };
   }, []);
 
   const persist = useCallback((newState: StateUpdater) => {
     setSystemState((prevState) => {
       const resolvedState = typeof newState === 'function' ? newState(prevState) : newState;
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(resolvedState));
-      } catch (e) {
-        console.error('Failed to persist darlek_cann_state:', e);
-      }
+      writeStoredState(resolvedState);
       return resolvedState;
     });
   }, []);
