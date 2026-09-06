@@ -25,27 +25,30 @@ const KNOWN_STATUS_CONFIGS: Readonly<Record<'connected' | 'offline', StatusConfi
 
 const BASE_INDICATOR_CLASSES = 'text-[10px] uppercase tracking-widest';
 
+const resolveStatusConfiguration = (status: DalekStatus): StatusConfiguration => {
+  if (status === 'connected' || status === 'offline') {
+    return KNOWN_STATUS_CONFIGS[status];
+  }
+  
+  return {
+    text: `○ ${status.toUpperCase()}`,
+    className: 'text-yellow-500',
+  };
+};
+
 export const DalekStatusIndicator: React.FC<DalekStatusIndicatorProps> = memo(({ 
   status, 
   className = '' 
 }) => {
-  let text: string;
-  let statusClassName: string;
-
-  if (status === 'connected') {
-    text = KNOWN_STATUS_CONFIGS.connected.text;
-    statusClassName = KNOWN_STATUS_CONFIGS.connected.className;
-  } else if (status === 'offline') {
-    text = KNOWN_STATUS_CONFIGS.offline.text;
-    statusClassName = KNOWN_STATUS_CONFIGS.offline.className;
-  } else {
-    text = `○ ${status.toUpperCase()}`;
-    statusClassName = 'text-yellow-500';
-  }
-
-  const combinedClassName = className 
-    ? `${BASE_INDICATOR_CLASSES} ${statusClassName} ${className}` 
-    : `${BASE_INDICATOR_CLASSES} ${statusClassName}`;
+  const { text, className: statusClassName } = resolveStatusConfiguration(status);
+  
+  const combinedClassName = [
+    BASE_INDICATOR_CLASSES,
+    statusClassName,
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div 
