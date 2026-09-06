@@ -2,7 +2,7 @@
 
 /**
  * @fileoverview Form component system built on top of React Hook Form and Radix UI primitives.
- * Provides accessible, context-driven form primitives with enhanced readability and modern idioms.
+ * Provides accessible, context-driven form primitives optimized for high execution speed and minimal allocations.
  */
 
 import * as React from "react"
@@ -34,6 +34,9 @@ export type FormFieldContextValue<
 
 export type FormItemContextValue = {
   readonly id: string
+  readonly formItemId: string
+  readonly formDescriptionId: string
+  readonly formMessageId: string
 }
 
 // ============================================================================
@@ -51,7 +54,7 @@ const Form = FormProvider
 
 /**
  * Custom hook to access form field state, IDs, and accessibility metadata.
- * Must be used within a FormField, FormItem, and FormProvider context hierarchy.
+ * Memoizes string allocations and leverages stable context primitives to minimize re-renders.
  */
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext)
@@ -73,18 +76,19 @@ const useFormField = () => {
   const { getFieldState } = formContext
   const formState = useFormState({ name: fieldContext.name })
   const fieldState = getFieldState(fieldContext.name, formState)
-  const { id } = itemContext
+  const { id, formItemId, formDescriptionId, formMessageId } = itemContext
+  const { name } = fieldContext
 
   return React.useMemo(
     () => ({
       id,
-      name: fieldContext.name,
-      formItemId: `${id}-form-item`,
-      formDescriptionId: `${id}-form-item-description`,
-      formMessageId: `${id}-form-item-message`,
+      name,
+      formItemId,
+      formDescriptionId,
+      formMessageId,
       ...fieldState,
     }),
-    [id, fieldContext.name, fieldState]
+    [id, name, formItemId, formDescriptionId, formMessageId, fieldState]
   )
 }
 
@@ -96,23 +100,32 @@ const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 >({
+  name,
   ...props
 }: ControllerProps<TFieldValues, TName>) => {
   const fieldContextValue = React.useMemo<FormFieldContextValue<TFieldValues, TName>>(
-    () => ({ name: props.name }),
-    [props.name]
+    () => ({ name }),
+    [name]
   )
 
   return (
     <FormFieldContext.Provider value={fieldContextValue}>
-      <Controller {...props} />
+      <Controller name={name} {...props} />
     </FormFieldContext.Provider>
   )
 }
 
 function FormItem({ className, ...props }: React.ComponentProps<"div">) {
   const id = React.useId()
-  const itemContextValue = React.useMemo<FormItemContextValue>(() => ({ id }), [id])
+  const itemContextValue = React.useMemo<FormItemContextValue>(
+    () => ({
+      id,
+      formItemId: `${id}-form-item`,
+      formDescriptionId: `${id}-form-item-description`,
+      formMessageId: `${id}-form-item-message`,
+    }),
+    [id]
+  )
 
   return (
     <FormItemContext.Provider value={itemContextValue}>
@@ -130,11 +143,12 @@ function FormLabel({
   ...props
 }: React.ComponentProps<typeof LabelPrimitive.Root>) {
   const { error, formItemId } = useFormField()
+  const hasError = !!error
 
   return (
     <Label
       data-slot="form-label"
-      data-error={!!error}
+      data-error={hasError}
       className={cn("data-[error=true]:text-destructive", className)}
       htmlFor={formItemId}
       {...props}
@@ -144,10 +158,11 @@ function FormLabel({
 
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
+  const hasError = !!error
 
   const ariaDescribedBy = React.useMemo(
-    () => (!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`),
-    [error, formDescriptionId, formMessageId]
+    () => (!hasError ? formDescriptionId : `${formDescriptionId} ${formMessageId}`),
+    [hasError, formDescriptionId, formMessageId]
   )
 
   return (
@@ -155,7 +170,7 @@ function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
       data-slot="form-control"
       id={formItemId}
       aria-describedby={ariaDescribedBy}
-      aria-invalid={!!error}
+      aria-invalid={hasError}
       {...props}
     />
   )
