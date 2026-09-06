@@ -69,65 +69,45 @@ async function collectSanityViolations(
     return [];
   }
 
-  const violations = sanity.violations;
-  const len = violations.length;
-  const result: string[] = [];
-
-  for (let i = 0; i < len; i++) {
-    const v = violations[i];
-    if (v.severity === 'high') {
-      result.push(`STRUCTURAL SANITY BLOCK: ${v.message}`);
-    }
-  }
-
-  return result;
+  return sanity.violations
+    .filter((violation) => violation.severity === 'high')
+    .map((violation) => `STRUCTURAL SANITY BLOCK: ${violation.message}`);
 }
 
 function evaluateThresholds(saturation: NormalizedSaturation): { failures: string[]; hasWarning: boolean } {
   const failures: string[] = [];
   let hasWarning = false;
 
-  const tStruct = SATURATION_THRESHOLDS.structuralChange;
-  if (saturation.structuralChange >= tStruct.critical) {
-    failures.push(`Structural Change at critical level (${saturation.structuralChange}/${tStruct.max}). System cannot absorb more change.`);
-    hasWarning = true;
-  }
+  const checks = [
+    { current: saturation.structuralChange, threshold: SATURATION_THRESHOLDS.structuralChange, name: 'Structural Change' },
+    { current: saturation.semanticSaturation, threshold: SATURATION_THRESHOLDS.semanticSaturation, name: 'Semantic Saturation' },
+    { current: saturation.velocity, threshold: SATURATION_THRESHOLDS.velocity, name: 'Velocity' },
+    { current: saturation.identityPreservation, threshold: SATURATION_THRESHOLDS.identityPreservation, name: 'Identity Preservation', isInverse: true },
+    { current: saturation.crossFileImpact, threshold: SATURATION_THRESHOLDS.crossFileImpact, name: 'Cross-File Impact' },
+  ];
 
-  const tSemantic = SATURATION_THRESHOLDS.semanticSaturation;
-  if (saturation.semanticSaturation >= tSemantic.critical) {
-    failures.push(`Semantic Saturation at critical level (${saturation.semanticSaturation}/${tSemantic.max}). System cannot absorb more change.`);
-    hasWarning = true;
-  }
+  for (const check of checks) {
+    const isCritical = check.isInverse
+      ? check.current <= check.threshold.critical
+      : check.current >= check.threshold.critical;
 
-  const tVelocity = SATURATION_THRESHOLDS.velocity;
-  if (saturation.velocity >= tVelocity.critical) {
-    failures.push(`Velocity at critical level (${saturation.velocity}/${tVelocity.max}). System cannot absorb more change.`);
-    hasWarning = true;
-  }
-
-  const tIdentity = SATURATION_THRESHOLDS.identityPreservation;
-  if (saturation.identityPreservation <= tIdentity.critical) {
-    failures.push(`Identity Preservation at critical level (${saturation.identityPreservation}/${tIdentity.max}). System cannot absorb more change.`);
-    hasWarning = true;
-  }
-
-  const tCross = SATURATION_THRESHOLDS.crossFileImpact;
-  if (saturation.crossFileImpact >= tCross.critical) {
-    failures.push(`Cross-File Impact at critical level (${saturation.crossFileImpact}/${tCross.max}). System cannot absorb more change.`);
-    hasWarning = true;
+    if (isCritical) {
+      failures.push(`${check.name} at critical level (${check.current}/${check.threshold.max}). System cannot absorb more change.`);
+      hasWarning = true;
+    }
   }
 
   return { failures, hasWarning };
 }
 
 function evaluateCumulativeStress(saturation: NormalizedSaturation): { failures: string[]; hasWarning: boolean } {
-  let warningCount = 0;
-
-  if (saturation.structuralChange >= SATURATION_THRESHOLDS.structuralChange.warning) warningCount++;
-  if (saturation.semanticSaturation >= SATURATION_THRESHOLDS.semanticSaturation.warning) warningCount++;
-  if (saturation.velocity >= SATURATION_THRESHOLDS.velocity.warning) warningCount++;
-  if (saturation.identityPreservation <= SATURATION_THRESHOLDS.identityPreservation.warning) warningCount++;
-  if (saturation.crossFileImpact >= SATURATION_THRESHOLDS.crossFileImpact.warning) warningCount++;
+  const warningCount = [
+    saturation.structuralChange >= SATURATION_THRESHOLDS.structuralChange.warning,
+    saturation.semanticSaturation >= SATURATION_THRESHOLDS.semanticSaturation.warning,
+    saturation.velocity >= SATURATION_THRESHOLDS.velocity.warning,
+    saturation.identityPreservation <= SATURATION_THRESHOLDS.identityPreservation.warning,
+    saturation.crossFileImpact >= SATURATION_THRESHOLDS.crossFileImpact.warning,
+  ].filter(Boolean).length;
 
   if (warningCount >= MAX_WARNING_METRICS_TOLERANCE) {
     return {
