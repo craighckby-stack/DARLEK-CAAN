@@ -3,17 +3,16 @@ import type { JSX, ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
-// Hoist static objects outside the module evaluation scope to prevent repeated allocations
-const METADATA_BASE_URL = new URL("https://git-secret-sanitizer.local");
-const LOGO_ICON_URL = "https://z-cdn.chatglm.cn/z-ai/static/logo.svg";
+const APP_METADATA_BASE_URL = new URL("https://git-secret-sanitizer.local");
+const APP_LOGO_ICON_URL = "https://z-cdn.chatglm.cn/z-ai/static/logo.svg";
 
 export const metadata: Metadata = {
   title: "Git Secret & PII Sanitizer",
   description: "Deep PII and Secret Scanner for GitHub repositories.",
   icons: {
-    icon: LOGO_ICON_URL,
+    icon: APP_LOGO_ICON_URL,
   },
-  metadataBase: METADATA_BASE_URL,
+  metadataBase: APP_METADATA_BASE_URL,
 };
 
 export const viewport: Viewport = {
@@ -26,8 +25,7 @@ interface RootLayoutProps {
   readonly children: ReactNode;
 }
 
-// Pre-define immutable inline styles object to avoid per-render object allocation and GC pressure
-const BODY_STYLE = {
+const DOCUMENT_BODY_INLINE_STYLES = {
   direction: "ltr" as const,
   textAlign: "left" as const,
   fontFamily: "var(--font-share-tech-mono), monospace",
@@ -35,7 +33,7 @@ const BODY_STYLE = {
 
 /**
  * Root Application Layout Component
- * Optimized for high execution speed, zero redundant object allocations, and minimal memory footprint.
+ * Configures global typography, theme states, and application container hierarchy.
  */
 export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
   return (
@@ -43,7 +41,7 @@ export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
       <body
         dir="ltr"
         className="antialiased min-h-screen bg-black text-[#e0e0e0] font-mono overflow-x-hidden m-0 p-0"
-        style={BODY_STYLE}
+        style={DOCUMENT_BODY_INLINE_STYLES}
       >
         {children}
         <Toaster />
