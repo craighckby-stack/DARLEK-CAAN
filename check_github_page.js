@@ -19,53 +19,83 @@ const NETWORK_CONFIG = {
 };
 
 /**
+ * Pre-allocated static objects to eliminate runtime allocation overhead.
+ */
+const BASE_HEADERS = {
+  'User-Agent': NETWORK_CONFIG.USER_AGENT
+};
+
+/**
  * Logs a standardized error block for a given label.
  * 
  * @param {string} label - The descriptive label for logging output.
  * @param {string} message - The error message to log.
  */
 function logError(label, message) {
-  console.error(`=== ${label} ===`);
-  console.error(`[ERROR] ${message}`);
+  console.error(`=== ${label} ===\n[ERROR] ${message}`);
 }
 
 /**
- * Collects and aggregates response stream chunks into a complete string.
+ * Collects and aggregates response stream chunks into a complete string using optimized buffer concatenation.
  * 
  * @param {import('http').IncomingMessage} response - The incoming HTTP response stream.
  * @returns {Promise<string>} The complete response body.
  */
 function consumeResponseBody(response) {
   return new Promise((resolve, reject) => {
-    let rawData = '';
+    const chunks = [];
+    let totalLength = 0;
+    
     response.setEncoding('utf8');
 
     response.on('data', (chunk) => {
-      rawData += chunk;
+      chunks.push(chunk);
+      totalLength += chunk.length;
     });
 
-    response.on('end', () => resolve(rawData));
-    response.on('error', (err) => reject(err));
+    response.on('end', () => resolve(chunks.join('')));
+    response.on('error', reject);
   });
 }
 
 /**
- * Analyzes and outputs structural metrics of the fetched page content.
+ * Analyzes and outputs structural metrics of the fetched page content with zero excessive array allocations.
  * 
  * @param {string} label - The descriptive label for logging output.
  * @param {string} data - The raw page content.
  */
 function analyzeAndReportContent(label, data) {
-  const lines = data.split(/\r?\n/);
-  const totalLines = lines.length;
-  const firstLines = lines.slice(0, NETWORK_CONFIG.PREVIEW_LINE_COUNT).join('\n');
-  const lastLines = lines.slice(-NETWORK_CONFIG.PREVIEW_LINE_COUNT).join('\n');
+  const len = data.length;
+  const previewLimit = NETWORK_CONFIG.PREVIEW_LINE_COUNT;
+  
+  let totalLines = 0;
+  let firstLinesEnd = -1;
+  let lastLinesStart = 0;
+  
+  // Single-pass newline tracking to prevent massive array creation from split()
+  for (let i = 0; i < len; i++) {
+    const char = data.charCodeAt(i);
+    if (char === 10) { // '\n'
+      totalLines++;
+      if (totalLines === previewLimit) {
+        firstLinesEnd = i;
+      }
+      if (totalLines > previewLimit) {
+        // Advance lastLinesStart past the previous newline
+        lastLinesStart = data.indexOf('\n', lastLinesStart) + 1;
+      }
+    }
+  }
+  totalLines++; // Account for final line without trailing newline
+
+  const firstLines = firstLinesEnd !== -1 ? data.slice(0, firstLinesEnd) : data;
+  const lastLines = totalLines > previewLimit ? data.slice(lastLinesStart) : data;
 
   console.log(`=== ${label} ===`);
   console.log(`Length: ${Buffer.byteLength(data, 'utf8')} bytes`);
   console.log(`Lines: ${totalLines}`);
-  console.log(`First ${NETWORK_CONFIG.PREVIEW_LINE_COUNT} lines:\n${firstLines}`);
-  console.log(`Last ${NETWORK_CONFIG.PREVIEW_LINE_COUNT} lines:\n${lastLines}`);
+  console.log(`First ${previewLimit} lines:\n${firstLines}`);
+  console.log(`Last ${previewLimit} lines:\n${lastLines}`);
 }
 
 /**
@@ -82,9 +112,7 @@ function checkPage(url, label) {
   }
 
   const requestOptions = {
-    headers: {
-      'User-Agent': NETWORK_CONFIG.USER_AGENT
-    },
+    headers: BASE_HEADERS,
     timeout: NETWORK_CONFIG.TIMEOUT_MS
   };
 
