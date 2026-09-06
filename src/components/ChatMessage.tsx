@@ -12,14 +12,19 @@ export interface ChatMessageProps {
 const COLLAPSE_THRESHOLD = 280;
 const PREVIEW_LINES = 3;
 
+// Module-level cache for string truncations to prevent redundant allocations and loops
+const previewCache = new Map<string, string>();
+const lineCountCache = new Map<string, number>();
+
 /**
  * Truncates text to a specified maximum number of lines with high memory efficiency.
  */
 function truncateToLines(text: string, maxLines: number): string {
   let lineCount = 0;
   let index = 0;
+  const len = text.length;
   
-  while (index < text.length && lineCount < maxLines) {
+  while (index < len && lineCount < maxLines) {
     const nextNewline = text.indexOf('\n', index);
     if (nextNewline === -1) break;
     lineCount++;
@@ -32,8 +37,37 @@ function truncateToLines(text: string, maxLines: number): string {
 
 function getPreviewText(text: string): string {
   if (text.length <= COLLAPSE_THRESHOLD) return text;
+  let cached = previewCache.get(text);
+  if (cached !== undefined) return cached;
+
   const truncated = truncateToLines(text, PREVIEW_LINES);
-  return truncated.trimEnd() + '...';
+  cached = truncated.trimEnd() + '...';
+  
+  if (previewCache.size > 200) {
+    const firstKey = previewCache.keys().next().value;
+    if (firstKey !== undefined) previewCache.delete(firstKey);
+  }
+  previewCache.set(text, cached);
+  return cached;
+}
+
+function countHiddenLines(content: string): number {
+  let count = lineCountCache.get(content);
+  if (count !== undefined) return count;
+
+  const len = content.length;
+  let lines = 0;
+  for (let i = 0; i < len; i++) {
+    if (content.charCodeAt(i) === 10) lines++;
+  }
+
+  count = Math.max(0, lines - PREVIEW_LINES + 1);
+  if (lineCountCache.size > 200) {
+    const firstKey = lineCountCache.keys().next().value;
+    if (firstKey !== undefined) lineCountCache.delete(firstKey);
+  }
+  lineCountCache.set(content, count);
+  return count;
 }
 
 export default function ChatMessage({ message }: ChatMessageProps) {
@@ -61,11 +95,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
 
   const hiddenLines = useMemo(() => {
     if (!isLong) return 0;
-    let count = 0;
-    for (let i = 0; i < content.length; i++) {
-      if (content[i] === '\n') count++;
-    }
-    return Math.max(0, count - PREVIEW_LINES + 1);
+    return countHiddenLines(content);
   }, [isLong, content]);
 
   const handleToggle = useCallback(() => {
