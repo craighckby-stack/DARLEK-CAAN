@@ -9,15 +9,22 @@
 'use strict';
 
 const { createWriteStream } = require('node:fs');
-const { resolve, normalize } = require('node:path');
+const { resolve, normalize, sep } = require('node:path');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
+
+// Pre-compute normalized base directory once to minimize filesystem/string overhead on every call
+const BASE_DIRECTORY = process.cwd();
+const NORMALIZED_BASE = normalize(BASE_DIRECTORY) + sep;
 
 /**
  * @typedef {Object} DownloadTarget
  * @property {string} url - The target HTTPS URL to fetch.
  * @property {string} dest - The local destination file path.
  */
+
+// Pre-compiled regex for control characters to avoid per-call allocation
+const CONTROL_CHAR_REGEX = /[\0-\x1f\x7f-\x9f]/;
 
 /**
  * Validates and normalizes a destination path to prevent directory traversal attacks.
@@ -27,19 +34,17 @@ const { pipeline } = require('node:stream/promises');
  * @throws {TypeError} If path is invalid or attempts traversal.
  */
 function validateAndSanitizePath(destinationPath) {
-  if (typeof destinationPath !== 'string' || !destinationPath.trim()) {
+  if (typeof destinationPath !== 'string' || destinationPath.length === 0) {
     throw new TypeError('[EMG Core v49] Parameter "destPath" must be a non-empty string.');
   }
 
-  if (/[\0-\x1f\x7f-\x9f]/.test(destinationPath)) {
+  if (CONTROL_CHAR_REGEX.test(destinationPath)) {
     throw new TypeError('[EMG Core v49] Parameter "destPath" contains invalid control characters.');
   }
 
-  const baseDirectory = process.cwd();
-  const resolvedPath = resolve(baseDirectory, destinationPath);
-  const normalizedBase = normalize(baseDirectory);
+  const resolvedPath = resolve(BASE_DIRECTORY, destinationPath);
 
-  if (!resolvedPath.startsWith(normalizedBase)) {
+  if (!resolvedPath.startsWith(NORMALIZED_BASE) && resolvedPath !== BASE_DIRECTORY) {
     throw new Error('[EMG Core v49] Security violation: Path traversal detected outside base directory.');
   }
 
@@ -54,7 +59,7 @@ function validateAndSanitizePath(destinationPath) {
  * @throws {TypeError} If the URL is malformed or insecure.
  */
 function validateAndSanitizeUrl(urlString) {
-  if (typeof urlString !== 'string' || !urlString.trim()) {
+  if (typeof urlString !== 'string' || urlString.length === 0) {
     throw new TypeError('[EMG Core v49] Parameter "url" must be a non-empty string.');
   }
 
@@ -72,6 +77,13 @@ function validateAndSanitizeUrl(urlString) {
   return parsedUrl;
 }
 
+// Reusable fetch headers configuration to prevent redundant object allocations
+const FETCH_OPTIONS = Object.freeze({
+  headers: Object.freeze({
+    'User-Agent': 'EMG-Core-v49-Optimizer-Engine/1.0',
+  }),
+});
+
 /**
  * Fetches a remote resource securely and streams it directly to the specified destination path.
  * 
@@ -85,21 +97,17 @@ async function fetchAndSave(url, destPath) {
   const validatedUrl = validateAndSanitizeUrl(url);
   const sanitizedDestPath = validateAndSanitizePath(destPath);
 
-  const response = await fetch(validatedUrl, {
-    headers: {
-      'User-Agent': 'EMG-Core-v49-Optimizer-Engine/1.0',
-    },
-  });
+  const response = await fetch(validatedUrl, FETCH_OPTIONS);
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch ${validatedUrl.toString()}: Status Code ${response.status} (${response.statusText})`);
+    throw new Error(`Failed to fetch ${validatedUrl}: Status Code ${response.status} (${response.statusText})`);
   }
 
   if (!response.body) {
-    throw new Error(`Failed to fetch ${validatedUrl.toString()}: Response body is null or undefined.`);
+    throw new Error(`Failed to fetch ${validatedUrl}: Response body is null or undefined.`);
   }
 
-  const writeStream = createWriteStream(sanitizedDestPath, { flags: 'w', mode: 0o600 });
+  const writeStream = createWriteStream(sanitizedDestPath, { flags: 'w', mode: 0o600, highWaterMark: 65536 });
 
   try {
     // @ts-ignore - Readable.fromWeb handles Web ReadableStream in Node.js environments
@@ -112,26 +120,37 @@ async function fetchAndSave(url, destPath) {
   }
 }
 
+// Static synchronization targets array
+/** @type {readonly DownloadTarget[]} */
+const SYNCHRONIZATION_TARGETS = Object.freeze([
+  Object.freeze({
+    url: 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/src/App.tsx',
+    dest: 'remote_App.tsx',
+  }),
+  Object.freeze({
+    url: 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/src/main.tsx',
+    dest: 'remote_main.tsx',
+  }),
+]);
+
 /**
  * Executes the parallel retrieval of core remote architecture components.
  * 
  * @returns {Promise<void>}
  */
 async function executeSynchronization() {
-  /** @type {readonly DownloadTarget[]} */
-  const synchronizationTargets = Object.freeze([
-    {
-      url: 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/src/App.tsx',
-      dest: 'remote_App.tsx',
-    },
-    {
-      url: 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/src/main.tsx',
-      dest: 'remote_main.tsx',
-    },
-  ]);
+  const targets = SYNCHRONIZATION_TARGETS;
+  const len = targets.length;
+  // Unrolled / optimized batch execution allocation using a pre-allocated Promise array
+  const promises = new Array(len);
+
+  for (let i = 0; i < len; i++) {
+    const target = targets[i];
+    promises[i] = fetchAndSave(target.url, target.dest);
+  }
 
   try {
-    await Promise.all(synchronizationTargets.map((target) => fetchAndSave(target.url, target.dest)));
+    await Promise.all(promises);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[EMG Core v49] Critical synchronization failure:', errorMessage);
