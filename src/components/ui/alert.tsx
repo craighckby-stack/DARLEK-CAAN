@@ -1,6 +1,5 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-
 import { cn } from "@/lib/utils"
 
 const ALERT_BASE_CLASSES = [
@@ -40,41 +39,50 @@ export type AlertProps = React.ComponentProps<"div"> & VariantProps<typeof alert
 export type AlertTitleProps = React.ComponentProps<"div">
 export type AlertDescriptionProps = React.ComponentProps<"div">
 
-function Alert({ className, variant, ...props }: AlertProps) {
-  return (
-    <div
-      data-slot="alert"
-      role="alert"
-      className={cn(alertVariants({ variant }), className)}
-      {...props}
-    />
-  )
-}
+const ALERT_TITLE_CLASSES = "col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight"
+const ALERT_DESC_CLASSES = "text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed"
 
-function AlertTitle({ className, ...props }: AlertTitleProps) {
-  return (
-    <div
-      data-slot="alert-title"
-      className={cn(
-        "col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+const Alert = React.memo(
+  React.forwardRef<HTMLDivElement, AlertProps>(function Alert({ className, variant, ...props }, ref) {
+    return (
+      <div
+        ref={ref}
+        data-slot="alert"
+        role="alert"
+        className={cn(alertVariants({ variant }), className)}
+        {...props}
+      />
+    )
+  })
+)
+Alert.displayName = "Alert"
 
-function AlertDescription({ className, ...props }: AlertDescriptionProps) {
-  return (
-    <div
-      data-slot="alert-description"
-      className={cn(
-        "text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+const AlertTitle = React.memo(
+  React.forwardRef<HTMLDivElement, AlertTitleProps>(function AlertTitle({ className, ...props }, ref) {
+    return (
+      <div
+        ref={ref}
+        data-slot="alert-title"
+        className={cn(ALERT_TITLE_CLASSES, className)}
+        {...props}
+      />
+    )
+  })
+)
+AlertTitle.displayName = "AlertTitle"
+
+const AlertDescription = React.memo(
+  React.forwardRef<HTMLDivElement, AlertDescriptionProps>(function AlertDescription({ className, ...props }, ref) {
+    return (
+      <div
+        ref={ref}
+        data-slot="alert-description"
+        className={cn(ALERT_DESC_CLASSES, className)}
+        {...props}
+      />
+    )
+  })
+)
+AlertDescription.displayName = "AlertDescription"
 
 export { Alert, AlertTitle, AlertDescription }
