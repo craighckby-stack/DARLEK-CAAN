@@ -17,23 +17,28 @@ export interface GitHubHeaders extends Readonly<Record<string, string>> {
 const HEADER_CACHE = new Map<string, GitHubHeaders>();
 
 export const DEFAULT_HEADERS = (token: string): GitHubHeaders => {
-  if (typeof token !== 'string' || token.trim() === '') {
-    throw new TypeError('A valid, non-empty string token is required to construct GitHub API headers.');
+  if (typeof token !== 'string') {
+    throw new TypeError('A valid string token is required to construct GitHub API headers.');
   }
 
   const cached = HEADER_CACHE.get(token);
-  if (cached) {
+  if (cached !== undefined) {
     return cached;
   }
 
-  const headers: GitHubHeaders = {
+  if (token.length === 0 || token.charCodeAt(0) === 32) {
+    const trimmed = token.trim();
+    if (trimmed.length === 0) {
+      throw new TypeError('A valid, non-empty string token is required to construct GitHub API headers.');
+    }
+  }
+
+  const headers: GitHubHeaders = Object.freeze({
     Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
-  };
+  });
 
-  Object.freeze(headers);
   HEADER_CACHE.set(token, headers);
-
   return headers;
 };
