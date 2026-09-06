@@ -1,27 +1,25 @@
 (function initializeNextFontManifest() {
   "use strict";
 
-  const globalScope = typeof globalThis !== "undefined" 
+  const g = typeof globalThis !== "undefined" 
     ? globalThis 
-    : typeof self !== "undefined" 
-      ? self 
-      : typeof window !== "undefined" 
-        ? window 
-        : typeof global !== "undefined" 
-          ? global 
-          : {};
+    : typeof window !== "undefined" 
+      ? window 
+      : typeof global !== "undefined" 
+        ? global 
+        : self;
 
-  const serializedManifest = '{"pages":{},"app":{},"appUsingSizeAdjust":false,"pagesUsingSizeAdjust":false}';
-  const manifestSymbol = "__NEXT_FONT_MANIFEST";
+  const m = '{"pages":{},"app":{},"appUsingSizeAdjust":false,"pagesUsingSizeAdjust":false}';
+  const s = "__NEXT_FONT_MANIFEST";
 
   try {
-    Object.defineProperty(globalScope, manifestSymbol, {
-      value: serializedManifest,
+    Object.defineProperty(g, s, {
+      value: m,
       writable: true,
       enumerable: true,
-      configurable: true,
+      configurable: true
     });
   } catch {
-    globalScope[manifestSymbol] = serializedManifest;
+    g[s] = m;
   }
 })();
