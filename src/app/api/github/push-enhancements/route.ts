@@ -72,7 +72,7 @@ interface GitTreeItem {
   content: string;
 }
 
-// Pre-cached static GitHub headers template generator
+/** Pre-cached static GitHub headers template generator */
 function createGitHubHeaders(token: string): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`,
@@ -81,7 +81,11 @@ function createGitHubHeaders(token: string): Record<string, string> {
   };
 }
 
-async function ensureRepositoryExists(owner: string, repo: string, headers: Record<string, string>): Promise<NextResponse | null> {
+async function ensureRepositoryExists(
+  owner: string,
+  repo: string,
+  headers: Record<string, string>
+): Promise<NextResponse | null> {
   const verifyResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
 
   if (verifyResponse.status === 404) {
@@ -178,9 +182,7 @@ function collectTreeItemsAndDetails(
   const pushDetails: PushDetail[] = [];
 
   if (Array.isArray(files) && files.length > 0) {
-    const len = files.length;
-    for (let i = 0; i < len; i++) {
-      const customFile = files[i];
+    for (const customFile of files) {
       if (!customFile?.path || typeof customFile.content !== 'string') continue;
       
       const cleanPath = customFile.path.replace(/^\/+|\/+$/g, '');
@@ -209,9 +211,7 @@ function collectTreeItemsAndDetails(
     }
   }
 
-  const enhancementLen = ENHANCEMENT_FILES.length;
-  for (let i = 0; i < enhancementLen; i++) {
-    const filePath = ENHANCEMENT_FILES[i];
+  for (const filePath of ENHANCEMENT_FILES) {
     const localPath = join(projectRoot, filePath);
     
     if (!existsSync(localPath)) {
@@ -340,11 +340,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    let failedCount = 0;
-    const detailsLen = pushDetails.length;
-    for (let i = 0; i < detailsLen; i++) {
-      if (!pushDetails[i].success) failedCount++;
-    }
+    const failedCount = pushDetails.filter((detail) => !detail.success).length;
 
     return NextResponse.json({
       success: true,
