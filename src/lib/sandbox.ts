@@ -13,32 +13,52 @@ interface SandboxMessageEvent {
   readonly error?: string;
 }
 
-// Pre-allocated static templates and reusable objects to reduce memory allocation footprint
-const TIMEOUT_MS = 5000;
+const EXECUTION_TIMEOUT_MS = 5000;
 const TIMEOUT_ERROR_RESULT: SandboxResult = { success: false, error: 'Execution Timeout' };
 const SSR_SUCCESS_RESULT: SandboxResult = { success: true };
 
-// Static pre-escaped sandbox template skeleton to avoid repeated regex operations on identical strings
 const SANDBOX_HTML_PREFIX = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script type="module">
-window.require=(m)=>{console.warn('Sandbox: require("'+m+'") not supported. Returning mock.');return{};};
-window.module={exports:{}};window.exports=window.module.exports;
-window.process={env:{},browser:true,version:'v18.0.0',nextTick:(f)=>setTimeout(f,0)};
-window.global=window;
-try{const c=\``;
+window.require = (m) => { console.warn('Sandbox: require("' + m + '") not supported. Returning mock.'); return {}; };
+window.module = { exports: {} };
+window.exports = window.module.exports;
+window.process = { env: {}, browser: true, version: 'v18.0.0', nextTick: (f) => setTimeout(f, 0) };
+window.global = window;
+try {
+  const sourceCode = \``;
 
 const SANDBOX_HTML_SUFFIX = `\`;
-let e=c;
-if(c.includes('require(')||c.includes('module.exports')){e=\`(function(require,module,exports){\${c}})(window.require,window.module,window.exports)\`;}
-const b=new Blob([e],{type:'text/javascript'});
-const u=URL.createObjectURL(b);
-import(u).then(()=>{URL.revokeObjectURL(u);window.parent.postMessage({type:'SANDBOX_RESULT',success:true},'*');}).catch(err=>{URL.revokeObjectURL(u);throw err;});
-}catch(err){
-let m=err instanceof Error?err.message:String(err);
-if(m.includes('Failed to resolve module specifier')){m="Dependency Error: "+m+". Node.js or external modules are not available in browser sandbox.";}
-window.parent.postMessage({type:'SANDBOX_RESULT',success:false,error:m},'*');
+  let executableCode = sourceCode;
+  if (sourceCode.includes('require(') || sourceCode.includes('module.exports')) {
+    executableCode = \`(function(require, module, exports) {\${sourceCode}})(window.require, window.module, window.exports)\`;
+  }
+  
+  const scriptBlob = new Blob([executableCode], { type: 'text/javascript' });
+  const scriptUrl = URL.createObjectURL(scriptBlob);
+  
+  import(scriptUrl)
+    .then(() => {
+      URL.revokeObjectURL(scriptUrl);
+      window.parent.postMessage({ type: 'SANDBOX_RESULT', success: true }, '*');
+    })
+    .catch((err) => {
+      URL.revokeObjectURL(scriptUrl);
+      throw err;
+    });
+} catch (err) {
+  let errorMessage = err instanceof Error ? err.message : String(err);
+  if (errorMessage.includes('Failed to resolve module specifier')) {
+    errorMessage = "Dependency Error: " + errorMessage + ". Node.js or external modules are not available in browser sandbox.";
+  }
+  window.parent.postMessage({ type: 'SANDBOX_RESULT', success: false, error: errorMessage }, '*');
 }
 </script></body></html>`;
 
+/**
+ * Safely executes untrusted JavaScript code inside an isolated hidden iframe sandbox.
+ * 
+ * @param code - The JavaScript source code string to evaluate.
+ * @returns A promise resolving to a SandboxResult indicating success or failure.
+ */
 export async function testCodeInSandbox(code: string): Promise<SandboxResult> {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return SSR_SUCCESS_RESULT;
@@ -64,10 +84,11 @@ export async function testCodeInSandbox(code: string): Promise<SandboxResult> {
     const timeoutId = setTimeout(() => {
       cleanup();
       resolve(TIMEOUT_ERROR_RESULT);
-    }, TIMEOUT_MS);
+    }, EXECUTION_TIMEOUT_MS);
 
     const handleMessage = (event: MessageEvent<SandboxMessageEvent>) => {
       if (event.source !== iframe.contentWindow) return;
+      
       const data = event.data;
       if (data && data.type === 'SANDBOX_RESULT') {
         cleanup();
@@ -77,10 +98,7 @@ export async function testCodeInSandbox(code: string): Promise<SandboxResult> {
 
     window.addEventListener('message', handleMessage, { passive: true });
 
-    // Optimized single-pass string replacement or fast template construction
     const escapedCode = code.replace(/`/g, '\\`').replace(/\${/g, '\\${');
-    
-    // Direct string concatenation minimizes dynamic object allocations and speeds up execution parsing
     iframe.srcdoc = SANDBOX_HTML_PREFIX + escapedCode + SANDBOX_HTML_SUFFIX;
     document.body.appendChild(iframe);
   });
