@@ -5,12 +5,17 @@
  * Implements strict memory safety, zero-overhead event binding, and explicit type contracts.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, startTransition } from 'react';
 
 /**
  * Custom event name defining the system bootstrap ready state trigger.
  */
 const SYSTEM_READY_EVENT = 'system-ready' as const;
+
+/**
+ * Static event listener options optimized for passive event execution.
+ */
+const LISTENER_OPTIONS = { passive: true } as const;
 
 /**
  * Interface representing the return contract for useSystemBootstrap.
@@ -25,17 +30,19 @@ export type UseSystemBootstrapReturn = boolean;
 export const useSystemBootstrap = (): UseSystemBootstrapReturn => {
   const [isReady, setIsReady] = useState<boolean>(false);
 
-  const handleReady = useCallback((): void => {
-    setIsReady(true);
-  }, []);
-
   useEffect(() => {
-    window.addEventListener(SYSTEM_READY_EVENT, handleReady, { passive: true });
+    const handleReady = (): void => {
+      startTransition(() => {
+        setIsReady(true);
+      });
+    };
+
+    window.addEventListener(SYSTEM_READY_EVENT, handleReady, LISTENER_OPTIONS);
     
     return () => {
-      window.removeEventListener(SYSTEM_READY_EVENT, handleReady);
+      window.removeEventListener(SYSTEM_READY_EVENT, handleReady, LISTENER_OPTIONS);
     };
-  }, [handleReady]);
+  }, []);
 
   return isReady;
 };
