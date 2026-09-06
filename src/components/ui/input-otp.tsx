@@ -14,23 +14,34 @@ export interface InputOTPSlotProps extends React.ComponentProps<"div"> {
   index: number
 }
 
-// Pre-allocate static class strings to prevent dynamic template literal allocations on every render cycle.
-const CONTAINER_BASE_CLASS = "flex items-center gap-2 has-disabled:opacity-50"
-const INPUT_BASE_CLASS = "disabled:cursor-not-allowed"
-const GROUP_BASE_CLASS = "flex items-center"
-const SLOT_BASE_CLASS = "data-[active=true]:border-ring data-[active=true]:ring-ring/50 data-[active=true]:aria-invalid:ring-destructive/20 dark:data-[active=true]:aria-invalid:ring-destructive/40 aria-invalid:border-destructive data-[active=true]:aria-invalid:border-destructive dark:bg-input/30 border-input relative flex h-9 w-9 items-center justify-center border-y border-r text-sm shadow-xs transition-all outline-none first:rounded-l-md first:border-l last:rounded-r-md data-[active=true]:z-10 data-[active=true]:ring-[3px]"
-const CARET_CONTAINER_CLASS = "pointer-events-none absolute inset-0 flex items-center justify-center"
-const CARET_INNER_CLASS = "animate-caret-blink bg-foreground h-4 w-px duration-1000"
+// Pre-allocate static design token strings for performance and maintainability
+const STYLES = {
+  container: "flex items-center gap-2 has-disabled:opacity-50",
+  input: "disabled:cursor-not-allowed",
+  group: "flex items-center",
+  slot: [
+    "relative flex h-9 w-9 items-center justify-center border-y border-r border-input",
+    "text-sm shadow-xs transition-all outline-none first:rounded-l-md first:border-l",
+    "last:rounded-r-md dark:bg-input/30",
+    "data-[active=true]:z-10 data-[active=true]:border-ring data-[active=true]:ring-[3px]",
+    "data-[active=true]:ring-ring/50 data-[active=true]:aria-invalid:border-destructive",
+    "data-[active=true]:aria-invalid:ring-destructive/20 dark:data-[active=true]:aria-invalid:ring-destructive/40",
+    "aria-invalid:border-destructive",
+  ].join(" "),
+  caretContainer: "pointer-events-none absolute inset-0 flex items-center justify-center",
+  caretInner: "animate-caret-blink bg-foreground h-4 w-px duration-1000",
+} as const
 
 const InputOTP = React.memo(
   React.forwardRef<React.ElementRef<typeof OTPInput>, InputOTPProps>(
     function InputOTP({ className, containerClassName, ...props }, ref) {
-      const memoizedContainerClassName = React.useMemo(
-        () => cn(CONTAINER_BASE_CLASS, containerClassName),
+      const mergedContainerClassName = React.useMemo(
+        () => cn(STYLES.container, containerClassName),
         [containerClassName]
       )
-      const memoizedClassName = React.useMemo(
-        () => cn(INPUT_BASE_CLASS, className),
+      
+      const mergedClassName = React.useMemo(
+        () => cn(STYLES.input, className),
         [className]
       )
 
@@ -38,8 +49,8 @@ const InputOTP = React.memo(
         <OTPInput
           ref={ref}
           data-slot="input-otp"
-          containerClassName={memoizedContainerClassName}
-          className={memoizedClassName}
+          containerClassName={mergedContainerClassName}
+          className={mergedClassName}
           {...props}
         />
       )
@@ -51,8 +62,8 @@ InputOTP.displayName = "InputOTP"
 const InputOTPGroup = React.memo(
   React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
     function InputOTPGroup({ className, ...props }, ref) {
-      const memoizedClassName = React.useMemo(
-        () => cn(GROUP_BASE_CLASS, className),
+      const mergedClassName = React.useMemo(
+        () => cn(STYLES.group, className),
         [className]
       )
 
@@ -60,7 +71,7 @@ const InputOTPGroup = React.memo(
         <div
           ref={ref}
           data-slot="input-otp-group"
-          className={memoizedClassName}
+          className={mergedClassName}
           {...props}
         />
       )
@@ -75,12 +86,10 @@ const InputOTPSlot = React.memo(
       const context = React.useContext(OTPInputContext)
       const slot = context?.slots?.[index]
       
-      const character = slot?.char
-      const hasFakeCaret = slot?.hasFakeCaret
-      const isActive = slot?.isActive
+      const { char: character, hasFakeCaret, isActive } = slot ?? {}
 
-      const memoizedClassName = React.useMemo(
-        () => cn(SLOT_BASE_CLASS, className),
+      const mergedClassName = React.useMemo(
+        () => cn(STYLES.slot, className),
         [className]
       )
 
@@ -89,13 +98,13 @@ const InputOTPSlot = React.memo(
           ref={ref}
           data-slot="input-otp-slot"
           data-active={isActive}
-          className={memoizedClassName}
+          className={mergedClassName}
           {...props}
         >
           {character}
           {hasFakeCaret && (
-            <div className={CARET_CONTAINER_CLASS}>
-              <div className={CARET_INNER_CLASS} />
+            <div className={STYLES.caretContainer}>
+              <div className={STYLES.caretInner} />
             </div>
           )}
         </div>
