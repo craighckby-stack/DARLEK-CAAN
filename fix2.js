@@ -23,8 +23,15 @@ const TARGET_FILE_PATH = 'src/app/api/evolution/propose/route.ts';
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 /**
+ * Caching the working directory to prevent redundant process.cwd() syscalls.
+ * @type {string}
+ */
+const CWD = process.cwd() + path.sep;
+
+/**
  * Normalizes code content by escaping markdown code fences safely and efficiently.
  * Performs rigorous type and boundary checking to prevent injection or resource abuse.
+ * Optimized via a single combined regular expression replacement pass to reduce intermediate string allocations.
  * @param {string} content - Raw source code string.
  * @returns {string} Sanitized source code string.
  */
@@ -37,23 +44,27 @@ function sanitizeFences(content) {
     throw new RangeError(`Content size exceeds maximum allowable limit of ${MAX_FILE_SIZE_BYTES} bytes.`);
   }
 
-  return content
-    .replaceAll('```json', '\\`\\`\\`json')
-    .replaceAll('```tsx', '\\`\\`\\`tsx')
-    .replaceAll('}\n```', '}\n\\`\\`\\`')
-    .replaceAll('TRUNCATIONS\n```', 'TRUNCATIONS\n\\`\\`\\`');
+  return content.replace(/```json|```tsx|\}\n```|TRUNCATIONS\n```/g, (match) => {
+    switch (match) {
+      case '```json': return '\\`\\`\\`json';
+      case '```tsx': return '\\`\\`\\`tsx';
+      case '}\n```': return '}\n\\`\\`\\`';
+      case 'TRUNCATIONS\n```': return 'TRUNCATIONS\n\\`\\`\\`';
+      default: return match;
+    }
+  });
 }
 
 /**
  * Validates and resolves the absolute path of a relative path safely within the working directory jail.
+ * Uses cached working directory and direct string concatenation/prefix checks for zero overhead.
  * @param {string} relativePath - The target relative path.
  * @returns {string} The resolved absolute path.
  */
 function resolveSecurePath(relativePath) {
-  const cwd = process.cwd();
-  const absolutePath = path.resolve(cwd, relativePath);
+  const absolutePath = path.resolve(CWD, relativePath);
 
-  if (!absolutePath.startsWith(cwd)) {
+  if (!absolutePath.startsWith(CWD)) {
     throw new Error(`Security Violation: Path traversal attempt detected outside working directory: ${relativePath}`);
   }
 
@@ -63,6 +74,7 @@ function resolveSecurePath(relativePath) {
 /**
  * Core execution routine for route file sanitization cycles.
  * Reads, sanitizes, and writes target route files back to disk conditionally with strict path traversal defense.
+ * Streamlined to eliminate redundant stat calls and bypass writes when contents match.
  * @param {string} relativePath - Path to target file.
  * @returns {boolean} True if file was modified and updated; false otherwise.
  */
@@ -74,11 +86,14 @@ function processRouteFile(relativePath) {
   const absolutePath = resolveSecurePath(relativePath);
 
   try {
-    if (!fs.existsSync(absolutePath)) {
-      throw new Error(`Target file not found at path: ${absolutePath}`);
+    const fd = fs.openSync(absolutePath, 'r');
+    let stats;
+    try {
+      stats = fs.fstatSync(fd);
+    } finally {
+      fs.closeSync(fd);
     }
 
-    const stats = fs.statSync(absolutePath);
     if (!stats.isFile()) {
       throw new Error(`Target path is not a valid regular file: ${absolutePath}`);
     }
