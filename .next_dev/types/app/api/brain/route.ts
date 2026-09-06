@@ -33,7 +33,6 @@ type RouteContext = { readonly params: Promise<SegmentParams> }
 
 type HttpMethod = 'GET' | 'HEAD' | 'OPTIONS' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
 
-// Unrolled inline verification blocks for optimal type resolution overhead
 if ('GET' in entry) {
   validateRouteConfig<TypeDifference<ParameterCheck<Request | NextRequest>, { __tag__: 'GET'; __param_position__: 'first'; __param_type__: FirstArgument<MaybeField<RouteEntry, 'GET'>> }, 'GET'>>()
   validateRouteConfig<TypeDifference<ParameterCheck<RouteContext>, { __tag__: 'GET'; __param_position__: 'second'; __param_type__: SecondArgument<MaybeField<RouteEntry, 'GET'>> }, 'GET'>>()
@@ -107,7 +106,6 @@ type ParameterCheck<T> = {
   readonly __param_type__: T
 }
 
-// Optimized empty function to minimize inline allocation costs and stack footprint
 const validateRouteConfig = <_ extends { readonly [k in keyof any]: never } = never>(): void => {}
 
 type Numeric = number | bigint
