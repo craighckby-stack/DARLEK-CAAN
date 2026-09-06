@@ -3,11 +3,11 @@
 `File Path: src/components/SaturationMetrics.md`
 
 ## Executive Summary
-The `SaturationMetrics` component is a high-performance telemetry module within the `unitary-core` diagnostic suite, providing real-time visualization of cognitive load, structural integrity, and operational health for distributed agent swarms.
+The `SaturationMetrics` component is a high-performance telemetry module within the `unitary-core` diagnostic suite. It provides real-time visualization of cognitive load, structural integrity, and operational health for distributed agent swarms.
 
 ---
 
-## Quick Reference: Table of Contents
+## Table of Contents
 1. [Architecture & Performance](#architecture--performance)
 2. [Operational Thresholds](#operational-thresholds)
 3. [Code Implementation](#code-implementation)
@@ -24,11 +24,11 @@ The `SaturationMetrics` component is a high-performance telemetry module within 
 
 ## Operational Thresholds
 
-| Metric Parameter | Maximum Threshold | Warning Level | Critical Level |
-| :--- | :--- | :--- | :--- |
-| **Structural Change** | `5.0` | `3.5` | `4.5` |
-| **Semantic Saturation** | `0.35` | `0.25` | `0.32` |
-| **Identity Preservation** | *Inverted* | N/A | *Descending Values* |
+| Metric Parameter         | Maximum Threshold | Warning Level | Critical Level      |
+| :----------------------- | :---------------- | :------------ | :------------------ |
+| **Structural Change**    | `5.0`             | `3.5`         | `4.5`               |
+| **Semantic Saturation**  | `0.35`            | `0.25`        | `0.32`              |
+| **Identity Preservation**| *Inverted*        | N/A           | *Descending Values* |
 
 > **Note:** Identity Preservation utilizes an inverted logic model where descending numerical values directly indicate degraded operational integrity.
 
