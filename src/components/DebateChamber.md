@@ -1,30 +1,44 @@
 # DebateChamber Architectural Blueprint
 
-## Overview
+`File Path: src/components/DebateChamber.md`
 
-The `DebateChamber` component serves as the primary visualization layer for the Agent Orchestra consensus mechanism. It consumes `DebateAgent` and `AgentVote` types to render real-time, interactive decision matrices with high fidelity.
+## Executive Summary
+The `DebateChamber` component functions as the core visualization layer for the Agent Orchestra consensus mechanism, rendering real-time, interactive decision matrices utilizing memoized selectors, custom CSS theming, and synchronized lifecycle animations.
 
 ---
 
-## Integration Schema
+## Table of Contents
+1. [Overview](#overview)
+2. [Integration Schema](#integration-schema)
+   - [State Management](#state-management)
+   - [Styling & Theming](#styling--theming)
+   - [Lifecycle & Animations](#lifecycle--animations)
+3. [Code Implementation Example](#code-implementation-example)
+4. [Future Roadmap & Extensions](#future-roadmap--extensions)
+
+---
+
+## 1. Overview
+`DebateChamber` consumes `DebateAgent` and `AgentVote` types to provide high-fidelity visualization of agent deliberation and voting states in real time.
+
+---
+
+## 2. Integration Schema
 
 ### State Management
-
-- Relies on optimized memoized selectors (via `useMemo`) to completely prevent redundant re-render cycles during high-frequency agent polling events.
+- Utilizes memoized selectors via `useMemo` to eliminate redundant re-render cycles during high-frequency agent polling events.
 
 ### Styling & Theming
-
-- Utilizes CSS custom properties for typography and branding:
-  - `--font-orbitron`: Applied to primary headers and structural titles.
-  - `--font-share-tech-mono`: Applied to telemetry data, logs, and numerical metrics.
+- Powered by CSS custom properties for typography and branding:
+  - `--font-orbitron`: Dedicated to primary headers and structural titles.
+  - `--font-share-tech-mono`: Dedicated to telemetry data, logs, and numerical metrics.
 
 ### Lifecycle & Animations
-
-- Directly integrated with the global `isActive` state boolean to trigger synchronized CSS pulse animations across the chamber grid layout.
+- Interfaces directly with the global `isActive` boolean state to trigger synchronized CSS pulse animations across the grid layout.
 
 ---
 
-## Code Implementation Example
+## 3. Code Implementation Example
 
 ```typescript
 import React, { useMemo } from 'react';
@@ -62,7 +76,7 @@ export const DebateChamber: React.FC<DebateChamberProps> = ({ agents, votes, isA
 
 ---
 
-## Future Roadmap & Extensions
+## 4. Future Roadmap & Extensions
 
-- **WebWorker Integration**: Offload heavy consensus calculation and vector mathematics to a dedicated background thread.
-- **d3.js Visualization**: Integrate real-time confidence trend graphing and network topology mapping directly into the chamber interface.
+- **WebWorker Integration**: Offloads heavy consensus calculations and vector mathematics to a dedicated background thread.
+- **d3.js Visualization**: Integrates real-time confidence trend graphing and network topology mapping directly into the chamber interface.
