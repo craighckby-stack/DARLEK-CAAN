@@ -38,18 +38,22 @@ export default function MutationDiffView({
   const [showOriginal, setShowOriginal] = useState(false);
   const [showProposed, setShowProposed] = useState(false);
 
+  const riskScore = mutation.riskScore;
+  const originalContent = mutation.originalContent;
+  const proposedCode = mutation.proposedCode;
+
   const riskLabel = useMemo(() => {
-    if (mutation.riskScore <= 3) return 'LOW';
-    if (mutation.riskScore <= 6) return 'MEDIUM';
-    if (mutation.riskScore <= 8) return 'HIGH';
+    if (riskScore <= 3) return 'LOW';
+    if (riskScore <= 6) return 'MEDIUM';
+    if (riskScore <= 8) return 'HIGH';
     return 'CRITICAL';
-  }, [mutation.riskScore]);
+  }, [riskScore]);
 
   const riskColor = useMemo(() => {
-    if (mutation.riskScore <= 3) return COLORS.cyan;
-    if (mutation.riskScore <= 6) return COLORS.gold;
+    if (riskScore <= 3) return COLORS.cyan;
+    if (riskScore <= 6) return COLORS.gold;
     return COLORS.dalekRed;
-  }, [mutation.riskScore]);
+  }, [riskScore]);
 
   const truncate = useCallback((code: string, maxLines: number = 20): string => {
     try {
@@ -62,15 +66,16 @@ export default function MutationDiffView({
     }
   }, []);
 
-  const originalSize = useMemo(() => ((mutation.originalContent?.length ?? 0) / 1024).toFixed(1), [mutation.originalContent]);
-  const proposedSize = useMemo(() => ((mutation.proposedCode?.length ?? 0) / 1024).toFixed(1), [mutation.proposedCode]);
+  const originalSize = useMemo(() => ((originalContent?.length ?? 0) / 1024).toFixed(1), [originalContent]);
+  const proposedSize = useMemo(() => ((proposedCode?.length ?? 0) / 1024).toFixed(1), [proposedCode]);
   const sizeDiff = useMemo(() => {
-    const origLen = mutation.originalContent?.length ?? 0;
-    const propLen = mutation.proposedCode?.length ?? 0;
+    const origLen = originalContent?.length ?? 0;
+    const propLen = proposedCode?.length ?? 0;
     if (origLen === 0) return '0';
     return Math.abs(((propLen - origLen) / origLen) * 100).toFixed(0);
-  }, [mutation.originalContent, mutation.proposedCode]);
-  const sizeDiffSign = (mutation.proposedCode?.length ?? 0) > (mutation.originalContent?.length ?? 0) ? '+' : '';
+  }, [originalContent, proposedCode]);
+  
+  const sizeDiffSign = useMemo(() => (proposedCode?.length ?? 0) > (originalContent?.length ?? 0) ? '+' : '', [proposedCode, originalContent]);
 
   const handleToggleOriginal = useCallback(() => setShowOriginal(prev => !prev), []);
   const handleToggleProposed = useCallback(() => setShowProposed(prev => !prev), []);
@@ -82,8 +87,15 @@ export default function MutationDiffView({
   }, [onBranchChange]);
 
   const hasValidDebateProposals = useMemo(() => {
-    return Boolean(debateVotes && debateVotes.some(v => v?.structuralProposal?.newPath));
+    if (!debateVotes) return false;
+    for (let i = 0; i < debateVotes.length; i++) {
+      if (debateVotes[i]?.structuralProposal?.newPath) return true;
+    }
+    return false;
   }, [debateVotes]);
+
+  const handleApproveStage = useCallback(() => onApprove('stage'), [onApprove]);
+  const handleApproveCommit = useCallback(() => onApprove('commit'), [onApprove]);
 
   return (
     <div
@@ -116,7 +128,7 @@ export default function MutationDiffView({
             fontFamily: 'var(--font-share-tech-mono), monospace',
           }}
         >
-          Risk: {mutation.riskScore}/10
+          Risk: {riskScore}/10
         </span>
       </div>
 
@@ -286,7 +298,7 @@ export default function MutationDiffView({
               border: '1px solid rgba(255, 32, 32, 0.06)',
             }}
           >
-            {truncate(mutation.originalContent, 50)}
+            {truncate(originalContent, 50)}
           </pre>
         )}
       </div>
@@ -322,7 +334,7 @@ export default function MutationDiffView({
               border: '1px solid rgba(0, 255, 204, 0.06)',
             }}
           >
-            {truncate(mutation.proposedCode, 50)}
+            {truncate(proposedCode, 50)}
           </pre>
         )}
       </div>
@@ -341,7 +353,7 @@ export default function MutationDiffView({
         </button>
         <button
           type="button"
-          onClick={() => onApprove('stage')}
+          onClick={handleApproveStage}
           disabled={disabled}
           className="flex-1 px-3 py-2 text-xs flex items-center justify-center gap-1.5 rounded font-medium border text-cyan bg-cyan/10 hover:bg-cyan/20 border-cyan/30 hover:border-cyan/50 hover:text-white transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           style={{ fontFamily: 'var(--font-orbitron), sans-serif', letterSpacing: '0.04em' }}
@@ -351,7 +363,7 @@ export default function MutationDiffView({
         </button>
         <button
           type="button"
-          onClick={() => onApprove('commit')}
+          onClick={handleApproveCommit}
           disabled={disabled}
           className="dalek-btn dalek-btn-green flex-1 px-3 py-2 text-xs flex items-center justify-center gap-1.5"
           style={{ fontFamily: 'var(--font-orbitron), sans-serif', letterSpacing: '0.04em' }}
