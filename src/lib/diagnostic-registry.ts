@@ -1,7 +1,7 @@
 /**
  * @file src/lib/diagnostic-registry.ts
  * @module DiagnosticRegistry
- * @version 49.1.0-SOVEREIGN-OPTIMIZED
+ * @version 49.2.0-SOVEREIGN-OPTIMIZED
  * @description High-performance, type-safe diagnostic module registry with hardened error boundaries and zero-allocation execution paths.
  */
 
@@ -13,20 +13,20 @@ export interface DiagnosticModule {
 }
 
 // Pre-allocated static return promises to eliminate runtime allocation overhead during concurrent checks
-const PROMISE_ZERO: Promise<DiagnosticSeverity> = Promise.resolve(0);
-const PROMISE_HALF: Promise<DiagnosticSeverity> = Promise.resolve(0.5);
+const SEVERITY_OK: Promise<DiagnosticSeverity> = Promise.resolve(0);
+const SEVERITY_WARNING: Promise<DiagnosticSeverity> = Promise.resolve(0.5);
 
-const MEMORY_LEAK_DETECTOR: DiagnosticModule = Object.freeze({
+const memoryLeakDetectorModule: DiagnosticModule = Object.freeze({
   id: 'memory-leak-detector',
-  check: (): Promise<DiagnosticSeverity> => PROMISE_ZERO
+  check: (): Promise<DiagnosticSeverity> => SEVERITY_OK,
 });
 
-const ENTROPY_ANALYZER: DiagnosticModule = Object.freeze({
+const entropyAnalyzerModule: DiagnosticModule = Object.freeze({
   id: 'entropy-analyzer',
-  check: (): Promise<DiagnosticSeverity> => PROMISE_HALF
+  check: (): Promise<DiagnosticSeverity> => SEVERITY_WARNING,
 });
 
 export const DiagnosticRegistry: readonly DiagnosticModule[] = Object.freeze([
-  MEMORY_LEAK_DETECTOR,
-  ENTROPY_ANALYZER
+  memoryLeakDetectorModule,
+  entropyAnalyzerModule,
 ]);
