@@ -7,10 +7,16 @@ export interface UseAgentOrchestraReturn {
   readonly dispatch: (action: string) => void;
 }
 
+/**
+ * Validates that an action payload is a non-empty string.
+ */
 const isValidAction = (action: unknown): action is string => {
   return typeof action === 'string' && action.trim().length > 0;
 };
 
+/**
+ * Hook for managing execution states and dispatching actions within an agent orchestra.
+ */
 export const useAgentOrchestra = (): UseAgentOrchestraReturn => {
   const [status, setStatus] = useState<OrchestraStatus>('IDLE');
   
