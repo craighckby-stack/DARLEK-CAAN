@@ -1,6 +1,6 @@
 # DARLEK CANN v3.0: Architectural Manifesto
 
-> **EMG Core v49 Optimization Note**: Refructured for maximum developer skimmability, featuring structured execution blocks, explicit security taxonomies, and clear operational workflows.
+> **EMG Core v49 Optimization Note**: Restructured for maximum developer skimmability, featuring structured execution blocks, explicit security taxonomies, and clear operational workflows.
 
 ## Executive Summary
 DARLEK CANN v3.0 integrates `'Sovereign-Kernel'` self-refactoring logic with `'Omega'` emergent intelligence patterns to drive autonomous system growth, adaptation, and high-performance scalability.
@@ -19,11 +19,11 @@ DARLEK CANN v3.0 integrates `'Sovereign-Kernel'` self-refactoring logic with `'O
 
 Built for extreme scalability, modularity, and fault tolerance across a modern technology stack:
 
-| Layer | Technology / Protocol | Description |
-| :--- | :--- | :--- |
-| **Core Framework** | Next.js 14+ / TypeScript / Tailwind CSS | High-performance reactive frontend and routing engine. |
-| **Agent Orchestra** | GPT-4o / Claude 3.5 / Local-LLM | Multi-tier Large Language Model (LLM) fallback architecture. |
-| **State Management** | Atomic State Synchronization | Real-time state synchronization protocols across distributed agent nodes. |
+| Layer                 | Technology / Protocol                  | Description                                                               |
+| :-------------------- | :------------------------------------- | :------------------------------------------------------------------------ |
+| **Core Framework**    | Next.js 14+ / TypeScript / Tailwind CSS | High-performance reactive frontend and routing engine.                    |
+| **Agent Orchestra**   | GPT-4o / Claude 3.5 / Local-LLM         | Multi-tier Large Language Model (LLM) fallback architecture.             |
+| **State Management**  | Atomic State Synchronization            | Real-time state synchronization protocols across distributed agent nodes. |
 
 ---
 
@@ -33,7 +33,7 @@ Mandatory operational guidelines enforced across all deployment environments:
 
 * **Environment Isolation**: Runtime configurations containing secrets must be strictly ignored via `.gitignore`. Use `.env.example` as the canonical template. Never commit plain-text credentials.
 * **Memory Isolation**: Sensitive agent memory dumps, cryptographic keys, and runtime states are excluded from Version Control Systems (VCS) to prevent PII and secret leakage.
-* **Least Privilege Principle**: Autonomous agent nodes and service accounts operate under strict minimum permission sets required for specific optimization vectors.
+* **Least Privilege Principle**: Autonomous agent nodes and service accounts operate under the strict minimum permission sets required for specific optimization vectors.
 
 ---
 
