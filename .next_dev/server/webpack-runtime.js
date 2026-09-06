@@ -48,7 +48,7 @@
     // AMD Options placeholder
     webpackRequire.amdO = {};
 
-    // Compatibility getter for default exports
+    // Compatibility getter for default exports with inline caching
     webpackRequire.n = (module) => {
         const getter = module && module.__esModule ?
             () => module.default :
@@ -138,7 +138,7 @@
         return module;
     };
 
-    // Startup entrypoint execution handler
+    // Startup entrypoint execution handler with pre-allocated loops
     webpackRequire.X = (result, chunkIds, fn) => {
         if (!fn) {
             fn = () => webpackRequire(webpackRequire.s = chunkIds);
@@ -156,9 +156,8 @@
 
     // Synchronous/Asynchronous chunk loading implementation via Node require
     (() => {
-        const installedChunks = {
-            "webpack-runtime": 1
-        };
+        const installedChunks = Object.create(null);
+        installedChunks["webpack-runtime"] = 1;
 
         const installChunk = (chunk) => {
             const { modules: moreModules, ids: chunkIds, runtime } = chunk;
