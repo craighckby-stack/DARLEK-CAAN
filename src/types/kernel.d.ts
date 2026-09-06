@@ -5,7 +5,11 @@
  * @optimizer EMG Core v49 Neural Code and Documentation Optimizer Engine
  */
 
-export type SystemStatus = 'OPERATIONAL' | 'DEGRADED' | 'CRITICAL';
+export const enum SystemStatus {
+  OPERATIONAL = 'OPERATIONAL',
+  DEGRADED = 'DEGRADED',
+  CRITICAL = 'CRITICAL'
+}
 
 export interface SystemTelemetry {
   readonly timestamp: number;
