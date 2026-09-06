@@ -68,20 +68,17 @@ const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   ScrollAreaProps
 >(({ className, children, viewportClassName, viewportRef, ...props }, ref) => {
-  const rootClassName = className !== undefined ? `${ROOT_CLASS} ${className}` : ROOT_CLASS
-  const finalViewportClass = viewportClassName !== undefined ? `${VIEWPORT_CLASS} ${viewportClassName}` : VIEWPORT_CLASS
-
   return (
     <ScrollAreaPrimitive.Root
       ref={ref}
       data-slot="scroll-area"
-      className={rootClassName}
+      className={cn(ROOT_CLASS, className)}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
         ref={viewportRef}
         data-slot="scroll-area-viewport"
-        className={finalViewportClass}
+        className={cn(VIEWPORT_CLASS, viewportClassName)}
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
