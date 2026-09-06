@@ -11,10 +11,17 @@ export interface SkeletonProps extends React.ComponentProps<"div"> {
 const SkeletonComponent = React.forwardRef<HTMLDivElement, SkeletonProps>(
   ({ className, style, width, height, ...props }, ref) => {
     const computedStyle = React.useMemo<React.CSSProperties>(() => {
-      const s: React.CSSProperties = style ? { ...style } : {}
-      if (width !== undefined) s.width = width
-      if (height !== undefined) s.height = height
-      return s
+      const inlineStyles: React.CSSProperties = style ? { ...style } : {}
+      
+      if (width !== undefined) {
+        inlineStyles.width = width
+      }
+      
+      if (height !== undefined) {
+        inlineStyles.height = height
+      }
+
+      return inlineStyles
     }, [width, height, style])
 
     const computedClassName = React.useMemo(() => {
