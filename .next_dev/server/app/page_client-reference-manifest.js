@@ -1,7 +1,7 @@
 /**
  * EMG Core v49 Neural Code Optimizer Engine
  * File: .next_dev/server/app/page_client-reference-manifest.js
- * Goal: READABILITY - Modern idioms, expressive abstractions, and clean architectural clarity.
+ * Goal: PERFORMANCE - Execution speed, memory footprint reduction, caching, and allocation efficiency.
  */
 (function initializeRscClientManifest(globalContext) {
   "use strict";
@@ -18,7 +18,10 @@
     crossOrigin: null,
   });
 
-  const createModuleDefinition = (id, chunks = [], isAsync = false) => Object.freeze({
+  const emptyObject = Object.freeze({});
+  const emptyArray = Object.freeze([]);
+
+  const createModuleDefinition = (id, chunks = emptyArray, isAsync = false) => Object.freeze({
     "*": Object.freeze({
       id,
       name: "*",
@@ -49,38 +52,38 @@
   });
 
   const clientModulesMap = Object.freeze({
-    "/app/applet/src/app/globals.css": createClientModuleDefinition("(app-pages-browser)/./src/app/globals.css", ["app/layout", "static/chunks/app/layout.js"]),
-    "/app/applet/src/components/ui/toaster.tsx": createClientModuleDefinition("(app-pages-browser)/./src/components/ui/toaster.tsx", ["app/layout", "static/chunks/app/layout.js"]),
-    "/app/applet/src/app/error.tsx": createClientModuleDefinition("(app-pages-browser)/./src/app/error.tsx", ["app/error", "static/chunks/app/error.js"]),
-    "/app/applet/src/app/not-found.tsx": createClientModuleDefinition("(app-pages-browser)/./src/app/not-found.tsx", ["app/not-found", "static/chunks/app/not-found.js"]),
-    "/app/applet/src/components/PageClient.tsx": createClientModuleDefinition("(app-pages-browser)/./src/components/PageClient.tsx", ["app/page", "static/chunks/app/page.js"]),
-    "/app/applet/node_modules/next/dist/client/components/client-page.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-page.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/esm/client/components/client-page.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-page.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/client/components/client-segment.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-segment.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/esm/client/components/client-segment.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-segment.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/client/components/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/error-boundary.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/esm/client/components/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/error-boundary.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/http-access-fallback/error-boundary.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/http-access-fallback/error-boundary.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/client/components/layout-router.js": createClientModuleDefinition("(app-pages-browser)/./src/components/layout-router.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/esm/client/components/layout-router.js": createClientModuleDefinition("(app-pages-browser)/./src/components/layout-router.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/client/components/render-from-template-context.js": createClientModuleDefinition("(app-pages-browser)/./src/components/render-from-template-context.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/esm/client/components/render-from-template-context.js": createClientModuleDefinition("(app-pages-browser)/./src/components/render-from-template-context.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/lib/metadata/metadata-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/lib/metadata/metadata-boundary.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
-    "/app/applet/node_modules/next/dist/esm/lib/metadata/metadata-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/lib/metadata/metadata-boundary.js", ["app-pages-internals", "static/chunks/app-pages-internals.js"]),
+    "/app/applet/src/app/globals.css": createClientModuleDefinition("(app-pages-browser)/./src/app/globals.css", Object.freeze(["app/layout", "static/chunks/app/layout.js"])),
+    "/app/applet/src/components/ui/toaster.tsx": createClientModuleDefinition("(app-pages-browser)/./src/components/ui/toaster.tsx", Object.freeze(["app/layout", "static/chunks/app/layout.js"])),
+    "/app/applet/src/app/error.tsx": createClientModuleDefinition("(app-pages-browser)/./src/app/error.tsx", Object.freeze(["app/error", "static/chunks/app/error.js"])),
+    "/app/applet/src/app/not-found.tsx": createClientModuleDefinition("(app-pages-browser)/./src/app/not-found.tsx", Object.freeze(["app/not-found", "static/chunks/app/not-found.js"])),
+    "/app/applet/src/components/PageClient.tsx": createClientModuleDefinition("(app-pages-browser)/./src/components/PageClient.tsx", Object.freeze(["app/page", "static/chunks/app/page.js"])),
+    "/app/applet/node_modules/next/dist/client/components/client-page.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-page.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/esm/client/components/client-page.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-page.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/client/components/client-segment.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-segment.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/esm/client/components/client-segment.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-segment.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/client/components/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/error-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/esm/client/components/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/error-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/http-access-fallback/error-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/http-access-fallback/error-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/client/components/layout-router.js": createClientModuleDefinition("(app-pages-browser)/./src/components/layout-router.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/esm/client/components/layout-router.js": createClientModuleDefinition("(app-pages-browser)/./src/components/layout-router.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/client/components/render-from-template-context.js": createClientModuleDefinition("(app-pages-browser)/./src/components/render-from-template-context.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/esm/client/components/render-from-template-context.js": createClientModuleDefinition("(app-pages-browser)/./src/components/render-from-template-context.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/lib/metadata/metadata-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/lib/metadata/metadata-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    "/app/applet/node_modules/next/dist/esm/lib/metadata/metadata-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/lib/metadata/metadata-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
   });
 
   const entryCSSFilesMap = Object.freeze({
-    "/app/applet/src/": [],
+    "/app/applet/src/": emptyArray,
     "/app/applet/src/app/layout": Object.freeze([
       Object.freeze({
         inlined: false,
         path: "static/css/app/layout.css",
       })
     ]),
-    "/app/applet/src/app/error": [],
-    "/app/applet/src/app/not-found": [],
-    "/app/applet/src/app/page": [],
+    "/app/applet/src/app/error": emptyArray,
+    "/app/applet/src/app/not-found": emptyArray,
+    "/app/applet/src/app/page": emptyArray,
   });
 
   const rscModuleMappings = Object.freeze({
@@ -101,11 +104,11 @@
   const clientReferenceManifestPayload = Object.freeze({
     moduleLoading: moduleLoadingConfig,
     ssrModuleMapping: ssrModuleMappings,
-    edgeSSRModuleMapping: Object.freeze({}),
+    edgeSSRModuleMapping: emptyObject,
     clientModules: clientModulesMap,
     entryCSSFiles: entryCSSFilesMap,
     rscModuleMapping: rscModuleMappings,
-    edgeRscModuleMapping: Object.freeze({}),
+    edgeRscModuleMapping: emptyObject,
   });
 
   let rscManifestRegistry = globalContext[RSC_MANIFEST_KEY];
