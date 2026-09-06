@@ -5,12 +5,12 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+const { readFileSync, writeFileSync } = require('node:fs');
+const { resolve, normalize } = require('node:path');
 
 const SYSTEM_CONFIG = Object.freeze({
-  targetFilePath: path.normalize('src/app/api/evolution/propose/route.ts'),
-  allowedBaseDir: path.resolve('src'),
+  targetFilePath: normalize('src/app/api/evolution/propose/route.ts'),
+  allowedBaseDir: resolve('src'),
   targetToken: '${siphonedCodeContext}',
   fileEncoding: 'utf8',
 });
@@ -24,7 +24,7 @@ const SYSTEM_CONFIG = Object.freeze({
  * @returns {string} The fully resolved absolute path.
  */
 function getValidatedResolvedPath(targetPath, baseDir) {
-  const resolvedPath = path.resolve(targetPath);
+  const resolvedPath = resolve(targetPath);
   
   if (!resolvedPath.startsWith(baseDir)) {
     throw new Error('Access denied: Path traversal attempt detected.');
@@ -48,12 +48,8 @@ function sanitizeCodeContext(fileContent, token) {
   }
 
   const splitIndex = tokenIndex + token.length;
-  const untouchedPrefix = fileContent.slice(0, splitIndex);
-  const remainderToSanitize = fileContent.slice(splitIndex);
-
-  const sanitizedRemainder = remainderToSanitize.replaceAll('```', '\\`\\`\\`');
-
-  return untouchedPrefix + sanitizedRemainder;
+  
+  return fileContent.slice(0, splitIndex) + fileContent.slice(splitIndex).replaceAll('```', '\\`\\`\\`');
 }
 
 /**
@@ -61,11 +57,11 @@ function sanitizeCodeContext(fileContent, token) {
  */
 function executeCodeSanitization() {
   const validatedPath = getValidatedResolvedPath(SYSTEM_CONFIG.targetFilePath, SYSTEM_CONFIG.allowedBaseDir);
-  const originalSourceCode = fs.readFileSync(validatedPath, SYSTEM_CONFIG.fileEncoding);
+  const originalSourceCode = readFileSync(validatedPath, SYSTEM_CONFIG.fileEncoding);
   
   const optimizedSourceCode = sanitizeCodeContext(originalSourceCode, SYSTEM_CONFIG.targetToken);
   
-  fs.writeFileSync(validatedPath, optimizedSourceCode, SYSTEM_CONFIG.fileEncoding);
+  writeFileSync(validatedPath, optimizedSourceCode, SYSTEM_CONFIG.fileEncoding);
 }
 
 executeCodeSanitization();
