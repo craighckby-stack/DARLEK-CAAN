@@ -2,19 +2,19 @@
 import * as entry from '../../../src/app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
-type TEntry = typeof import('../../../src/app/page.js')
+type PageModuleEntry = typeof import('../../../src/app/page.js')
 
-type SafeKey<K> = K extends '__proto__' | 'prototype' | 'constructor' ? never : K
+type SafeKey<KeyType> = KeyType extends '__proto__' | 'prototype' | 'constructor' ? never : KeyType
 
-type SegmentParams<T extends object = Record<string, string | string[] | undefined>> = T extends Record<string, any>
-  ? { [K in keyof T as SafeKey<K>]: T[K] extends string ? string | string[] | undefined : T[K] extends string[] ? string[] | undefined : never }
-  : T
+type SegmentParams<TargetObject extends object = Record<string, string | string[] | undefined>> = TargetObject extends Record<string, any>
+  ? { [Key in keyof TargetObject as SafeKey<Key>]: TargetObject[Key] extends string ? string | string[] | undefined : TargetObject[Key] extends string[] ? string[] | undefined : never }
+  : TargetObject
 
-checkFields<Diff<{
+validateModuleFields<TypeDifference<{
   default: (...args: any[]) => any
   config?: Record<string, unknown>
   generateStaticParams?: (...args: any[]) => any
-  revalidate?: RevalidateRange<TEntry> | false
+  revalidate?: RevalidateRange<PageModuleEntry> | false
   dynamic?: 'auto' | 'force-dynamic' | 'error' | 'force-static'
   dynamicParams?: boolean
   fetchCache?: 'auto' | 'force-no-store' | 'only-no-store' | 'default-no-store' | 'default-cache' | 'only-cache' | 'force-cache'
@@ -26,23 +26,23 @@ checkFields<Diff<{
   viewport?: any
   generateViewport?: (...args: any[]) => any
   experimental_ppr?: boolean
-}, TEntry, ''>>()
+}, PageModuleEntry, ''>>()
 
-checkFields<Diff<PageProps, FirstArg<TEntry['default']>, 'default'>>()
+validateModuleFields<TypeDifference<PageProps, FirstArgument<PageModuleEntry['default']>, 'default'>>()
 
 if ('generateMetadata' in entry) {
-  checkFields<Diff<PageProps, FirstArg<MaybeField<TEntry, 'generateMetadata'>>, 'generateMetadata'>>()
-  checkFields<Diff<ResolvingMetadata, SecondArg<MaybeField<TEntry, 'generateMetadata'>>, 'generateMetadata'>>()
+  validateModuleFields<TypeDifference<PageProps, FirstArgument<MaybeField<PageModuleEntry, 'generateMetadata'>>, 'generateMetadata'>>()
+  validateModuleFields<TypeDifference<ResolvingMetadata, SecondArgument<MaybeField<PageModuleEntry, 'generateMetadata'>>, 'generateMetadata'>>()
 }
 
 if ('generateViewport' in entry) {
-  checkFields<Diff<PageProps, FirstArg<MaybeField<TEntry, 'generateViewport'>>, 'generateViewport'>>()
-  checkFields<Diff<ResolvingViewport, SecondArg<MaybeField<TEntry, 'generateViewport'>>, 'generateViewport'>>()
+  validateModuleFields<TypeDifference<PageProps, FirstArgument<MaybeField<PageModuleEntry, 'generateViewport'>>, 'generateViewport'>>()
+  validateModuleFields<TypeDifference<ResolvingViewport, SecondArgument<MaybeField<PageModuleEntry, 'generateViewport'>>, 'generateViewport'>>()
 }
 
 if ('generateStaticParams' in entry) {
-  checkFields<Diff<{ params: SegmentParams }, FirstArg<MaybeField<TEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
-  checkFields<Diff<{ __tag__: 'generateStaticParams', __return_type__: any[] | Promise<any[]> }, { __tag__: 'generateStaticParams', __return_type__: ReturnType<MaybeField<TEntry, 'generateStaticParams'>> }>>()
+  validateModuleFields<TypeDifference<{ params: SegmentParams }, FirstArgument<MaybeField<PageModuleEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
+  validateModuleFields<TypeDifference<{ __tag__: 'generateStaticParams', __return_type__: any[] | Promise<any[]> }, { __tag__: 'generateStaticParams', __return_type__: ReturnType<MaybeField<PageModuleEntry, 'generateStaticParams'>> }>>()
 }
 
 export interface PageProps {
@@ -55,28 +55,28 @@ export interface LayoutProps {
   params?: Promise<SegmentParams>
 }
 
-type RevalidateRange<T> = T extends { revalidate: any } ? NonNegative<T['revalidate']> : never
+type RevalidateRange<T> = T extends { revalidate: any } ? NonNegativeNumeric<T['revalidate']> : never
 
-type OmitWithTag<T, K extends keyof any, _M> = Omit<T, K & keyof T>
-type Diff<Base, T extends Base, Message extends string = ''> = 0 extends (1 & T) ? {} : OmitWithTag<T, keyof Base, Message>
+type OmitWithTag<ObjectType, KeysToOmit extends keyof any, _Tag> = Omit<ObjectType, KeysToOmit & keyof ObjectType>
+type TypeDifference<BaseType, DerivedType extends BaseType, ErrorMessage extends string = ''> = 0 extends (1 & DerivedType) ? {} : OmitWithTag<DerivedType, keyof BaseType, ErrorMessage>
 
-type FirstArg<T> = T extends (first: infer F, ...rest: any[]) => any
-  ? unknown extends F ? any : F
+type FirstArgument<FuncType> = FuncType extends (firstParam: infer FirstArgType, ...rest: any[]) => any
+  ? unknown extends FirstArgType ? any : FirstArgType
   : never
 
-type SecondArg<T> = T extends (first: any, second: infer S, ...rest: any[]) => any
-  ? unknown extends S ? any : S
+type SecondArgument<FuncType> = FuncType extends (firstParam: any, secondParam: infer SecondArgType, ...rest: any[]) => any
+  ? unknown extends SecondArgType ? any : SecondArgType
   : never
 
-type MaybeField<T, K extends string> = T extends { [P in K]?: infer G }
-  ? [G] extends [(...args: any[]) => any]
-    ? G
+type MaybeField<ModuleType, FieldName extends string> = ModuleType extends { [Key in FieldName]?: infer FieldValue }
+  ? [FieldValue] extends [(...args: any[]) => any]
+    ? FieldValue
     : never
   : never
 
-const checkFields = <_ extends { [K in keyof any]: never }>(..._args: unknown[]): void => {}
+const validateModuleFields = <_FieldsValidation extends { [Key in keyof any]: never }>(..._args: unknown[]): void => {}
 
 type Numeric = number | bigint
 type Zero = 0 | 0n
-type Negative<T extends Numeric> = T extends Zero ? never : `${T}` extends `-${string}` ? T : never
-type NonNegative<T extends Numeric> = T extends Zero ? T : Negative<T> extends never ? (number extends T ? T : T) : '__invalid_negative_number__'
+type NegativeNumeric<T extends Numeric> = T extends Zero ? never : `${T}` extends `-${string}` ? T : never
+type NonNegativeNumeric<T extends Numeric> = T extends Zero ? T : NegativeNumeric<T> extends never ? (number extends T ? T : T) : '__invalid_negative_number__'
