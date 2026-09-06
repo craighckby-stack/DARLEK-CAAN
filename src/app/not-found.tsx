@@ -10,7 +10,7 @@ const REDIRECT_DELAY_SECONDS = 3;
 const ROOT_ROUTE = '/';
 
 /**
- * Custom hook to handle automatic redirection countdown logic with optimized timer allocation.
+ * Custom hook to handle automatic redirection countdown logic with clean interval lifecycle management.
  */
 function useAutoRedirect(initialSeconds: number, targetUrl: string): number {
   const [countdown, setCountdown] = useState<number>(initialSeconds);
@@ -37,11 +37,11 @@ function useAutoRedirect(initialSeconds: number, targetUrl: string): number {
  * Visual indicator representing a live system pulse, memoized to eliminate redundant renders.
  */
 const SystemPulseIndicator = memo(function SystemPulseIndicator(): JSX.Element {
-  return <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" aria-hidden="true" />;
+  return <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-ping" aria-hidden="true" />;
 });
 
 /**
- * Action controls for manual route recovery, fully optimized with stable callback allocations.
+ * Action controls for manual route recovery, featuring stable callback allocations and accessible routing.
  */
 const RecoveryActionPanel = memo(function RecoveryActionPanel(): JSX.Element {
   const handleImmediateReturn = useCallback((): void => {
