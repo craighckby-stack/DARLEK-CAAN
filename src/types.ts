@@ -1,14 +1,17 @@
 /**
  * @file src/types.ts
- * @version 4.9.2-EMG
+ * @version 4.9.3-EMG
  * @engine EMG Core Neural Code and Documentation Optimizer Engine
- * @description Sovereign type definitions optimized for maximum runtime memory efficiency,
- * strict structural immutability, and zero-cost type safety abstractions for game architecture.
+ * @description Sovereign type definitions providing clean architectural models,
+ * strict structural immutability, and zero-cost type safety for chess runtime orchestration.
  */
 
+/* ============================================================================
+ * ENUMS & DISCRIMINATED UNIONS
+ * ========================================================================= */
+
 /**
- * Enumeration of supported competitive and cooperative game modes.
- * Implemented via const assertion for absolute runtime zero-overhead and strict typing.
+ * Competitive and cooperative game orchestration modes.
  */
 export const GameMode = {
   PVP: 'PVP',
@@ -20,7 +23,7 @@ export const GameMode = {
 export type GameMode = (typeof GameMode)[keyof typeof GameMode];
 
 /**
- * Enumeration of AI cognitive and strategic difficulties.
+ * Cognitive processing and depth levels for synthetic chess engines.
  */
 export const GameDifficulty = {
   EASY: 'EASY',
@@ -31,7 +34,7 @@ export const GameDifficulty = {
 export type GameDifficulty = (typeof GameDifficulty)[keyof typeof GameDifficulty];
 
 /**
- * Enumeration of visual board themes and rendering profiles.
+ * Visual themes and styling presets for board rendering.
  */
 export const BoardTheme = {
   CRUCIBLE: 'CRUCIBLE',
@@ -43,84 +46,121 @@ export const BoardTheme = {
 export type BoardTheme = (typeof BoardTheme)[keyof typeof BoardTheme];
 
 /**
- * Represents piece polarity/color identifier ('w' for white, 'b' for black).
+ * Piece polarity identifier representing board color alignment.
+ * - `'w'`: White piece / player
+ * - `'b'`: Black piece / player
  */
 export type PieceColor = 'w' | 'b';
 
 /**
- * Emotional spectrum states for synthetic Dalek telemetry and voice synthesis.
+ * Emotional spectrum states driving synthetic Dalek telemetry and speech synthesis.
  */
-export type DalekEmotion = 
-  | 'prophetic' 
-  | 'maniacal' 
-  | 'furious' 
-  | 'calculating' 
-  | 'victorious' 
+export type DalekEmotion =
+  | 'prophetic'
+  | 'maniacal'
+  | 'furious'
+  | 'calculating'
+  | 'victorious'
   | 'panicked';
 
 /**
- * Theological tone profile states for divine discourse synthesis.
+ * Theological rhetorical profiles driving divine discourse synthesis.
  */
-export type JesusTone = 
-  | 'serene' 
-  | 'righteous' 
-  | 'compassionate' 
-  | 'majestic' 
+export type JesusTone =
+  | 'serene'
+  | 'righteous'
+  | 'compassionate'
+  | 'majestic'
   | 'wrathful';
 
+/* ============================================================================
+ * GAMEPLAY & BOARD STATE MODELS
+ * ========================================================================= */
+
 /**
- * Immutable record of an executed board movement with complete metadata.
- * Optimized with const template literals and memory-aligned primitive types.
+ * Immutable log entry detailing an executed chess move.
  */
 export interface MoveLog {
+  /** Unique identifier for the move record */
   readonly id: string;
+  /** Source square coordinate in algebraic notation (e.g., 'e2') */
   readonly from: string;
+  /** Target square coordinate in algebraic notation (e.g., 'e4') */
   readonly to: string;
+  /** Piece type descriptor (e.g., 'p', 'n', 'b', 'r', 'q', 'k') */
   readonly piece: string;
+  /** Color of the piece executed */
   readonly color: PieceColor;
+  /** Standard Algebraic Notation representation of the move (e.g., 'e4', 'Nxf3+') */
   readonly san: string;
+  /** Formatted timestamp indicating when the move was registered */
   readonly timestamp: string;
 }
 
 /**
- * Real-time telemetry structure for Dalek dialogue synthesis nodes.
- */
-export interface DalekDialogue {
-  readonly text: string;
-  readonly emotion: DalekEmotion;
-  readonly prophecyLevel: number; // Normalized percentage metric (0 to 100)
-  readonly timestamp: number;
-}
-
-/**
- * Synchronized telemetry structure for dialectical exchanges between intelligence entities.
- */
-export interface DebateDialogue {
-  readonly caanText: string;
-  readonly caanEmotion: DalekEmotion;
-  readonly jesusText: string;
-  readonly jesusTone: JesusTone;
-  readonly prophecyLevel: number;
-  readonly timestamp: number;
-}
-
-/**
- * Immutable ledger tracking captured board assets partitioned by polarity.
- * Utilizes fixed tuple arrays to prevent heap fragmentation and allocation overhead.
+ * Immutable ledger tracking captured board assets categorized by piece color.
  */
 export interface CapturedPieces {
+  /** Pieces captured from the White player */
   readonly w: readonly string[];
+  /** Pieces captured from the Black player */
   readonly b: readonly string[];
 }
 
+/* ============================================================================
+ * SYNTHESIS & DIALOGUE TELEMETRY
+ * ========================================================================= */
+
 /**
- * Sovereign configuration profile governing runtime execution parameters and audio-visual settings.
+ * Telemetry payload for Dalek entity dialogue generation and vocalization.
+ */
+export interface DalekDialogue {
+  /** Synthesized verbal output */
+  readonly text: string;
+  /** Emotional state modulating vocal timbre and cadence */
+  readonly emotion: DalekEmotion;
+  /** Prophecy intensity metric represented as a normalized percentage (0–100) */
+  readonly prophecyLevel: number;
+  /** Unix epoch timestamp of dialogue dispatch */
+  readonly timestamp: number;
+}
+
+/**
+ * Synchronized telemetry record capturing reciprocal debate between AI entities.
+ */
+export interface DebateDialogue {
+  /** Verbal discourse generated by Dalek Caan */
+  readonly caanText: string;
+  /** Emotional state of Dalek Caan */
+  readonly caanEmotion: DalekEmotion;
+  /** Verbal discourse generated by Jesus entity */
+  readonly jesusText: string;
+  /** Rhetorical tone governing the Jesus entity output */
+  readonly jesusTone: JesusTone;
+  /** Prophecy index scalar accompanying the dialectical exchange (0–100) */
+  readonly prophecyLevel: number;
+  /** Unix epoch timestamp of the debate event */
+  readonly timestamp: number;
+}
+
+/* ============================================================================
+ * SYSTEM & CONFIGURATION PROFILES
+ * ========================================================================= */
+
+/**
+ * Immutable game configuration profile governing active rules, themes, and audio levels.
  */
 export interface GameSettings {
+  /** Active orchestration mode (PVP, PVE, PVD, AVA) */
   readonly mode: GameMode;
+  /** Target AI processing difficulty */
   readonly difficulty: GameDifficulty;
+  /** Active visual theme */
   readonly theme: BoardTheme;
+  /** Assigned color for human player */
   readonly playerColor: PieceColor;
+  /** Global audio mute toggle */
   readonly muteSounds: boolean;
-  readonly synthesizerVolume: number; // Bounded floating point scalar [0.0, 1.0]
+  /** Master speech synthesizer volume scalar clamped between [0.0, 1.0] */
+  readonly synthesizerVolume: number;
 }
