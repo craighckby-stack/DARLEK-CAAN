@@ -7,10 +7,6 @@ import { cn } from "@/lib/utils"
 
 export type SeparatorProps = React.ComponentProps<typeof SeparatorPrimitive.Root>
 
-/**
- * Architectural style constants for the separator component.
- * Handles responsive sizing and layout based on Radix UI orientation states.
- */
 const SEPARATOR_BASE_STYLES = "bg-border shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px" as const
 
 export const Separator = React.forwardRef<
@@ -25,13 +21,18 @@ export const Separator = React.forwardRef<
   },
   ref
 ) {
+  const computedClassName = React.useMemo(
+    () => (className ? `${SEPARATOR_BASE_STYLES} ${className}` : SEPARATOR_BASE_STYLES),
+    [className]
+  )
+
   return (
     <SeparatorPrimitive.Root
       ref={ref}
       data-slot="separator"
       decorative={decorative}
       orientation={orientation}
-      className={cn(SEPARATOR_BASE_STYLES, className)}
+      className={computedClassName}
       {...props}
     />
   )
