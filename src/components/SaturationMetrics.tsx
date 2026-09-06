@@ -6,7 +6,7 @@ import { COLORS, SATURATION_THRESHOLDS } from '@/lib/constants';
 import { BarChart3 } from 'lucide-react';
 
 export interface SaturationMetricsPanelProps {
-  readonly metrics: SaturationMetrics;
+  readonly metrics: SaturationMetrics | null | undefined;
 }
 
 interface MetricConfig {
@@ -71,6 +71,27 @@ const METRIC_CONFIGS: readonly MetricConfig[] = [
   },
 ] as const;
 
+// Inline style objects to avoid runtime allocation in render loops
+const LABEL_STYLE = {
+  fontSize: '8px',
+  color: COLORS.textMuted,
+  fontFamily: 'var(--font-orbitron), sans-serif',
+  letterSpacing: '0.1em',
+} as const;
+
+const STATUS_STYLE_BASE = {
+  fontSize: '7px',
+  fontFamily: 'var(--font-orbitron), sans-serif',
+  letterSpacing: '0.05em',
+} as const;
+
+const VALUE_STYLE_BASE = {
+  fontSize: '10px',
+  fontWeight: 600,
+} as const;
+
+const PANEL_CONTAINER_CLASS = "dalek-panel rounded-lg p-4 space-y-4";
+
 function resolveMetricColor(
   value: number,
   warning: number,
@@ -113,21 +134,21 @@ interface PanelHeaderProps {
   readonly title: string;
 }
 
-function PanelHeader({ title }: PanelHeaderProps) {
+const PanelHeader = memo(function PanelHeader({ title }: PanelHeaderProps) {
   return (
     <div className="dalek-panel-header py-2 px-1 flex items-center gap-2">
       <BarChart3 size={14} style={{ color: COLORS.dalekRed }} />
       <span style={{ fontSize: '11px' }}>{title}</span>
     </div>
   );
-}
+});
 
 interface MetricBarProps {
   readonly config: MetricConfig;
   readonly rawValue: unknown;
 }
 
-function MetricBar({ config, rawValue }: MetricBarProps) {
+const MetricBar = memo(function MetricBar({ config, rawValue }: MetricBarProps) {
   const value = typeof rawValue === 'number' && Number.isFinite(rawValue) ? rawValue : 0;
   const denominator = config.max > 0 ? config.max : 1;
   const percentage = Math.min(100, Math.max(0, (value / denominator) * 100));
@@ -137,28 +158,14 @@ function MetricBar({ config, rawValue }: MetricBarProps) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span 
-          style={{ 
-            fontSize: '8px', 
-            color: COLORS.textMuted, 
-            fontFamily: 'var(--font-orbitron), sans-serif', 
-            letterSpacing: '0.1em' 
-          }}
-        >
+        <span style={LABEL_STYLE}>
           {config.label}
         </span>
         <div className="flex items-center gap-2">
-          <span
-            style={{
-              fontSize: '7px',
-              color: barColor,
-              fontFamily: 'var(--font-orbitron), sans-serif',
-              letterSpacing: '0.05em',
-            }}
-          >
+          <span style={{ ...STATUS_STYLE_BASE, color: barColor }}>
             {statusLabel}
           </span>
-          <span style={{ fontSize: '10px', color: barColor, fontWeight: 600 }}>
+          <span style={{ ...VALUE_STYLE_BASE, color: barColor }}>
             {config.format(value)}
           </span>
         </div>
@@ -175,12 +182,12 @@ function MetricBar({ config, rawValue }: MetricBarProps) {
       </div>
     </div>
   );
-}
+});
 
 function SaturationMetricsPanelComponent({ metrics }: SaturationMetricsPanelProps) {
   if (!metrics) {
     return (
-      <div className="dalek-panel rounded-lg p-4 space-y-4">
+      <div className={PANEL_CONTAINER_CLASS}>
         <PanelHeader title="COGNITIVE DOMINANCE METRICS" />
         <div style={{ fontSize: '10px', color: COLORS.textMuted }}>NO METRICS DATA AVAILABLE</div>
       </div>
@@ -188,7 +195,7 @@ function SaturationMetricsPanelComponent({ metrics }: SaturationMetricsPanelProp
   }
 
   return (
-    <div className="dalek-panel rounded-lg p-4 space-y-4">
+    <div className={PANEL_CONTAINER_CLASS}>
       <PanelHeader title="COGNITIVE DOMINANCE METRICS" />
       <div className="space-y-3">
         {METRIC_CONFIGS.map((config) => (
