@@ -19,16 +19,30 @@ type ApiResponse = SuccessResponse | ErrorResponse;
 
 const MAX_PAYLOAD_SIZE_BYTES = 25 * 1024 * 1024; // 25MB safety boundary
 
+// Cached static JSON responses for minimal memory allocation and faster GC turnaround
+const ONLINE_RESPONSE = NextResponse.json({ 
+  status: 'online', 
+  service: 'EXTRACT_TEXT_API', 
+  success: true, 
+  text: '' 
+} as SuccessResponse);
+
+const PAYLOAD_TOO_LARGE_RESPONSE = NextResponse.json(
+  { error: 'Payload exceeds maximum limit of 25MB', success: false } as ErrorResponse,
+  { status: 413 }
+);
+
+const NO_TEXT_RESPONSE = NextResponse.json({ error: 'No text provided', success: false } as ErrorResponse, { status: 400 });
+const NO_PAYLOAD_RESPONSE = NextResponse.json({ error: 'No file or text payload provided', success: false } as ErrorResponse, { status: 400 });
+const NO_FILE_RESPONSE = NextResponse.json({ error: 'No file provided in form data', success: false } as ErrorResponse, { status: 400 });
+
 /**
  * Validates the incoming request size against the safety limit.
  */
 function validatePayloadSize(req: NextRequest): NextResponse<ApiResponse> | null {
   const contentLength = req.headers.get('content-length');
-  if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_SIZE_BYTES) {
-    return NextResponse.json(
-      { error: 'Payload exceeds maximum limit of 25MB', success: false },
-      { status: 413 }
-    );
+  if (contentLength && Number(contentLength) > MAX_PAYLOAD_SIZE_BYTES) {
+    return PAYLOAD_TOO_LARGE_RESPONSE;
   }
   return null;
 }
@@ -52,15 +66,21 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
       return '[PDF Text Extraction Complete]';
     }
 
-    return textMatches
-      .filter((line: string) => 
+    const filteredLines: string[] = [];
+    for (let i = 0, len = textMatches.length; i < len; i++) {
+      const line = textMatches[i];
+      if (
         !line.startsWith('%PDF') && 
         !line.includes('/Type') && 
         !line.includes('/Filter') && 
         !line.includes('endobj') && 
         !line.includes('stream')
-      )
-      .join('\n');
+      ) {
+        filteredLines.push(line);
+      }
+    }
+
+    return filteredLines.join('\n');
   }
 }
 
@@ -84,15 +104,14 @@ async function extractFileText(file: File): Promise<string> {
   const mimeType = file.type;
   const fileName = file.name.toLowerCase();
 
-  const isPdf = mimeType === 'application/pdf' || fileName.endsWith('.pdf');
-  if (isPdf) {
+  if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) {
     return extractPdfText(buffer);
   }
 
-  const isDocx = 
+  if (
     mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
-    fileName.endsWith('.docx');
-  if (isDocx) {
+    fileName.endsWith('.docx')
+  ) {
     return extractDocxText(buffer);
   }
 
@@ -100,12 +119,7 @@ async function extractFileText(file: File): Promise<string> {
 }
 
 export async function GET(): Promise<NextResponse<ApiResponse>> {
-  return NextResponse.json({ 
-    status: 'online', 
-    service: 'EXTRACT_TEXT_API', 
-    success: true, 
-    text: '' 
-  });
+  return ONLINE_RESPONSE;
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>> {
@@ -117,11 +131,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
 
     // Handle JSON payloads
     if (contentType.includes('application/json')) {
-      const body = await req.json().catch(() => ({}));
-      if (typeof body?.text === 'string' && body.text.length > 0) {
+      const body = await req.json().catch(() => null);
+      if (body && typeof body.text === 'string' && body.text.length > 0) {
         return NextResponse.json({ text: body.text, success: true });
       }
-      return NextResponse.json({ error: 'No text provided', success: false }, { status: 400 });
+      return NO_TEXT_RESPONSE;
     }
 
     // Handle raw text payloads
@@ -130,7 +144,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       if (typeof rawText === 'string' && rawText.length > 0) {
         return NextResponse.json({ text: rawText, success: true });
       }
-      return NextResponse.json({ error: 'No file or text payload provided', success: false }, { status: 400 });
+      return NO_PAYLOAD_RESPONSE;
     }
 
     // Handle multipart form-data file uploads
@@ -138,7 +152,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
     const file = formData.get('file');
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'No file provided in form data', success: false }, { status: 400 });
+      return NO_FILE_RESPONSE;
     }
 
     const text = await extractFileText(file);
