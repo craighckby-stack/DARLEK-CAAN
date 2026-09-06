@@ -19,6 +19,10 @@ const CLIENT_USER_AGENT = 'EMG-Neural-Code-Optimizer/4.9';
 const MAX_MANIFEST_SIZE_BYTES = 1024 * 1024; // 1MB upper bound for memory safety
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB defensive stream bounds checking
 
+// Pre-parsed base URL and CWD for high-performance zero-allocation validation checks
+const PARSED_BASE_URL = new URL(BASE_REPOSITORY_URL);
+const CWD = process.cwd();
+
 /**
  * @typedef {Object} FileManifestEntry
  * @property {string} path - Relative path of the missing target file.
@@ -76,10 +80,9 @@ function validateAndResolveTargetPath(rawFilePath) {
     return null;
   }
 
-  const resolvedTargetPath = path.resolve(process.cwd(), normalizedPath);
-  const currentWorkingDirectory = process.cwd();
+  const resolvedTargetPath = path.resolve(CWD, normalizedPath);
   
-  if (!resolvedTargetPath.startsWith(currentWorkingDirectory)) {
+  if (!resolvedTargetPath.startsWith(CWD)) {
     console.error(`[ERROR] Resolved path escapes working directory boundaries: ${resolvedTargetPath}`);
     return null;
   }
@@ -94,10 +97,9 @@ function validateAndResolveTargetPath(rawFilePath) {
  */
 function constructTargetUrl(normalizedPath) {
   try {
-    const parsedBaseUrl = new URL(BASE_REPOSITORY_URL);
-    const parsedFullUrl = new URL(normalizedPath, parsedBaseUrl);
+    const parsedFullUrl = new URL(normalizedPath, PARSED_BASE_URL);
     
-    if (parsedFullUrl.origin !== parsedBaseUrl.origin) {
+    if (parsedFullUrl.origin !== PARSED_BASE_URL.origin) {
       console.error(`[ERROR] Target URL origin mismatch detected: ${parsedFullUrl.href}`);
       return null;
     }
@@ -170,7 +172,7 @@ function download(fileObj) {
     const httpRequest = https.get(targetUrl, requestOptions, (responseStream) => {
       if (responseStream.statusCode !== 200) {
         console.error(`[ERROR] Failed to download ${fileObj.path}: HTTP status code ${responseStream.statusCode}`);
-        responseStream.resume(); // Consume response stream to free memory
+        responseStream.resume();
         return resolve(false);
       }
 
@@ -255,8 +257,10 @@ function download(fileObj) {
 async function doAll() {
   const missingFilesManifest = loadMissingManifest();
   let successfullyProcessedCount = 0;
+  const len = missingFilesManifest.length;
 
-  for (const manifestEntry of missingFilesManifest) {
+  for (let i = 0; i < len; i++) {
+    const manifestEntry = missingFilesManifest[i];
     if (manifestEntry && typeof manifestEntry.path === 'string' && manifestEntry.path.startsWith('src/')) {
       const isDownloadSuccessful = await download(manifestEntry);
       if (isDownloadSuccessful) {
