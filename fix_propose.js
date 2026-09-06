@@ -13,17 +13,22 @@ const { normalize } = require('node:path');
 const TARGET_ROUTE_PATH = normalize('src/app/api/evolution/propose/route.ts');
 const ENCODING_UTF8 = 'utf8';
 
+// Pre-compiled global regular expression for single-pass replacement efficiency.
+const SANITIZE_REGEX = /```json|```tsx|}\n```\n|\n```\nRisk/g;
+const REPLACEMENT_MAP = {
+    '```json': '\\`\\`\\`json',
+    '```tsx': '\\`\\`\\`tsx',
+    '}\n```\n': '}\n\\`\\`\\`\n',
+    '\n```\nRisk': '\n\\`\\`\\`\nRisk'
+};
+
 /**
  * Escapes markdown code block delimiters within the evolution proposal route source code.
  * @param {string} sourceCode - The raw source code contents.
  * @returns {string} The transformed source code with escaped code blocks.
  */
 function sanitizeMarkdownCodeBlocks(sourceCode) {
-    return sourceCode
-        .replace(/```json/g, '\\`\\`\\`json')
-        .replace(/```tsx/g, '\\`\\`\\`tsx')
-        .replace(/}\n```\n/g, '}\n\\`\\`\\`\n')
-        .replace(/\n```\nRisk/g, '\n\\`\\`\\`\nRisk');
+    return sourceCode.replace(SANITIZE_REGEX, (match) => REPLACEMENT_MAP[match]);
 }
 
 /**
@@ -31,13 +36,10 @@ function sanitizeMarkdownCodeBlocks(sourceCode) {
  */
 function applyProposalRouteFix() {
     try {
-        const rawCode = readFileSync(TARGET_ROUTE_PATH, ENCODING_UTF8);
-        const optimizedCode = sanitizeMarkdownCodeBlocks(rawCode);
-        
+        const optimizedCode = sanitizeMarkdownCodeBlocks(readFileSync(TARGET_ROUTE_PATH, ENCODING_UTF8));
         writeFileSync(TARGET_ROUTE_PATH, optimizedCode, ENCODING_UTF8);
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        process.stderr.write(`[DARLEK-CANN-ERROR] Failed to process proposal route fix: ${errorMessage}\n`);
+        process.stderr.write(`[DARLEK-CANN-ERROR] Failed to process proposal route fix: ${error.message || error}\n`);
         process.exit(1);
     }
 }
