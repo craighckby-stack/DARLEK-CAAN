@@ -108,11 +108,7 @@ async function fetchFileTree(token: string, owner: string, repo: string, branch:
     const data = (await response.json()) as { tree?: readonly { path: string }[] };
     if (!Array.isArray(data?.tree)) return [];
     
-    const paths = new Array(data.tree.length);
-    for (let i = 0, len = data.tree.length; i < len; i++) {
-      paths[i] = data.tree[i].path;
-    }
-    return paths;
+    return data.tree.map((node) => node.path);
   } catch {
     return [];
   }
@@ -222,7 +218,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const repoName = body.repo ?? 'unknown';
     const repoBranch = body.branch ?? 'main';
 
-    // Parallel IO fetching for file tree, README, and recent mutations
     const [fileTree, readmeContent, recentMutations] = await Promise.all([
       fetchFileTree(githubToken, repoOwner, repoName, repoBranch),
       fetchGitHubFile(githubToken, repoOwner, repoName, repoBranch, 'README.md'),
