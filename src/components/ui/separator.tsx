@@ -22,7 +22,7 @@ export const Separator = React.forwardRef<
   ref
 ) {
   const computedClassName = React.useMemo(
-    () => (className ? `${SEPARATOR_BASE_STYLES} ${className}` : SEPARATOR_BASE_STYLES),
+    () => cn(SEPARATOR_BASE_STYLES, className),
     [className]
   )
 
