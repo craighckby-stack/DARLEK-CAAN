@@ -9,31 +9,33 @@ const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 const nextApp = next({ dev: IS_DEVELOPMENT, hostname: HOSTNAME, port: PORT });
 const requestHandler = nextApp.getRequestHandler();
 
-async function handleIncomingRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const parsedUrl = parse(req.url ?? '/', true);
-  await requestHandler(req, res, parsedUrl);
-}
+const INTERNAL_ERROR_BUFFER = Buffer.from('Internal Server Error', 'utf-8');
 
 function handleRequestError(err: unknown, res: ServerResponse): void {
   console.error('Error handling request:', err);
   
   if (!res.headersSent) {
     res.statusCode = 500;
-    res.end('Internal Server Error');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Length', INTERNAL_ERROR_BUFFER.length);
+    res.end(INTERNAL_ERROR_BUFFER);
   }
 }
+
+const serverListener = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+  try {
+    const parsedUrl = parse(req.url ?? '/', true);
+    await requestHandler(req, res, parsedUrl);
+  } catch (err) {
+    handleRequestError(err, res);
+  }
+};
 
 async function startServer(): Promise<void> {
   try {
     await nextApp.prepare();
 
-    const server = http.createServer(async (req, res) => {
-      try {
-        await handleIncomingRequest(req, res);
-      } catch (err) {
-        handleRequestError(err, res);
-      }
-    });
+    const server = http.createServer(serverListener);
 
     server.listen(PORT, HOSTNAME, () => {
       console.log(`> Ready on http://${HOSTNAME}:${PORT}`);
