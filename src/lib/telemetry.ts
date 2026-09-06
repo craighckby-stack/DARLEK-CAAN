@@ -14,18 +14,18 @@ export interface SaturationMetrics {
   readonly [key: string]: number;
 }
 
+// Reusable replacer function to avoid closure allocation per JSON.stringify call
+const serializeReplacer = (_key: string, value: unknown): unknown => {
+  return typeof value === 'bigint' ? value.toString() : value;
+};
+
 /**
  * Safely serializes and logs an evolution telemetry event with high memory efficiency and strict type-safety.
  */
 export const logEvolutionEvent = (event: string, data: EvolutionEventData): void => {
   let serialized: string;
   try {
-    serialized = JSON.stringify(data, (_key, value: unknown) => {
-      if (typeof value === 'bigint') {
-        return value.toString();
-      }
-      return value;
-    }) ?? 'null';
+    serialized = JSON.stringify(data, serializeReplacer) ?? 'null';
   } catch {
     serialized = '[Unserializable Data]';
   }
@@ -43,13 +43,12 @@ export const calculateSaturationScore = (metrics: SaturationMetrics): number => 
   }
   
   let total = 0;
-  const values = Object.values(metrics);
-  const length = values.length;
-  
-  for (let i = 0; i < length; i++) {
-    const val = values[i];
-    if (typeof val === 'number' && Number.isFinite(val)) {
-      total += val;
+  for (const key in metrics) {
+    if (Object.prototype.hasOwnProperty.call(metrics, key)) {
+      const val = metrics[key];
+      if (typeof val === 'number' && Number.isFinite(val)) {
+        total += val;
+      }
     }
   }
   
