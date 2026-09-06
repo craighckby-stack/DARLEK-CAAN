@@ -1,10 +1,28 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-import { defineConfig } from 'vite';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, type ServerOptions } from 'vite';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+/** Directory path of the current module root */
+const projectRootDir = dirname(fileURLToPath(import.meta.url));
+
+/** Path resolution aliases for modular imports */
+const pathAliases = {
+  '@': resolve(projectRootDir, '.'),
+};
+
+/**
+ * Creates development server configuration based on Hot Module Replacement (HMR) state.
+ *
+ * @param isHmrDisabled - Whether HMR and file watching should be deactivated.
+ */
+function createServerConfig(isHmrDisabled: boolean): ServerOptions {
+  return {
+    hmr: !isHmrDisabled,
+    watch: isHmrDisabled ? null : {},
+  };
+}
 
 export default defineConfig(() => {
   const isHmrDisabled = process.env.DISABLE_HMR === 'true';
@@ -12,13 +30,8 @@ export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
-      alias: {
-        '@': resolve(__dirname, '.'),
-      },
+      alias: pathAliases,
     },
-    server: {
-      hmr: !isHmrDisabled,
-      watch: isHmrDisabled ? null : {},
-    },
+    server: createServerConfig(isHmrDisabled),
   };
 });
