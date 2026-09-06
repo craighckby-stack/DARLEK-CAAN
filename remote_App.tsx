@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import { useSystemBootstrap } from './hooks/useSystemBootstrap';
 import { useAgentOrchestra } from './hooks/useAgentOrchestra';
@@ -23,7 +23,8 @@ export default function App() {
     omegaTuningStatus: 'PENDING'
   });
 
-  const [chessEngine] = useState(() => new Chess());
+  const chessEngine = useMemo(() => new Chess(), []);
+  
   const [gameSettings, setGameSettings] = useState<GameSettings>({
     mode: GameMode.PVD,
     difficulty: GameDifficulty.MEDIUM,
@@ -37,7 +38,7 @@ export default function App() {
     text: "SYSTEM INITIALIZED. THE CHESS GRID IS READY.",
     emotion: "prophetic",
     prophecyLevel: 50,
-    timestamp: Date.now(),
+    timestamp: 1711929600000,
   });
 
   const isAudioInitializedRef = useRef(false);
@@ -46,12 +47,14 @@ export default function App() {
     if (!isAudioInitializedRef.current) {
       initAudioEngine();
       isAudioInitializedRef.current = true;
+      window.removeEventListener('click', handleAudioInitialization);
+      window.removeEventListener('touchstart', handleAudioInitialization);
     }
   }, []);
 
   useEffect(() => {
-    window.addEventListener('click', handleAudioInitialization);
-    window.addEventListener('touchstart', handleAudioInitialization);
+    window.addEventListener('click', handleAudioInitialization, { passive: true });
+    window.addEventListener('touchstart', handleAudioInitialization, { passive: true });
     
     return () => {
       window.removeEventListener('click', handleAudioInitialization);
@@ -63,12 +66,17 @@ export default function App() {
     setChronosLoadValue(quantumMetrics.chronosLoad);
   }, [quantumMetrics.chronosLoad]);
 
+  const systemStatusText = useMemo(() => 
+    isSystemReady ? 'STABILIZED' : 'INITIALIZING',
+    [isSystemReady]
+  );
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white font-mono p-4">
       <header className="border-b border-zinc-800 pb-4 mb-8">
         <h1 className="text-2xl font-bold tracking-tighter">DARLEK CANN v3.0</h1>
         <div className="text-xs text-zinc-500">
-          OMEGA_BOOT_SEQUENCE: {isSystemReady ? 'STABILIZED' : 'INITIALIZING'}
+          OMEGA_BOOT_SEQUENCE: {systemStatusText}
         </div>
       </header>
       
