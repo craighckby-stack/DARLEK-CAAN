@@ -1,7 +1,7 @@
 /**
  * @file src/utils/error-parser.ts
  * @module EMG.Core.ErrorParser
- * @version 4.9.0
+ * @version 4.9.1
  * @description High-performance, type-safe system error parsing and normalization engine.
  */
 
@@ -19,6 +19,17 @@ export interface ParsedSystemError {
 }
 
 const FALLBACK_PATH = 'N/A' as const;
+const UNKNOWN_ERROR_MSG = 'Unknown error occurred' as const;
+
+const NULL_ERROR_RESULT: ParsedSystemError = {
+  isSystemError: false,
+  message: UNKNOWN_ERROR_MSG,
+  path: FALL_BACK_PATH_SAFE()
+};
+
+function FALL_BACK_PATH_SAFE() {
+  return FALLBACK_PATH;
+}
 
 /**
  * Parses an incoming Error object, extracting structured system error payloads if valid JSON,
@@ -28,28 +39,41 @@ const FALLBACK_PATH = 'N/A' as const;
  * @returns {ParsedSystemError} The normalized, type-safe error structure.
  */
 export const parseSystemError = (error: Error): ParsedSystemError => {
-  if (!error) {
+  if (error === null || error === undefined) {
+    return NULL_ERROR_RESULT;
+  }
+
+  const rawMessage = error.message;
+
+  if (rawMessage === null || rawMessage === undefined || rawMessage.charCodeAt(0) !== 123) {
     return {
       isSystemError: false,
-      message: 'Unknown error occurred',
+      message: rawMessage || UNKNOWN_ERROR_MSG,
       path: FALLBACK_PATH,
     };
   }
 
   try {
-    const data = JSON.parse(error.message) as SystemErrorPayload;
-    const isSystemError = typeof data === 'object' && data !== null && Boolean(data.operationType);
+    const data = JSON.parse(rawMessage) as SystemErrorPayload;
+    if (data !== null && typeof data === 'object') {
+      const operationType = data.operationType;
+      const isSystemError = typeof operationType === 'string' && operationType.length > 0;
+      const errProp = data.error;
+      const pathProp = data.path;
 
-    return {
-      isSystemError,
-      message: (typeof data.error === 'string' && data.error) || error.message,
-      path: (typeof data.path === 'string' && data.path) || FALLBACK_PATH,
-    };
+      return {
+        isSystemError,
+        message: (typeof errProp === 'string' && errProp) || rawMessage,
+        path: (typeof pathProp === 'string' && pathProp) || FALLBACK_PATH,
+      };
+    }
   } catch {
-    return {
-      isSystemError: false,
-      message: error.message,
-      path: FALLBACK_PATH,
-    };
+    // Fall through on parsing failure
   }
+
+  return {
+    isSystemError: false,
+    message: rawMessage,
+    path: FALLBACK_PATH,
+  };
 };
