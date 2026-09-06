@@ -5,9 +5,9 @@
 ---
 
 ## Table of Contents
-1. [Overview & Workflow](#overview--workflow)
-2. [Integration](#integration)
-3. [Security Guidelines](#security-guidelines)
+1. [Overview & Workflow](#1-overview--workflow)
+2. [Integration](#2-integration)
+3. [Security Guidelines](#3-security-guidelines)
 
 ---
 
