@@ -5,9 +5,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    
+    <!-- Document Metadata & OpenGraph Context -->
     <meta name="description" content="Deep PII and Secret Scanner for GitHub repositories." />
     <meta property="og:title" content="Git Secret & PII Sanitizer" />
     <meta property="og:description" content="Deep PII and Secret Scanner for GitHub repositories." />
+    <meta property="og:type" content="website" />
     <meta name="theme-color" content="#090a0f" />
     <title>Git Secret & PII Sanitizer</title>
     
@@ -21,10 +24,15 @@
     <link rel="modulepreload" href="/src/main.tsx" />
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-red-500 selection:text-white">
-    <!-- Application Mount Point -->
-    <div id="root" role="application" aria-label="Git Secret and PII Sanitizer Interface" class="min-h-screen flex flex-col"></div>
+    <!-- Application Root Mount Point -->
+    <div 
+      id="root" 
+      role="application" 
+      aria-label="Git Secret and PII Sanitizer Interface" 
+      class="min-h-screen flex flex-col"
+    ></div>
     
-    <!-- Core Application Entrypoint -->
+    <!-- Core Application Entrypoint Script -->
     <script type="module" src="/src/main.tsx" defer></script>
   </body>
 </html>
