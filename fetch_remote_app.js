@@ -140,14 +140,7 @@ const SYNCHRONIZATION_TARGETS = Object.freeze([
  */
 async function executeSynchronization() {
   const targets = SYNCHRONIZATION_TARGETS;
-  const len = targets.length;
-  // Unrolled / optimized batch execution allocation using a pre-allocated Promise array
-  const promises = new Array(len);
-
-  for (let i = 0; i < len; i++) {
-    const target = targets[i];
-    promises[i] = fetchAndSave(target.url, target.dest);
-  }
+  const promises = targets.map((target) => fetchAndSave(target.url, target.dest));
 
   try {
     await Promise.all(promises);
