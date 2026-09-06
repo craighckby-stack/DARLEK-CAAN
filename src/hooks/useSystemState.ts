@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error' | (string & {});
 
@@ -12,11 +12,17 @@ type StateUpdater = SystemState | ((prevState: SystemState) => SystemState);
 
 const STORAGE_KEY = 'darlek_cann_state';
 
+const INITIAL_STATE: SystemState = {
+  setupComplete: false,
+  connectionStatus: 'idle',
+};
+
 export const useSystemState = () => {
-  const [systemState, setSystemState] = useState<SystemState>({
-    setupComplete: false,
-    connectionStatus: 'idle',
-  });
+  const [systemState, setSystemState] = useState<SystemState>(INITIAL_STATE);
+  
+  // Use a ref to prevent unnecessary re-creations and capture stable state reference
+  const stateRef = useRef(systemState);
+  stateRef.current = systemState;
 
   useEffect(() => {
     let isMounted = true;
