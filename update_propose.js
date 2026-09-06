@@ -1,19 +1,35 @@
-const fs = require('fs');
-const file = 'src/app/api/evolution/propose/route.ts';
-let code = fs.readFileSync(file, 'utf8');
+const fs = require('node:fs');
+const path = require('node:path');
 
-const userPromptRegex = /(const userPrompt = `Analyze this file and propose improvements:\\n\$\{rejectionContext\}\\n\$\{appliedMutationsContext\}\\n\$\{userReposContextStr\}\\nACTUAL SIPHONED CODE PATTERNS)/;
+const TARGET_FILE_PATH = path.join(process.cwd(), 'src/app/api/evolution/propose/route.ts');
 
-code = code.replace(
-  userPromptRegex,
-  `const repoFilesContext = Array.isArray((body as any)?.repoFiles) 
+const PROMPT_DECLARATION_PATTERN = /(const userPrompt = `Analyze this file and propose improvements:\\n\$\{rejectionContext\}\\n\$\{appliedMutationsContext\}\\n\$\{userReposContextStr\}\\nACTUAL SIPHONED CODE PATTERNS)/;
+const PROMPT_INTERPOLATION_PATTERN = /(const userPrompt = `Analyze this file and propose improvements:\\n\$\{rejectionContext\}\\n\$\{appliedMutationsContext\}\\n\$\{userReposContextStr\})/;
+
+const REPO_FILES_CONTEXT_DECLARATION = `const repoFilesContext = Array.isArray((body as any)?.repoFiles) 
       ? \`\\nEXISTING REPOSITORY FILES:\\n\${(body as any).repoFiles.slice(0, 1000).join('\\n')}\\n\` 
-      : '';\n    $1`
-);
+      : '';\n    $1`;
 
-code = code.replace(
-  /(const userPrompt = `Analyze this file and propose improvements:\\n\$\{rejectionContext\}\\n\$\{appliedMutationsContext\}\\n\$\{userReposContextStr\})/,
-  `$1\n\${repoFilesContext}`
-);
+/**
+ * Injects repository files context extraction and template injection into the prompt code.
+ * 
+ * @param {string} sourceCode - Raw source code of the target API route.
+ * @returns {string} Modified source code with repository files context integrated.
+ */
+function injectRepoFilesContext(sourceCode) {
+  return sourceCode
+    .replace(PROMPT_DECLARATION_PATTERN, REPO_FILES_CONTEXT_DECLARATION)
+    .replace(PROMPT_INTERPOLATION_PATTERN, '$1\n${repoFilesContext}');
+}
 
-fs.writeFileSync(file, code);
+/**
+ * Main execution driver for updating the propose route source file.
+ */
+function updateProposeRoute() {
+  const currentCode = fs.readFileSync(TARGET_FILE_PATH, 'utf8');
+  const updatedCode = injectRepoFilesContext(currentCode);
+  
+  fs.writeFileSync(TARGET_FILE_PATH, updatedCode, 'utf8');
+}
+
+updateProposeRoute();
