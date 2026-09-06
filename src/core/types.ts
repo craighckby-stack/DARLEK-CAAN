@@ -1,7 +1,11 @@
 /**
  * Represents the operational lifecycle phases of a quantum node.
  */
-export type QuantumNodeState = 'STABLE' | 'MUTATING' | 'CRITICAL';
+export const enum QuantumNodeState {
+  STABLE = 0,
+  MUTATING = 1,
+  CRITICAL = 2,
+}
 
 /**
  * Defines the foundational contract for an executable quantum processing node.
@@ -30,5 +34,5 @@ export interface QuantumNode<TInput = unknown, TOutput = unknown> {
 export interface EvolutionResult {
   readonly success: boolean;
   readonly logs: readonly string[];
-  readonly timestamp: string;
+  readonly timestamp: number;
 }
