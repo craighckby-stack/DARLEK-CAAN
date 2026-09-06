@@ -1,116 +1,140 @@
 /**
  * @file src/lib/utils/core.ts
  * @module EMG Core v49 Neural Code and Documentation Optimizer Engine
- * @description Sovereign core utilities optimized for high-performance cryptographic ID generation, type safety, and memory efficiency.
+ * @description Core utility suite providing cryptographically secure identifier generation,
+ * robust input validation, and strongly-typed domain entity factories.
  */
 
 import { Message, EvolutionLogEntry } from '@/lib/types';
 
 /**
- * Immutable character set optimized for URL-safe identifiers.
+ * Character set utilized for alphanumeric identifier generation (lowercase standard Base36).
  */
-const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+const BASE36_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789' as const;
 
 /**
- * Standard length for generated unique identifiers.
+ * Total character count of the Base36 alphabet.
  */
-const ID_LENGTH = 8;
+const ALPHABET_RADIX = BASE36_ALPHABET.length;
 
 /**
- * Pre-allocated Uint8Array buffer for high-performance random value generation,
- * eliminating per-call memory allocation overhead.
+ * Standard character length for generated unique entity identifiers.
  */
-const RANDOM_BUFFER = typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.getRandomValues === 'function'
-  ? new Uint8Array(ID_LENGTH)
-  : null;
+const DEFAULT_ID_LENGTH = 8;
 
 /**
- * Generates a cryptographically secure, random alphanumeric identifier of fixed length.
- * Falls back to Math.random if a secure crypto environment is unavailable.
- * 
- * @returns {string} A unique 8-character string identifier.
+ * Checks whether Web Cryptography API random byte generation is available in the current runtime.
  */
-export function createId(): string {
-  const alphabet = ALPHABET;
-  const len = ID_LENGTH;
-  
-  if (RANDOM_BUFFER !== null) {
-    globalThis.crypto.getRandomValues(RANDOM_BUFFER);
-    // Unrolled loop for ID_LENGTH = 8 to eliminate loop overhead and string concatenation garbage
-    return (
-      alphabet[RANDOM_BUFFER[0]! % 36] +
-      alphabet[RANDOM_BUFFER[1]! % 36] +
-      alphabet[RANDOM_BUFFER[2]! % 36] +
-      alphabet[RANDOM_BUFFER[3]! % 36] +
-      alphabet[RANDOM_BUFFER[4]! % 36] +
-      alphabet[RANDOM_BUFFER[5]! % 36] +
-      alphabet[RANDOM_BUFFER[6]! % 36] +
-      alphabet[RANDOM_BUFFER[7]! % 36]
-    );
-  }
-
-  // Fallback path unrolled
+function isWebCryptoAvailable(): boolean {
   return (
-    alphabet[(Math.random() * 36) | 0] +
-    alphabet[(Math.random() * 36) | 0] +
-    alphabet[(Math.random() * 36) | 0] +
-    alphabet[(Math.random() * 36) | 0] +
-    alphabet[(Math.random() * 36) | 0] +
-    alphabet[(Math.random() * 36) | 0] +
-    alphabet[(Math.random() * 36) | 0] +
-    alphabet[(Math.random() * 36) | 0]
+    typeof globalThis.crypto !== 'undefined' &&
+    typeof globalThis.crypto.getRandomValues === 'function'
   );
 }
 
 /**
- * Factory function to create a validated Message instance.
- * 
- * @param {'caan' | 'operator' | 'system'} role - The role of the message author.
- * @param {string} content - The text content of the message.
- * @returns {Message} A fully typed and stamped Message object.
- * @throws {TypeError} If content is missing or not a string.
+ * Fills an array with cryptographically secure random indices mapped to the Base36 alphabet.
+ *
+ * @param length - The number of random characters required.
+ * @returns An array of randomly selected characters from the alphabet.
+ */
+function generateSecureCharacters(length: number): string[] {
+  const randomBytes = new Uint8Array(length);
+  globalThis.crypto.getRandomValues(randomBytes);
+
+  const characters: string[] = new Array(length);
+  for (let index = 0; index < length; index += 1) {
+    const randomByte = randomBytes[index] ?? 0;
+    const alphabetIndex = randomByte % ALPHABET_RADIX;
+    characters[index] = BASE36_ALPHABET[alphabetIndex] ?? '0';
+  }
+
+  return characters;
+}
+
+/**
+ * Fallback pseudorandom character generator for environments lacking Web Crypto support.
+ *
+ * @param length - The number of random characters required.
+ * @returns An array of pseudorandomly selected characters from the alphabet.
+ */
+function generateFallbackCharacters(length: number): string[] {
+  const characters: string[] = new Array(length);
+  for (let index = 0; index < length; index += 1) {
+    const randomIndex = Math.floor(Math.random() * ALPHABET_RADIX);
+    characters[index] = BASE36_ALPHABET[randomIndex] ?? '0';
+  }
+
+  return characters;
+}
+
+/**
+ * Generates a random alphanumeric identifier of fixed length.
+ * Utilizes cryptographically secure random values when available, gracefully falling back to Math.random.
+ *
+ * @returns A unique alphanumeric identifier string.
+ */
+export function createId(): string {
+  const characters = isWebCryptoAvailable()
+    ? generateSecureCharacters(DEFAULT_ID_LENGTH)
+    : generateFallbackCharacters(DEFAULT_ID_LENGTH);
+
+  return characters.join('');
+}
+
+/**
+ * Validates that a given text input is a non-empty string.
+ *
+ * @param value - The input value to validate.
+ * @param fieldName - The name of the field for descriptive error messaging.
+ * @throws {TypeError} If the value is not a string or is empty.
+ */
+function assertNonEmptyString(value: unknown, fieldName: string): asserts value is string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`Invalid ${fieldName}: must be a non-empty string.`);
+  }
+}
+
+/**
+ * Factory function to create a validated and timestamped Message entity.
+ *
+ * @param role - The authoring role for the message ('caan' | 'operator' | 'system').
+ * @param content - The textual payload of the message.
+ * @returns A fully initialized Message object.
+ * @throws {TypeError} If content is not a non-empty string.
  */
 export function createMessage(role: Message['role'], content: string): Message {
-  if (typeof content !== 'string' || content.length === 0) {
-    throw new TypeError('Invalid message content: must be a non-empty string.');
-  }
+  assertNonEmptyString(content, 'message content');
 
   return {
     id: createId(),
     role,
     content,
-    timestamp: new Date()
+    timestamp: new Date(),
   };
 }
 
 /**
- * Factory function to create a validated EvolutionLogEntry instance.
- * 
- * @param {EvolutionLogEntry['type']} type - The classification category of the log entry.
- * @param {string} description - A primary description of the evolution event.
- * @param {string} [details] - Optional granular details regarding the event.
- * @returns {EvolutionLogEntry} A fully typed and stamped EvolutionLogEntry object.
- * @throws {TypeError} If description is missing or not a string.
+ * Factory function to create a validated and timestamped EvolutionLogEntry entity.
+ *
+ * @param type - The categorization type of the log entry.
+ * @param description - The summary description of the evolution event.
+ * @param details - Optional extended context or diagnostic details.
+ * @returns A fully initialized EvolutionLogEntry object.
+ * @throws {TypeError} If description is not a non-empty string.
  */
 export function createLogEntry(
-  type: EvolutionLogEntry['type'], 
-  description: string, 
+  type: EvolutionLogEntry['type'],
+  description: string,
   details?: string
 ): EvolutionLogEntry {
-  if (typeof description !== 'string' || description.length === 0) {
-    throw new TypeError('Invalid log description: must be a non-empty string.');
-  }
+  assertNonEmptyString(description, 'log description');
 
-  const entry: EvolutionLogEntry = {
+  return {
     id: createId(),
     type,
     description,
-    timestamp: new Date()
+    timestamp: new Date(),
+    ...(details !== undefined ? { details } : {}),
   };
-
-  if (details !== undefined) {
-    entry.details = details;
-  }
-
-  return entry;
 }
