@@ -94,13 +94,23 @@ const LANGUAGE_MAP: Readonly<Record<string, string>> = Object.freeze({
   json: 'JSON',
 });
 
+// Precompiled regex patterns for maximum execution performance and zero allocation overhead per invocation
+const SECRET_REGEX = /(?:sk-[a-zA-Z0-9]{20,48}|AIza[0-9A-Za-z\-_]{35}|gh[pusr]_[a-zA-Z0-9]{36})/g;
+const CONSOLE_LOG_REGEX = /^\s*console\.log\(.*?\);?\s*\n?/gm;
+const PRINT_REGEX = /^\s*print\(.*?\)\s*\n?/gm;
+const ASYNC_FUNC_REGEX = /async\s+function\s+([a-zA-Z0-9_]+)\s*\((.*?)\)\s*(?::\s*[^={]+)?\s*\{(?!\s*try\s*\{)/g;
+const RETURN_BLOCK_REGEX = /(\n\s*return\s+[^;]+;\s*\n)(\})/g;
+
 export function detectLanguage(filePath: string, _code?: string): string {
-  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+  const dotIndex = filePath.lastIndexOf('.');
+  if (dotIndex === -1 || dotIndex === filePath.length - 1) return 'TypeScript';
+  const ext = filePath.slice(dotIndex + 1).toLowerCase();
   return LANGUAGE_MAP[ext] ?? 'TypeScript';
 }
 
 export function analyzeStructure(code: string, language: string): CodeStructure {
   const lines = code.split('\n');
+  const lineCount = lines.length;
   const issues: CodeIssue[] = [];
   const functions: string[] = [];
   const classes: string[] = [];
@@ -108,13 +118,10 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
   const exports: string[] = [];
   const longFunctions: string[] = [];
   let comments = 0;
-  let hasTypes = false;
-  let hasErrorHandling = false;
-  let hasTests = false;
 
-  // Count comments efficiently
-  for (const line of lines) {
-    const trimmed = line.trim();
+  // Optimized single-pass line analysis for comments, imports, and exports
+  for (let i = 0; i < lineCount; i++) {
+    const trimmed = lines[i].trim();
     if (
       trimmed.startsWith('//') ||
       trimmed.startsWith('#') ||
@@ -125,46 +132,6 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
     ) {
       comments++;
     }
-  }
-
-  const isTS = language.includes('TypeScript');
-  const isJS = language.includes('JavaScript');
-  const isPython = language === 'Python';
-
-  // Extract Functions
-  const funcPatterns: RegExp[] = isPython
-    ? [/def\s+([a-zA-Z0-9_]+)\s*\(/g]
-    : [
-        /(?:export\s+)?(?:async\s+)?function\s+([a-zA-Z0-9_]+)/g,
-        /(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>/g,
-        /(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s+)?function/g,
-      ];
-
-  for (const pat of funcPatterns) {
-    let match: RegExpExecArray | null;
-    while ((match = pat.exec(code)) !== null) {
-      const fnName = match[1];
-      if (fnName && !functions.includes(fnName)) {
-        functions.push(fnName);
-      }
-    }
-  }
-
-  // Extract Classes
-  const classPat = isPython
-    ? /class\s+([a-zA-Z0-9_]+)/g
-    : /(?:export\s+)?(?:abstract\s+)?class\s+([a-zA-Z0-9_]+)/g;
-  let classMatch: RegExpExecArray | null;
-  while ((classMatch = classPat.exec(code)) !== null) {
-    const className = classMatch[1];
-    if (className && !classes.includes(className)) {
-      classes.push(className);
-    }
-  }
-
-  // Extract Imports & Exports
-  for (const line of lines) {
-    const trimmed = line.trim();
     if (trimmed.startsWith('import ') || trimmed.startsWith('from ') || trimmed.startsWith('require(')) {
       imports.push(trimmed.slice(0, 80));
     }
@@ -173,11 +140,53 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
     }
   }
 
+  const isTS = language.includes('TypeScript');
+  const isJS = language.includes('JavaScript');
+  const isPython = language === 'Python';
+
+  // Extract Functions
+  const funcPatterns: readonly RegExp[] = isPython
+    ? [/\bdef\s+([a-zA-Z0-9_]+)\s*\(/g]
+    : [
+        /\b(?:export\s+)?(?:async\s+)?function\s+([a-zA-Z0-9_]+)/g,
+        /\b(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>/g,
+        /\b(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s+)?function/g,
+      ];
+
+  const funcSet = new Set<string>();
+  for (let p = 0; p < funcPatterns.length; p++) {
+    const pat = funcPatterns[p];
+    pat.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pat.exec(code)) !== null) {
+      const fnName = match[1];
+      if (fnName && !funcSet.has(fnName)) {
+        funcSet.add(fnName);
+        functions.push(fnName);
+      }
+    }
+  }
+
+  // Extract Classes
+  const classPat = isPython
+    ? /\bclass\s+([a-zA-Z0-9_]+)/g
+    : /\b(?:export\s+)?(?:abstract\s+)?class\s+([a-zA-Z0-9_]+)/g;
+  
+  const classSet = new Set<string>();
+  let classMatch: RegExpExecArray | null;
+  while ((classMatch = classPat.exec(code)) !== null) {
+    const className = classMatch[1];
+    if (className && !classSet.has(className)) {
+      classSet.add(className);
+      classes.push(className);
+    }
+  }
+
   // Type Detection
-  hasTypes = isTS ? /:[^=;{]+/.test(code) || code.includes('interface ') || code.includes('type ') : false;
+  const hasTypes = isTS ? /:[^=;{]+/.test(code) || code.includes('interface ') || code.includes('type ') : false;
 
   // Error Handling Detection
-  hasErrorHandling =
+  const hasErrorHandling =
     code.includes('try') ||
     code.includes('catch') ||
     code.includes('.catch(') ||
@@ -186,7 +195,7 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
     code.includes('error');
 
   // Test Detection
-  hasTests =
+  const hasTests =
     code.includes('.test(') ||
     code.includes('.it(') ||
     code.includes('describe(') ||
@@ -195,28 +204,31 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
     code.includes('@test');
 
   // Long Functions Detection (>50 lines)
-  for (const funcName of functions) {
+  const fnLength = functions.length;
+  for (let i = 0; i < fnLength; i++) {
+    const funcName = functions[i];
     const funcRegex = new RegExp(
-      `(?:function\\s+${funcName}|${funcName}\\s*=\\s*(?:async\\s*)?(?:\\([^)]*\\)\\s*=>|function))`
+      `(?:function\\s+${funcName}|${funcName}\\s*\\s*=\\s*(?:async\\s*)?(?:\\([^)]*\\)\\s*=>|function))`
     );
     const funcStart = funcRegex.exec(code);
     if (funcStart) {
       const afterFunc = code.slice(funcStart.index);
+      const afterLen = afterFunc.length;
       let depth = 0;
       let funcEnd = -1;
-      let lineCount = 0;
-      for (let i = 0; i < afterFunc.length; i++) {
-        const char = afterFunc[i];
+      let currentFuncLines = 0;
+      for (let j = 0; j < afterLen; j++) {
+        const char = afterFunc[j];
         if (char === '{' || char === ':') depth++;
-        if (char === '}') {
+        else if (char === '}') {
           depth--;
           if (depth <= 0) {
-            funcEnd = i;
+            funcEnd = j;
             break;
           }
         }
-        if (char === '\n') lineCount++;
-        if (lineCount > 50 && funcEnd === -1) {
+        if (char === '\n') currentFuncLines++;
+        if (currentFuncLines > 50 && funcEnd === -1) {
           longFunctions.push(funcName);
           break;
         }
@@ -224,23 +236,27 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
     }
   }
 
+  const codeLen = code.length;
+  const importLen = imports.length;
+  const longFnLen = longFunctions.length;
+
   // Complexity Estimation (1-10)
   const complexity = Math.min(
     10,
     Math.max(
       1,
       Math.floor(
-        functions.length * 0.5 +
+        fnLength * 0.5 +
           classes.length * 1 +
-          longFunctions.length * 2 +
-          (code.length > 5000 ? 2 : code.length > 2000 ? 1 : 0) +
-          (imports.length > 10 ? 1 : 0)
+          longFnLen * 2 +
+          (codeLen > 5000 ? 2 : codeLen > 2000 ? 1 : 0) +
+          (importLen > 10 ? 1 : 0)
       )
     )
   );
 
   // Generate Issues
-  if (!hasErrorHandling && (functions.length > 0 || code.length > 200)) {
+  if (!hasErrorHandling && (fnLength > 0 || codeLen > 200)) {
     issues.push({
       type: 'error-handling',
       severity: 'medium',
@@ -249,7 +265,7 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
     });
   }
 
-  if (!hasTypes && (isTS || isJS) && code.length > 500) {
+  if (!hasTypes && (isTS || isJS) && codeLen > 500) {
     issues.push({
       type: 'type-safety',
       severity: 'low',
@@ -258,16 +274,16 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
     });
   }
 
-  for (const func of longFunctions) {
+  for (let i = 0; i < longFnLen; i++) {
     issues.push({
       type: 'complexity',
       severity: 'medium',
-      message: `Function "${func}" may exceed 50 lines`,
-      suggestion: `Break "${func}" into smaller, focused helper functions.`,
+      message: `Function "${longFunctions[i]}" may exceed 50 lines`,
+      suggestion: `Break "${longFunctions[i]}" into smaller, focused helper functions.`,
     });
   }
 
-  if (comments < lines.length * 0.02 && lines.length > 20) {
+  if (comments < lineCount * 0.02 && lineCount > 20) {
     issues.push({
       type: 'documentation',
       severity: 'low',
@@ -303,7 +319,7 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
     });
   }
 
-  if (functions.length === 0 && classes.length === 0 && code.length > 100) {
+  if (fnLength === 0 && classes.length === 0 && codeLen > 100) {
     issues.push({
       type: 'structure',
       severity: 'low',
@@ -312,27 +328,27 @@ export function analyzeStructure(code: string, language: string): CodeStructure 
     });
   }
 
-  if (imports.length > 15) {
+  if (importLen > 15) {
     issues.push({
       type: 'dependencies',
       severity: 'medium',
-      message: `${imports.length} imports — potential over-dependency`,
+      message: `${importLen} imports — potential over-dependency`,
       suggestion: 'Review imports for unused dependencies. Consider lazy loading.',
     });
   }
 
-  if (lines.length > 300) {
+  if (lineCount > 300) {
     issues.push({
       type: 'file-size',
       severity: 'medium',
-      message: `File has ${lines.length} lines — consider splitting`,
+      message: `File has ${lineCount} lines — consider splitting`,
       suggestion: 'Split into smaller modules for maintainability.',
     });
   }
 
   return {
     language,
-    lines: lines.length,
+    lines: lineCount,
     functions,
     classes,
     imports,
@@ -362,14 +378,12 @@ function calculateRiskScore(structure: CodeStructure): number {
 }
 
 function findAffectedFiles(filePath: string, structure: CodeStructure): string[] {
-  const affected: string[] = [];
-  const ext = filePath.split('.').pop() ?? '';
-  if (['ts', 'tsx', 'js', 'jsx'].includes(ext)) {
-    if (structure.exports.length > 0) {
-      affected.push('(modules importing exported symbols)');
-    }
+  const dotIdx = filePath.lastIndexOf('.');
+  const ext = dotIdx !== -1 ? filePath.slice(dotIdx + 1) : '';
+  if (['ts', 'tsx', 'js', 'jsx'].includes(ext) && structure.exports.length > 0) {
+    return ['(modules importing exported symbols)'];
   }
-  return affected;
+  return [];
 }
 
 /**
@@ -390,14 +404,16 @@ export function evolveCodeStructure(
   // 1. Remove debugging logs safely
   if (evolved.includes('console.log(')) {
     const beforeLen = evolved.length;
-    evolved = evolved.replace(/^\s*console\.log\(.*?\);?\s*\n?/gm, '');
+    CONSOLE_LOG_REGEX.lastIndex = 0;
+    evolved = evolved.replace(CONSOLE_LOG_REGEX, '');
     if (evolved.length !== beforeLen) {
       changesApplied.push('Pruned debug console.log statements');
     }
   }
   if (isPython && evolved.includes('print(')) {
     const beforeLen = evolved.length;
-    evolved = evolved.replace(/^\s*print\(.*?\)\s*\n?/gm, '');
+    PRINT_REGEX.lastIndex = 0;
+    evolved = evolved.replace(PRINT_REGEX, '');
     if (evolved.length !== beforeLen) {
       changesApplied.push('Pruned debug print statements');
     }
@@ -423,7 +439,8 @@ export function evolveCodeStructure(
 
   // 3. Enhance TypeScript Interfaces & Error Handling
   if (isTS && !evolved.includes('interface ') && !evolved.includes('type ') && structure.functions.length > 0) {
-    const baseName = filePath.split('/').pop()?.replace(/\.[^/.]+$/, '') ?? 'Module';
+    const lastSlash = filePath.lastIndexOf('/');
+    const baseName = (lastSlash !== -1 ? filePath.slice(lastSlash + 1) : filePath).replace(/\.[^/.]+$/, '') || 'Module';
     const pascalName = baseName.charAt(0).toUpperCase() + baseName.slice(1).replace(/[-_](\w)/g, (_, c: string) => c.toUpperCase());
     const interfaceDef = `\nexport interface ${pascalName}Config {\n  readonly id?: string;\n  readonly enabled?: boolean;\n  readonly metadata?: Record<string, unknown>;\n}\n\n`;
 
@@ -443,16 +460,18 @@ export function evolveCodeStructure(
 
   // 4. Wrap unguarded async functions in robust error handling if missing
   if ((isTS || isJS) && !structure.hasErrorHandling && evolved.includes('async ')) {
+    ASYNC_FUNC_REGEX.lastIndex = 0;
     evolved = evolved.replace(
-      /async\s+function\s+([a-zA-Z0-9_]+)\s*\((.*?)\)\s*(?::\s*[^={]+)?\s*\{(?!\s*try\s*\{)/g,
+      ASYNC_FUNC_REGEX,
       (_match, fnName: string, params: string) => {
         changesApplied.push(`Added defensive error boundary to async function '${fnName}'`);
         return `async function ${fnName}(${params}) {\n  try {`;
       }
     );
     if (evolved.includes('  try {') && !evolved.includes('} catch (error)')) {
+      RETURN_BLOCK_REGEX.lastIndex = 0;
       evolved = evolved.replace(
-        /(\n\s*return\s+[^;]+;\s*\n)(\})/g,
+        RETURN_BLOCK_REGEX,
         '$1  } catch (error) {\n    console.error(`[Error] Execution failed in async operation:`, error);\n    throw error;\n  }\n$2'
       );
     }
@@ -460,7 +479,8 @@ export function evolveCodeStructure(
 
   // 5. Generate companion type definitions file for complex modules
   if ((isTS || isJS) && structure.complexity >= 4 && structure.exports.length > 0) {
-    const baseName = filePath.split('/').pop()?.replace(/\.[^/.]+$/, '') ?? 'types';
+    const lastSlash = filePath.lastIndexOf('/');
+    const baseName = (lastSlash !== -1 ? filePath.slice(lastSlash + 1) : filePath).replace(/\.[^/.]+$/, '') || 'types';
     const companionPath = filePath.replace(/\.[^/.]+$/, '.types.ts');
     if (companionPath !== filePath) {
       const companionContent = `/**\n * Companion Type Declarations for ${filePath}\n */\n\nexport interface ${baseName.toUpperCase()}_Contract {\n  readonly version: string;\n  readonly status: 'active' | 'deprecated' | 'experimental';\n  readonly createdAt: string;\n}\n`;
@@ -480,16 +500,19 @@ export function evolveCodeStructure(
 // PUBLIC API — called by llm-provider.ts & debate
 // ─────────────────────────────────────────────
 
+const PATH_EXT_REGEX = /(?:File path|file):\s*([^\n]+)/i;
+const FALLBACK_PATH_REGEX = /([a-zA-Z0-9_./-]+\.(?:ts|tsx|js|jsx|py|go|rs|java|rb|cs|cpp|c|php|swift|kt))/;
+const CODE_BLOCK_REGEX = /```[\w]*\n([\s\S]*?)```/;
+
 /**
  * Analyze code and return JSON proposal (for /api/evolution/propose).
  * Output matches the format expected by the propose route.
  */
 export function dalekBrainAnalyze(systemPrompt: string, userPrompt: string): string | null {
-  const pathMatch =
-    (systemPrompt + '\n' + userPrompt).match(/(?:File path|file):\s*([^\n]+)/i) ||
-    userPrompt.match(/([a-zA-Z0-9_./-]+\.(?:ts|tsx|js|jsx|py|go|rs|java|rb|cs|cpp|c|php|swift|kt))/);
+  const combinedPrompt = systemPrompt + '\n' + userPrompt;
+  const pathMatch = PATH_EXT_REGEX.exec(combinedPrompt) || FALLBACK_PATH_REGEX.exec(userPrompt);
 
-  const codeBlockMatch = userPrompt.match(/```[\w]*\n([\s\S]*?)```/);
+  const codeBlockMatch = CODE_BLOCK_REGEX.exec(userPrompt);
   const code = codeBlockMatch ? codeBlockMatch[1] : userPrompt.slice(-5000);
 
   if (!code || code.trim().length < 10) {
@@ -510,13 +533,19 @@ export function dalekBrainAnalyze(systemPrompt: string, userPrompt: string): str
 
   const { evolvedCode, changesApplied, companionFiles } = evolveCodeStructure(code, filePath, structure);
 
+  const appliedLen = changesApplied.length;
+  const changesLines = new Array<string>(appliedLen);
+  for (let i = 0; i < appliedLen; i++) {
+    changesLines[i] = `  ✓ ${changesApplied[i]}`;
+  }
+
   const analysisLines = [
     `=== DALEK BRAIN STRUCTURAL EVOLUTION ===`,
     `Language: ${structure.language} | Size: ${structure.lines} lines | Complexity: ${structure.complexity}/10`,
     `Functions: ${structure.functions.length} | Classes: ${structure.classes.length} | Exports: ${structure.exports.length}`,
     '',
-    changesApplied.length > 0 ? `Enhancements Applied (${changesApplied.length}):` : 'Code Verification:',
-    ...changesApplied.map((c) => `  ✓ ${c}`),
+    appliedLen > 0 ? `Enhancements Applied (${appliedLen}):` : 'Code Verification:',
+    ...changesLines,
     '',
     `Detected Architecture Properties:`,
     `  - Error Handling: ${structure.hasErrorHandling ? 'Present' : 'Reinforced'}`,
@@ -546,7 +575,8 @@ export function dalekBrainDebateVote(
 ): DebateVoteResult {
   const normId = (agentId ?? '').toLowerCase();
   const lineDelta = proposedCode.split('\n').length - originalCode.split('\n').length;
-  const hasSecret = /(?:sk-[a-zA-Z0-9]{20,48}|AIza[0-9A-Za-z\-_]{35}|gh[pusr]_[a-zA-Z0-9]{36})/g.test(proposedCode);
+  SECRET_REGEX.lastIndex = 0;
+  const hasSecret = SECRET_REGEX.test(proposedCode);
 
   if (normId === 'security') {
     if (hasSecret) {
@@ -631,7 +661,7 @@ export function dalekBrainChat(
 ): string | null {
   const lower = userMessage.toLowerCase();
 
-  if (lower.includes('hello') || lower.includes('hi') || lower === 'hey') {
+  if (lower === 'hello' || lower === 'hi' || lower === 'hey' || lower.includes('hello ')) {
     return 'Operational. What do you need?';
   }
   if (lower.includes('what can you do') || lower.includes('help') || lower.includes('capabilities')) {
@@ -647,9 +677,10 @@ export function dalekBrainChat(
     return 'EXTERMINATE!';
   }
 
-  const recentSystemMsgs = history.filter((m) => m.role === 'system').slice(-3);
-  for (const msg of recentSystemMsgs) {
-    if (msg.content.includes('PENDING') || msg.content.includes('mutation')) {
+  const historyLen = history.length;
+  for (let i = historyLen - 1; i >= 0 && i >= historyLen - 3; i--) {
+    const msg = history[i];
+    if (msg.role === 'system' && (msg.content.includes('PENDING') || msg.content.includes('mutation'))) {
       return 'A mutation is pending. Type YES to apply or NO to reject.';
     }
   }
@@ -664,7 +695,14 @@ export function dalekBrainMultiTurn(
   _systemPrompt: string,
   contents: readonly MultiTurnContent[]
 ): string | null {
-  const lastUser = contents.filter((c) => c.role === 'user').pop();
+  let lastUser: MultiTurnContent | undefined;
+  for (let i = contents.length - 1; i >= 0; i--) {
+    if (contents[i].role === 'user') {
+      lastUser = contents[i];
+      break;
+    }
+  }
+
   if (!lastUser || !lastUser.parts || lastUser.parts.length === 0) return null;
 
   const text = lastUser.parts[0].text ?? '';
