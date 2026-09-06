@@ -11,23 +11,38 @@ const { readFileSync, writeFileSync } = require('node:fs');
 
 const TARGET_FILE_PATH = 'src/app/api/evolution/propose/route.ts';
 
-const REGEX_JSON_FIX = /\\`\\`\\`json\{/g;
-const REGEX_TSX_FIX = /\}\\`\\`\\`\\`\\`\\`tsx/g;
-const REPLACEMENT_JSON = '\\`\\`\\`json\\n{';
-const REPLACEMENT_TSX = '}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n';
+const FORMATTING_REPLACEMENTS = Object.freeze([
+    {
+        pattern: /\\`\\`\\`json\{/g,
+        replacement: '\\`\\`\\`json\\n{',
+    },
+    {
+        pattern: /\}\\`\\`\\`\\`\\`\\`tsx/g,
+        replacement: '}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n',
+    },
+]);
 
 /**
- * Normalizes code block formatting within the evolution proposal API route.
- * Optimized for performance by using direct synchronous I/O, pre-compiled global regexes,
- * and avoiding intermediate allocations where possible.
+ * Applies a sequence of regex transformations to string content.
+ * 
+ * @param {string} content - The source string to transform.
+ * @returns {string} The transformed string.
+ */
+function applyFormattingTransforms(content) {
+    return FORMATTING_REPLACEMENTS.reduce(
+        (currentContent, { pattern, replacement }) => currentContent.replace(pattern, replacement),
+        content
+    );
+}
+
+/**
+ * Normalizes code block formatting within the target file.
+ * 
  * @param {string} filePath - Path to the target file.
  */
 function normalizeCodeBlockFormatting(filePath) {
     const originalContent = readFileSync(filePath, 'utf8');
-
-    const normalizedContent = originalContent
-        .replace(REGEX_JSON_FIX, REPLACEMENT_JSON)
-        .replace(REGEX_TSX_FIX, REPLACEMENT_TSX);
+    const normalizedContent = applyFormattingTransforms(originalContent);
 
     if (originalContent !== normalizedContent) {
         writeFileSync(filePath, normalizedContent, 'utf8');
