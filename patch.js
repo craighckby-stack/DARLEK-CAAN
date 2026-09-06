@@ -1,11 +1,18 @@
-const fs = require('fs');
-const file = 'src/app/api/evolution/propose/route.ts';
-const lines = fs.readFileSync(file, 'utf8').split('\n');
+const { readFileSync, writeFileSync } = require('fs');
 
-const idx = lines.findIndex(l => l.includes('const userPrompt = `Analyze this file'));
+const FILE_PATH = 'src/app/api/evolution/propose/route.ts';
+const SEARCH_TARGET = 'const userPrompt = `Analyze this file';
+
+const content = readFileSync(FILE_PATH, 'utf8');
+const idx = content.indexOf(SEARCH_TARGET);
+
 if (idx !== -1) {
-    lines.splice(idx, 0, `    const repoFilesContext = Array.isArray((body as any)?.repoFiles) ? \`\\nEXISTING REPOSITORY FILES:\\n\${(body as any).repoFiles.slice(0, 1000).join('\\n')}\\n\` : '';`);
-    lines[idx + 1] = lines[idx + 1].replace('${userReposContextStr}', '${userReposContextStr}${repoFilesContext}');
-    fs.writeFileSync(file, lines.join('\n'));
+    const lineEndIdx = content.indexOf('\n', idx);
+    const insertSnippet = `    const repoFilesContext = Array.isArray((body as any)?.repoFiles) ? \`\\nEXISTING REPOSITORY FILES:\\n\${(body as any).repoFiles.slice(0, 1000).join('\\n')}\\n\` : '';\n`;
+    
+    let updated = content.slice(0, lineEndIdx + 1) + insertSnippet + content.slice(lineEndIdx + 1);
+    updated = updated.replace('${userReposContextStr}', '${userReposContextStr}${repoFilesContext}');
+
+    writeFileSync(FILE_PATH, updated);
     console.log('Patched userPrompt');
 }
