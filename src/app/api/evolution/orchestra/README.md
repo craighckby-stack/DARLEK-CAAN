@@ -1,17 +1,32 @@
 # Orchestra Evolution Engine
 
+> **Executive Summary**: High-performance multi-model consensus and synthetic reasoning engine supporting concurrent execution and iterative debate modes.
+
+## Table of Contents
+- [Architecture](#architecture)
+- [Integration](#integration)
+- [Workflow](#workflow)
+
+---
+
 ## Architecture
 
-The Orchestra Evolution Engine manages multi-model consensus and synthetic reasoning through two primary execution modes:
+The engine manages synthetic reasoning through two primary execution modes:
 
-- **Orchestrator Class**: Core module that encapsulates execution state and control logic.
-- **Parallel Mode**: Executes concurrent requests for rapid multi-perspective synthesis.
-- **Debate Mode**: Executes sequential, stateful, turn-based reasoning for deep iterative refinement.
+| Component / Mode | Description |
+| :--- | :--- |
+| **Orchestrator Class** | Core module encapsulating execution state and control logic. |
+| **Parallel Mode** | Executes concurrent requests for rapid multi-perspective synthesis. |
+| **Debate Mode** | Executes sequential, stateful, turn-based reasoning for deep iterative refinement. |
+
+---
 
 ## Integration
 
 - **LLM Provider**: Leverages `lib/llm-provider` to ensure robust multi-model fallback and high availability.
 - **Agent Swarms**: Architected for seamless integration with `sovereign-kernel` agent swarms.
+
+---
 
 ## Workflow
 
