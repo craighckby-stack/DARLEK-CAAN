@@ -18,6 +18,9 @@ const CONFIG = Object.freeze({
     MAX_FILE_SIZE_BYTES: 50 * 1024 * 1024, // 50MB limit
 });
 
+// Cache base directory resolution to avoid redundant path calculations during execution
+const BASE_DIR = path.resolve();
+
 /**
  * Validates and normalizes the target file path to prevent directory traversal and injection vectors.
  * 
@@ -26,10 +29,9 @@ const CONFIG = Object.freeze({
  * @throws {Error} If a path traversal attempt is detected.
  */
 function getValidatedTargetSecurePath(inputPath) {
-    const baseDir = path.resolve();
-    const resolvedPath = path.resolve(baseDir, inputPath);
+    const resolvedPath = path.resolve(BASE_DIR, inputPath);
 
-    if (!resolvedPath.startsWith(baseDir)) {
+    if (!resolvedPath.startsWith(BASE_DIR)) {
         throw new Error('Security Violation: Path traversal attempt detected.');
     }
 
@@ -37,35 +39,40 @@ function getValidatedTargetSecurePath(inputPath) {
 }
 
 /**
- * Ensures the target file exists and adheres to memory safety and size limits.
+ * Ensures the target file exists and adheres to memory safety and size limits using synchronous file descriptors.
  * 
  * @param {string} targetPath - The absolute path of the file to inspect.
  * @throws {Error} If the file does not exist or exceeds size limits.
  */
 function assertFileSafety(targetPath) {
-    if (!fs.existsSync(targetPath)) {
+    let stats;
+    try {
+        stats = fs.statSync(targetPath);
+    } catch {
         throw new Error(`Critical target path not found: ${targetPath}`);
     }
 
-    const stats = fs.statSync(targetPath);
     if (stats.size > CONFIG.MAX_FILE_SIZE_BYTES) {
         throw new Error('Security Violation: Target file size exceeds strict memory safety limits.');
     }
 }
 
 /**
- * Strips redundant duplicate instances of the Edge Governance Gatekeeper class from the codebase.
+ * Strips redundant duplicate instances of the Edge Governance Gatekeeper class from the codebase efficiently.
  * 
  * @param {string} code - The raw source code string.
  * @returns {string} The optimized source code string.
  */
 function removeDuplicateEdgeGovernance(code) {
-    // Use non-catastrophic regex patterns with bounded scope to mitigate ReDoS vulnerabilities
     const classRegex = /\/\/ 9\.5 Edge Governance.*?export class EdgeGovernanceGatekeeper \{.*?\}\s*\}/gs;
     const matches = code.match(classRegex);
 
     if (matches && matches.length > 1) {
-        return code.replace(matches[1], '');
+        // Direct string replacement avoiding unnecessary re-matching overhead
+        const targetIndex = code.indexOf(matches[1]);
+        if (targetIndex !== -1) {
+            return code.slice(0, targetIndex) + code.slice(targetIndex + matches[1].length);
+        }
     }
 
     return code;
