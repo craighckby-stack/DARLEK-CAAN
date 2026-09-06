@@ -19,7 +19,7 @@ export interface ToastItem extends ToastProps {
   readonly action?: React.ReactNode
 }
 
-const ToastItemComponent = memo<ToastItem>(({ title, description, action, ...props }) => (
+const ToastItemCard = memo<ToastItem>(({ title, description, action, ...props }) => (
   <Toast {...props}>
     <div className="grid gap-1">
       {title && <ToastTitle>{title}</ToastTitle>}
@@ -30,21 +30,16 @@ const ToastItemComponent = memo<ToastItem>(({ title, description, action, ...pro
   </Toast>
 ))
 
-ToastItemComponent.displayName = "ToastItemComponent"
+ToastItemCard.displayName = "ToastItemCard"
 
 export const Toaster: React.FC = memo((): JSX.Element => {
   const { toasts } = useToast()
-  const len = toasts.length
-
-  const renderedToasts = new Array(len)
-  for (let i = 0; i < len; i++) {
-    const { id, ...toastProps } = toasts[i]
-    renderedToasts[i] = <ToastItemComponent key={id} id={id} {...toastProps} />
-  }
 
   return (
     <ToastProvider>
-      {renderedToasts}
+      {toasts.map(({ id, ...toastProps }) => (
+        <ToastItemCard key={id} id={id} {...toastProps} />
+      ))}
       <ToastViewport />
     </ToastProvider>
   )
