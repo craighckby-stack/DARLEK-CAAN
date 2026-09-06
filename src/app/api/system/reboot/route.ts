@@ -55,10 +55,7 @@ const RATE_LIMIT_DELAY_MS = 300;
 const FETCH_TIMEOUT_MS = 8000;
 
 function isAllowedFile(filePath: string): boolean {
-  if (filePath.startsWith('src/') || filePath.startsWith('public/')) {
-    return true;
-  }
-  return ALLOWED_ROOT_FILES.has(filePath);
+  return filePath.startsWith('src/') || filePath.startsWith('public/') || ALLOWED_ROOT_FILES.has(filePath);
 }
 
 function createGitHubHeaders(token: string): Record<string, string> {
@@ -75,15 +72,34 @@ async function fetchSessionMutations(sessionId: string): Promise<string[]> {
       orderBy: { createdAt: 'desc' },
       select: { filePath: true },
     });
-    const len = mutations.length;
-    const paths = new Array<string>(len);
-    for (let i = 0; i < len; i++) {
-      paths[i] = mutations[i].filePath;
-    }
-    return paths;
+    return mutations.map((mutation) => mutation.filePath);
   } catch {
     return [];
   }
+}
+
+function isValidSourcePath(filePath: string): boolean {
+  if (
+    filePath.includes('node_modules/') ||
+    filePath.includes('.next/') ||
+    filePath.includes('.git/')
+  ) {
+    return false;
+  }
+
+  const extension = path.extname(filePath).toLowerCase();
+  if (SOURCE_EXTENSIONS.has(extension)) {
+    return true;
+  }
+
+  return (
+    filePath.startsWith('next.config.') ||
+    filePath === 'package.json' ||
+    filePath === 'tsconfig.json' ||
+    filePath.startsWith('tailwind.config.') ||
+    filePath.startsWith('postcss.config.') ||
+    filePath.startsWith('.eslintrc.')
+  );
 }
 
 async function fetchRepositoryTreeSources(
@@ -105,46 +121,9 @@ async function fetchRepositoryTreeSources(
     return [];
   }
 
-  const itemsLen = treeItems.length;
-  const validPaths: string[] = [];
-
-  for (let i = 0; i < itemsLen; i++) {
-    const item = treeItems[i];
-    if (item.type !== 'blob') continue;
-
-    const p = item.path;
-    if (
-      p.includes('node_modules/') ||
-      p.includes('.next/') ||
-      p.includes('.git/')
-    ) {
-      continue;
-    }
-
-    const lastDotIdx = p.lastIndexOf('.');
-    const extension = lastDotIdx !== -1 ? p.substring(lastDotIdx).toLowerCase() : '';
-    const isSourceExt = SOURCE_EXTENSIONS.has(extension);
-    
-    let isConfigOrRoot = isSourceExt;
-    if (!isConfigOrRoot) {
-      if (
-        p.startsWith('next.config.') ||
-        p === 'package.json' ||
-        p === 'tsconfig.json' ||
-        p.startsWith('tailwind.config.') ||
-        p.startsWith('postcss.config.') ||
-        p.startsWith('.eslintrc.')
-      ) {
-        isConfigOrRoot = true;
-      }
-    }
-
-    if (isConfigOrRoot) {
-      validPaths.push(p);
-    }
-  }
-
-  return validPaths;
+  return treeItems
+    .filter((item) => item.type === 'blob' && isValidSourcePath(item.path))
+    .map((item) => item.path);
 }
 
 async function createTimestampedBackupDir(projectRoot: string): Promise<{ backupDir: string; timestamp: string }> {
@@ -210,8 +189,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       mutatedFiles = await fetchRepositoryTreeSources(owner, repo, branch, token);
     }
 
-    const mutatedLen = mutatedFiles.length;
-    if (mutatedLen === 0) {
+    if (mutatedFiles.length === 0) {
       return NextResponse.json({
         success: true,
         message: 'No files to reboot — no mutations or repository sources found.',
@@ -225,22 +203,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const projectRoot = process.cwd();
     const { backupDir, timestamp } = await createTimestampedBackupDir(projectRoot);
 
-    const results: RebootFileResult[] = new Array(mutatedLen);
+    const results: RebootFileResult[] = [];
     let updatedCount = 0;
     let failedCount = 0;
     let skippedCount = 0;
 
-    for (let i = 0; i < mutatedLen; i++) {
-      const filePath = mutatedFiles[i];
-
+    for (const [index, filePath] of mutatedFiles.entries()) {
       if (!isAllowedFile(filePath)) {
-        results[i] = { file: filePath, status: 'skipped' };
+        results.push({ file: filePath, status: 'skipped' });
         skippedCount++;
         continue;
       }
 
       try {
-        if (i > 0) {
+        if (index > 0) {
           await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
         }
 
@@ -261,7 +237,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ]);
 
           if (existingContent === newContent) {
-            results[i] = { file: filePath, status: 'skipped', backup: backupPath };
+            results.push({ file: filePath, status: 'skipped', backup: backupPath });
             skippedCount++;
             continue;
           }
@@ -271,10 +247,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         await fs.writeFile(localPath, newContent, 'utf-8');
         updatedCount++;
 
-        results[i] = { file: filePath, status: 'updated' };
+        results.push({ file: filePath, status: 'updated' });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error encountered';
-        results[i] = { file: filePath, status: 'error', error: errorMessage };
+        results.push({ file: filePath, status: 'error', error: errorMessage });
         failedCount++;
       }
     }
@@ -283,7 +259,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       success: true,
       message: `Reboot complete. ${updatedCount} files updated, ${skippedCount} skipped, ${failedCount} failed.`,
       results,
-      total: mutatedLen,
+      total: mutatedFiles.length,
       updated: updatedCount,
       failed: failedCount,
       backupDir: `.darleK-backups/pre-reboot-${timestamp}`,
