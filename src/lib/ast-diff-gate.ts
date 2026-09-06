@@ -1,11 +1,7 @@
 /**
  * ── AST DIFF GATE (PROGRAMMATIC SYNTAX & SYMBOL MUTATION VERIFIER) ──
  * This module performs AST-level structural diffing between original and proposed code.
- * It prevents LLM failure modes such as:
- *   1. "Dalek Caan Omega" self-referential persona/branding injections into target repos.
- *   2. AST Token / Symbol Drift (complete rewriting of logic into dummy stubs).
- *   3. Symbol Map Disruption (erasing exported functions, interfaces, or classes).
- *   4. Unresolved Local AST Import References.
+ * Optimized for execution speed, memory footprint reduction, caching, and allocation efficiency.
  */
 
 export interface AstSymbol {
@@ -16,7 +12,7 @@ export interface AstSymbol {
 
 export interface AstDiffResult {
   passed: boolean;
-  astScore: number; // 0 to 100
+  astScore: number;
   symbolMap: {
     originalCount: number;
     proposedCount: number;
@@ -24,7 +20,7 @@ export interface AstDiffResult {
     missingSymbols: AstSymbol[];
   };
   brandingInjections: string[];
-  structuralDriftRatio: number; // 0.0 (identical) to 1.0 (total rewrite)
+  structuralDriftRatio: number;
   violations: Array<{
     code: 'BRANDING_INJECTION' | 'AST_SYMBOL_DROPPED' | 'AST_STRUCTURAL_DRIFT' | 'UNRESOLVED_AST_IMPORT';
     message: string;
@@ -32,7 +28,6 @@ export interface AstDiffResult {
   }>;
 }
 
-// Banned self-referential terms that LLMs inadvertently inject into target repos
 const SYSTEM_PERSONA_BRANDING_TERMS: readonly string[] = [
   'dalek caan',
   'dalek_caan',
@@ -47,7 +42,6 @@ const SYSTEM_PERSONA_BRANDING_TERMS: readonly string[] = [
   'dalek caan jarvis',
 ];
 
-// Pre-compiled regex cache and keyword sets for high-performance AST parsing and tokenization
 const KEYWORDS: ReadonlySet<string> = new Set([
   'if', 'else', 'for', 'while', 'switch', 'catch', 'constructor',
   'return', 'type', 'interface', 'import', 'export', 'class', 'from', 'as', 'new'
@@ -63,22 +57,37 @@ const TS_FN_REGEXES: readonly RegExp[] = [
   /(?:public|private|protected|static|async|\s)+\s+([a-zA-Z_]\w*)\s*(?:<[^>]*>)?\s*\(/g,
 ];
 
-/**
- * Extracts top-level AST symbols (functions, classes, interfaces, types) with maximized efficiency.
- */
-export function parseAstSymbols(code: string, isPython: boolean): AstSymbol[] {
-  if (typeof code !== 'string') return [];
-  
+// LRU/bounded cache for AST parsing and tokenization to eliminate redundant regex evaluation overhead
+const AST_CACHE_MAX_SIZE = 200;
+const astSymbolsCache = new Map<string, AstSymbol[]>();
+const tokenCache = new Map<string, string[]>();
+
+function getCachedSymbols(code: string, isPython: boolean): AstSymbol[] {
+  const cacheKey = (isPython ? 'py:' : 'ts:') + code;
+  let cached = astSymbolsCache.get(cacheKey);
+  if (cached) return cached;
+
+  cached = parseAstSymbolsUncached(code, isPython);
+  if (astSymbolsCache.size >= AST_CACHE_MAX_SIZE) {
+    const firstKey = astSymbolsCache.keys().next().value;
+    if (firstKey !== undefined) {
+      astSymbolsCache.delete(firstKey);
+    }
+  }
+  astSymbolsCache.set(cacheKey, cached);
+  return cached;
+}
+
+function parseAstSymbolsUncached(code: string, isPython: boolean): AstSymbol[] {
   const symbols: AstSymbol[] = [];
   const seen = new Set<string>();
 
   if (isPython) {
     let match: RegExpExecArray | null;
-    
     PYTHON_CLASS_REGEX.lastIndex = 0;
     while ((match = PYTHON_CLASS_REGEX.exec(code)) !== null) {
       const name = match[1];
-      if (name && !seen.has(name)) {
+      if (name !== undefined && !seen.has(name)) {
         seen.add(name);
         symbols.push({ name, type: 'class' });
       }
@@ -87,18 +96,17 @@ export function parseAstSymbols(code: string, isPython: boolean): AstSymbol[] {
     PYTHON_DEF_REGEX.lastIndex = 0;
     while ((match = PYTHON_DEF_REGEX.exec(code)) !== null) {
       const name = match[1];
-      if (name && !seen.has(name)) {
+      if (name !== undefined && !seen.has(name)) {
         seen.add(name);
         symbols.push({ name, type: 'function' });
       }
     }
   } else {
     let match: RegExpExecArray | null;
-
     TS_CLASS_REGEX.lastIndex = 0;
     while ((match = TS_CLASS_REGEX.exec(code)) !== null) {
       const name = match[1];
-      if (name && !seen.has(name)) {
+      if (name !== undefined && !seen.has(name)) {
         seen.add(name);
         symbols.push({ name, type: 'class' });
       }
@@ -107,17 +115,18 @@ export function parseAstSymbols(code: string, isPython: boolean): AstSymbol[] {
     TS_INTERFACE_REGEX.lastIndex = 0;
     while ((match = TS_INTERFACE_REGEX.exec(code)) !== null) {
       const name = match[1];
-      if (name && !seen.has(name)) {
+      if (name !== undefined && !seen.has(name)) {
         seen.add(name);
         symbols.push({ name, type: 'interface' });
       }
     }
 
-    for (const regex of TS_FN_REGEXES) {
+    for (let i = 0, len = TS_FN_REGEXES.length; i < len; i++) {
+      const regex = TS_FN_REGEXES[i];
       regex.lastIndex = 0;
       while ((match = regex.exec(code)) !== null) {
         const name = match[1];
-        if (name && !KEYWORDS.has(name) && !seen.has(name) && name.length > 1) {
+        if (name !== undefined && !KEYWORDS.has(name) && !seen.has(name) && name.length > 1) {
           seen.add(name);
           symbols.push({ name, type: 'function' });
         }
@@ -129,35 +138,58 @@ export function parseAstSymbols(code: string, isPython: boolean): AstSymbol[] {
 }
 
 /**
+ * Extracts top-level AST symbols (functions, classes, interfaces, types) with maximized efficiency via caching.
+ */
+export function parseAstSymbols(code: string, isPython: boolean): AstSymbol[] {
+  if (typeof code !== 'string') return [];
+  return getCachedSymbols(code, isPython);
+}
+
+function getCachedTokens(src: string): string[] {
+  let cached = tokenCache.get(src);
+  if (cached) return cached;
+
+  const normalized = src
+    .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+    .replace(/#.*/g, '')
+    .replace(/["'].*?["']/g, 'STR')
+    .replace(/\b\d+\b/g, 'NUM');
+
+  cached = normalized.split(/\s+/).filter((t) => t.length > 0);
+
+  if (tokenCache.size >= AST_CACHE_MAX_SIZE) {
+    const firstKey = tokenCache.keys().next().value;
+    if (firstKey !== undefined) {
+      tokenCache.delete(firstKey);
+    }
+  }
+  tokenCache.set(src, cached);
+  return cached;
+}
+
+/**
  * Calculates token/syntax AST structural drift ratio using normalized token n-grams and memory-efficient transforms.
  */
 export function calculateAstDriftRatio(originalCode: string, proposedCode: string): number {
   if (typeof originalCode !== 'string' || typeof proposedCode !== 'string') return 0;
 
-  const tokenize = (src: string): string[] =>
-    src
-      .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '') // remove comments
-      .replace(/#.*/g, '')
-      .replace(/["'].*?["']/g, 'STR') // normalize strings
-      .replace(/\b\d+\b/g, 'NUM') // normalize numbers
-      .split(/\s+/)
-      .filter((t) => t.length > 0);
+  const origTokens = getCachedTokens(originalCode);
+  const propTokens = getCachedTokens(proposedCode);
 
-  const origTokens = tokenize(originalCode);
-  const propTokens = tokenize(proposedCode);
-
-  if (origTokens.length === 0) return 0;
+  const origLen = origTokens.length;
+  const propLen = propTokens.length;
+  if (origLen === 0) return 0;
 
   const origSet = new Set(origTokens);
   let matched = 0;
 
-  for (let i = 0, len = propTokens.length; i < len; i++) {
+  for (let i = 0; i < propLen; i++) {
     if (origSet.has(propTokens[i])) {
       matched++;
     }
   }
 
-  const overlap = propTokens.length > 0 ? matched / Math.max(origTokens.length, propTokens.length) : 0;
+  const overlap = propLen > 0 ? matched / Math.max(origLen, propLen) : 0;
   return Math.max(0, Math.min(1, 1 - overlap));
 }
 
@@ -171,8 +203,9 @@ export function detectBrandingInjection(originalCode: string, proposedCode: stri
   const propLower = proposedCode.toLowerCase();
 
   const injected: string[] = [];
+  const len = SYSTEM_PERSONA_BRANDING_TERMS.length;
 
-  for (let i = 0, len = SYSTEM_PERSONA_BRANDING_TERMS.length; i < len; i++) {
+  for (let i = 0; i < len; i++) {
     const term = SYSTEM_PERSONA_BRANDING_TERMS[i];
     if (!origLower.includes(term) && propLower.includes(term)) {
       injected.push(term);
@@ -198,35 +231,49 @@ export function runAstDiffGate(
   const violations: AstDiffResult['violations'] = [];
   let astScore = 100;
 
-  // 1. Symbol Map Extraction & Comparison
   const origSymbols = parseAstSymbols(safeOriginal, isPython);
   const propSymbols = parseAstSymbols(safeProposed, isPython);
 
-  const propSymbolNames = new Set(propSymbols.map((s) => s.name));
-  const missingSymbols = origSymbols.filter((s) => !propSymbolNames.has(s.name));
+  const propSymbolNames = new Set();
+  for (let i = 0, len = propSymbols.length; i < len; i++) {
+    propSymbolNames.add(propSymbols[i].name);
+  }
 
-  const retainedCount = origSymbols.length - missingSymbols.length;
+  const missingSymbols: AstSymbol[] = [];
+  for (let i = 0, len = origSymbols.length; i < len; i++) {
+    const sym = origSymbols[i];
+    if (!propSymbolNames.has(sym.name)) {
+      missingSymbols.push(sym);
+    }
+  }
 
-  if (origSymbols.length >= 2 && missingSymbols.length > 0) {
-    const dropRatio = missingSymbols.length / origSymbols.length;
-    if (dropRatio >= 0.5 && missingSymbols.length >= 3) {
+  const origLen = origSymbols.length;
+  const missingLen = missingSymbols.length;
+  const retainedCount = origLen - missingLen;
+
+  if (origLen >= 2 && missingLen > 0) {
+    const dropRatio = missingLen / origLen;
+    if (dropRatio >= 0.5 && missingLen >= 3) {
       astScore -= Math.min(50, Math.round(dropRatio * 100));
+      const sliced = missingSymbols.slice(0, 5);
+      const namesList = sliced.map((s) => `${s.type}:${s.name}`).join(', ');
       violations.push({
         code: 'AST_SYMBOL_DROPPED',
-        message: `AST SYMBOL GATE: Proposed mutation dropped ${missingSymbols.length} top-level AST symbol(s) [${missingSymbols.map((s) => `${s.type}:${s.name}`).slice(0, 5).join(', ')}].`,
+        message: `AST SYMBOL GATE: Proposed mutation dropped ${missingLen} top-level AST symbol(s) [${namesList}].`,
         severity: 'high',
       });
     } else {
       astScore -= Math.min(25, Math.round(dropRatio * 50));
+      const sliced = missingSymbols.slice(0, 5);
+      const namesList = sliced.map((s) => `${s.type}:${s.name}`).join(', ');
       violations.push({
         code: 'AST_SYMBOL_DROPPED',
-        message: `AST SYMBOL NOTICE: Mutation modified top-level AST symbol(s) [${missingSymbols.map((s) => `${s.type}:${s.name}`).slice(0, 5).join(', ')}].`,
+        message: `AST SYMBOL NOTICE: Mutation modified top-level AST symbol(s) [${namesList}].`,
         severity: 'medium',
       });
     }
   }
 
-  // 2. Branding & Self-Referential Injection Check
   const brandingInjections = detectBrandingInjection(safeOriginal, safeProposed);
   if (brandingInjections.length > 0) {
     astScore -= 10;
@@ -237,9 +284,8 @@ export function runAstDiffGate(
     });
   }
 
-  // 3. AST Structural Drift Ratio Check
   const driftRatio = calculateAstDriftRatio(safeOriginal, safeProposed);
-  if (safeOriginal.length > 300 && driftRatio > 0.92 && missingSymbols.length >= 3 && origSymbols.length >= 4) {
+  if (safeOriginal.length > 300 && driftRatio > 0.92 && missingLen >= 3 && origLen >= 4) {
     astScore -= 35;
     violations.push({
       code: 'AST_STRUCTURAL_DRIFT',
@@ -262,7 +308,7 @@ export function runAstDiffGate(
     passed,
     astScore,
     symbolMap: {
-      originalCount: origSymbols.length,
+      originalCount: origLen,
       proposedCount: propSymbols.length,
       retainedCount,
       missingSymbols,
