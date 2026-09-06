@@ -32,34 +32,28 @@ const HEADERS_CACHE = new Map<string, Record<string, string>>();
 function buildGitHubHeaders(token: string, includeJsonContentType = false): Record<string, string> {
   const cacheKey = `${token}_${includeJsonContentType ? 1 : 0}`;
   let cached = HEADERS_CACHE.get(cacheKey);
+  
   if (!cached) {
     cached = {
       'Authorization': `Bearer ${token}`,
       'Accept': GITHUB_API_VERSION_HEADER,
+      ...(includeJsonContentType && { 'Content-Type': 'application/json' }),
     };
-    if (includeJsonContentType) {
-      cached['Content-Type'] = 'application/json';
-    }
     HEADERS_CACHE.set(cacheKey, cached);
   }
+  
   return cached;
 }
 
 function sanitizePath(filePath: string): string {
   const segments = filePath.split('/');
-  let start = 0;
-  let end = segments.length;
-
-  while (start < end && segments[start] === '') start++;
-  while (end > start && segments[end - 1] === '') end--;
-
-  if (start >= end) return '';
-
-  const parts = new Array(end - start);
-  for (let i = start, j = 0; i < end; i++, j++) {
-    parts[j] = encodeURIComponent(segments[i]);
+  const filteredSegments = segments.filter(segment => segment.length > 0);
+  
+  if (filteredSegments.length === 0) {
+    return '';
   }
-  return parts.join('/');
+
+  return filteredSegments.map(segment => encodeURIComponent(segment)).join('/');
 }
 
 async function getFileSha(
