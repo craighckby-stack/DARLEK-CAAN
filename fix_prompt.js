@@ -8,12 +8,12 @@
 
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
+const { readFileSync, writeFileSync } = require('node:fs');
+const { resolve } = require('node:path');
 
 const CONFIG = Object.freeze({
-  BASE_DIR: path.resolve('src/app/api/evolution/propose'),
-  TARGET_FILE: path.resolve('src/app/api/evolution/propose/route.ts'),
+  BASE_DIR: resolve('src/app/api/evolution/propose'),
+  TARGET_FILE: resolve('src/app/api/evolution/propose/route.ts'),
   MAX_FILE_SIZE_BYTES: 5_000_000,
 });
 
@@ -76,11 +76,13 @@ function executePromptFix() {
   try {
     assertSecurePath(CONFIG.TARGET_FILE, CONFIG.BASE_DIR);
 
-    if (!fs.existsSync(CONFIG.TARGET_FILE)) {
+    let code;
+    try {
+      code = readFileSync(CONFIG.TARGET_FILE, 'utf8');
+    } catch {
       throw new Error(`Target evolution route file not found at: ${CONFIG.TARGET_FILE}`);
     }
 
-    let code = fs.readFileSync(CONFIG.TARGET_FILE, 'utf8');
     assertValidFileContent(code);
 
     if (!PROMPT_PATTERNS.PRIMARY_REGEX.test(code)) {
@@ -93,7 +95,7 @@ function executePromptFix() {
       code = code.replace(PROMPT_PATTERNS.SECONDARY_REGEX, '');
     }
 
-    fs.writeFileSync(CONFIG.TARGET_FILE, code, 'utf8');
+    writeFileSync(CONFIG.TARGET_FILE, code, 'utf8');
     console.log(`[EMG Success] Successfully optimized and updated prompt structures in ${CONFIG.TARGET_FILE}`);
   } catch (error) {
     console.error(`[EMG Error] Failed to execute prompt fix: ${error.message}`);
