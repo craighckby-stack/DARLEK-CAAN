@@ -8,7 +8,7 @@ export interface TableProps extends React.ComponentProps<"table"> {
 }
 
 /**
- * Creates a memoized table component wrapped in a responsive container.
+ * Creates an optimized, memoized table container component.
  */
 const Table = React.memo(
   React.forwardRef<HTMLTableElement, TableProps>(
@@ -32,7 +32,7 @@ const Table = React.memo(
 Table.displayName = "Table"
 
 /**
- * Creates a memoized table header section component.
+ * Creates an optimized, memoized table header section component.
  */
 const TableHeader = React.memo(
   React.forwardRef<HTMLTableSectionElement, React.ComponentProps<"thead">>(
@@ -51,7 +51,7 @@ const TableHeader = React.memo(
 TableHeader.displayName = "TableHeader"
 
 /**
- * Creates a memoized table body section component.
+ * Creates an optimized, memoized table body section component.
  */
 const TableBody = React.memo(
   React.forwardRef<HTMLTableSectionElement, React.ComponentProps<"tbody">>(
@@ -70,7 +70,7 @@ const TableBody = React.memo(
 TableBody.displayName = "TableBody"
 
 /**
- * Creates a memoized table footer section component.
+ * Creates an optimized, memoized table footer section component.
  */
 const TableFooter = React.memo(
   React.forwardRef<HTMLTableSectionElement, React.ComponentProps<"tfoot">>(
@@ -92,7 +92,7 @@ const TableFooter = React.memo(
 TableFooter.displayName = "TableFooter"
 
 /**
- * Creates a memoized interactive table row component.
+ * Creates an optimized, memoized interactive table row component.
  */
 const TableRow = React.memo(
   React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr">>(
@@ -114,7 +114,7 @@ const TableRow = React.memo(
 TableRow.displayName = "TableRow"
 
 /**
- * Creates a memoized table column header cell component.
+ * Creates an optimized, memoized table column header cell component.
  */
 const TableHead = React.memo(
   React.forwardRef<HTMLTableCellElement, React.ComponentProps<"th">>(
@@ -136,7 +136,7 @@ const TableHead = React.memo(
 TableHead.displayName = "TableHead"
 
 /**
- * Creates a memoized standard table data cell component.
+ * Creates an optimized, memoized standard table data cell component.
  */
 const TableCell = React.memo(
   React.forwardRef<HTMLTableCellElement, React.ComponentProps<"td">>(
@@ -158,7 +158,7 @@ const TableCell = React.memo(
 TableCell.displayName = "TableCell"
 
 /**
- * Creates a memoized descriptive table caption component.
+ * Creates an optimized, memoized descriptive table caption component.
  */
 const TableCaption = React.memo(
   React.forwardRef<HTMLTableCaptionElement, React.ComponentProps<"caption">>(
