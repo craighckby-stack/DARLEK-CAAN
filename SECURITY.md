@@ -1,42 +1,39 @@
 # OMEGA Architecture Security Protocol
 
-## Overview
+> **Executive Summary:** This document outlines the security, data governance, and vulnerability disclosure protocols for the **DARLEK CANN v3.0** evolution engine, enforcing strict state isolation and cryptographic asset protection.
 
-This repository utilizes the **DARLEK CANN v3.0** evolution engine. Security is strictly enforced through the total isolation of stateful artificial intelligence artifacts and runtime components.
+---
+
+## Quick Navigation
+* [Data Governance](#data-governance)
+  * [State Persistence](#quantum--state-persistence)
+  * [Evolution Logs](#self-refactoring--evolution-logs)
+  * [Secrets Management](#secrets-management)
+* [Vulnerability Reporting](#vulnerability-reporting--disclosure)
+* [Compliance & Standards](#compliance--standards)
 
 ---
 
 ## Data Governance
 
-### Quantum & State Persistence
-
-Files matching the following stateful signatures must remain strictly local to the execution runtime environment:
-
-* `*.consciousness.dump`
-* `*.quantum.data`
-* `*.swarm.state`
-
-### Self-Refactoring & Evolution Logs
-
-All automated evolution and mutation histories (`.evolution.history`) are explicitly excluded from Version Control Systems (VCS) to prevent recursive commit pollution and unintended state drift.
-
-### Secrets Management
-
-* Credentials and sensitive configurations are managed exclusively via `.env.local` patterns.
-* **CRITICAL:** Never commit `.vault` or `.key` cryptographic assets to the repository under any circumstances.
+| Category | Target / Pattern | Handling Rule |
+| :--- | :--- | :--- |
+| **Stateful Artifacts** | `*.consciousness.dump`, `*.quantum.data`, `*.swarm.state` | Must remain strictly local to the runtime environment. |
+| **Evolution Logs** | `.evolution.history` | Excluded from VCS to prevent recursion pollution and state drift. |
+| **Secrets & Keys** | `.vault`, `.key`, `.env.local` | Managed via local patterns; **never** commit cryptographic assets. |
 
 ---
 
 ## Vulnerability Reporting & Disclosure
 
-If you discover a security vulnerability within the OMEGA Architecture or the DARLEK CANN v3.0 engine, please follow responsible disclosure guidelines:
+To report vulnerabilities within the OMEGA Architecture or DARLEK CANN v3.0 engine securely:
 
-* **Do not** open public GitHub issues for sensitive security matters.
-* Report vulnerabilities directly to the maintainers via secure channels outlined in internal organizational policy.
-* Allow a reasonable window for verification and patching before public disclosure.
+* 🚫 **Do not** open public GitHub issues for sensitive security matters.
+* 🔒 Report directly to maintainers via secure channels defined in internal policy.
+* ⏱️ Allow a reasonable window for verification and patching prior to public disclosure.
 
 ---
 
 ## Compliance & Standards
 
-This architecture strictly adheres to the `psr-governance` framework for autonomous, self-modifying systems and distributed AI runtimes.
+Adheres strictly to the `psr-governance` framework for autonomous, self-modifying systems and distributed AI runtimes.
