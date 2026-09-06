@@ -6,12 +6,14 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
-const OVERLAY_CLASSES = "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
-const CONTENT_CLASSES = "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg"
-const HEADER_CLASSES = "flex flex-col gap-2 text-center sm:text-left"
-const FOOTER_CLASSES = "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
-const TITLE_CLASSES = "text-lg font-semibold"
-const DESC_CLASSES = "text-muted-foreground text-sm"
+const STYLE_TOKENS = {
+  overlay: "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+  content: "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
+  header: "flex flex-col gap-2 text-center sm:text-left",
+  footer: "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+  title: "text-lg font-semibold",
+  description: "text-muted-foreground text-sm",
+} as const
 
 const AlertDialog = React.memo(function AlertDialog(
   props: React.ComponentProps<typeof AlertDialogPrimitive.Root>
@@ -23,18 +25,14 @@ AlertDialog.displayName = "AlertDialog"
 const AlertDialogTrigger = React.memo(function AlertDialogTrigger(
   props: React.ComponentProps<typeof AlertDialogPrimitive.Trigger>
 ) {
-  return (
-    <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />
-  )
+  return <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />
 })
 AlertDialogTrigger.displayName = "AlertDialogTrigger"
 
 const AlertDialogPortal = React.memo(function AlertDialogPortal(
   props: React.ComponentProps<typeof AlertDialogPrimitive.Portal>
 ) {
-  return (
-    <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
-  )
+  return <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
 })
 AlertDialogPortal.displayName = "AlertDialogPortal"
 
@@ -45,7 +43,7 @@ const AlertDialogOverlay = React.memo(function AlertDialogOverlay({
   return (
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
-      className={className ? `${OVERLAY_CLASSES} ${className}` : OVERLAY_CLASSES}
+      className={cn(STYLE_TOKENS.overlay, className)}
       {...props}
     />
   )
@@ -61,7 +59,7 @@ const AlertDialogContent = React.memo(function AlertDialogContent({
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
-        className={className ? `${CONTENT_CLASSES} ${className}` : CONTENT_CLASSES}
+        className={cn(STYLE_TOKENS.content, className)}
         {...props}
       />
     </AlertDialogPortal>
@@ -76,7 +74,7 @@ const AlertDialogHeader = React.memo(function AlertDialogHeader({
   return (
     <div
       data-slot="alert-dialog-header"
-      className={className ? `${HEADER_CLASSES} ${className}` : HEADER_CLASSES}
+      className={cn(STYLE_TOKENS.header, className)}
       {...props}
     />
   )
@@ -90,7 +88,7 @@ const AlertDialogFooter = React.memo(function AlertDialogFooter({
   return (
     <div
       data-slot="alert-dialog-footer"
-      className={className ? `${FOOTER_CLASSES} ${className}` : FOOTER_CLASSES}
+      className={cn(STYLE_TOKENS.footer, className)}
       {...props}
     />
   )
@@ -104,7 +102,7 @@ const AlertDialogTitle = React.memo(function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={className ? `${TITLE_CLASSES} ${className}` : TITLE_CLASSES}
+      className={cn(STYLE_TOKENS.title, className)}
       {...props}
     />
   )
@@ -118,7 +116,7 @@ const AlertDialogDescription = React.memo(function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={className ? `${DESC_CLASSES} ${className}` : DESC_CLASSES}
+      className={cn(STYLE_TOKENS.description, className)}
       {...props}
     />
   )
@@ -129,10 +127,9 @@ const AlertDialogAction = React.memo(function AlertDialogAction({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
-  const variantClasses = buttonVariants()
   return (
     <AlertDialogPrimitive.Action
-      className={className ? `${variantClasses} ${className}` : variantClasses}
+      className={cn(buttonVariants(), className)}
       {...props}
     />
   )
@@ -143,10 +140,9 @@ const AlertDialogCancel = React.memo(function AlertDialogCancel({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
-  const variantClasses = buttonVariants({ variant: "outline" })
   return (
     <AlertDialogPrimitive.Cancel
-      className={className ? `${variantClasses} ${className}` : variantClasses}
+      className={cn(buttonVariants({ variant: "outline" }), className)}
       {...props}
     />
   )
