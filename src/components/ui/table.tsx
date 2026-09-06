@@ -8,173 +8,176 @@ export interface TableProps extends React.ComponentProps<"table"> {
 }
 
 /**
- * Creates an optimized, memoized table container component.
+ * Higher-order utility to create a memoized, ref-forwarded table primitive component.
  */
-const Table = React.memo(
-  React.forwardRef<HTMLTableElement, TableProps>(
-    function Table({ className, containerClassName, ...props }, ref) {
-      return (
-        <div
-          data-slot="table-container"
-          className={cn("relative w-full overflow-x-auto", containerClassName)}
-        >
-          <table
-            ref={ref}
-            data-slot="table"
-            className={cn("w-full caption-bottom text-sm", className)}
-            {...props}
-          />
-        </div>
-      )
-    }
+function createTableComponent<TElement extends HTMLElement, TProps extends React.ComponentProps<any>>(
+  displayName: string,
+  slotName: string,
+  baseClassName: string,
+  renderElement: (
+    props: TProps,
+    ref: React.ForwardedRef<TElement>
+  ) => React.ReactNode
+) {
+  const Component = React.memo(
+    React.forwardRef<TElement, TProps>((props, ref) => renderElement(props, ref))
   )
-)
-Table.displayName = "Table"
+  Component.displayName = displayName
+  return Component
+}
 
 /**
- * Creates an optimized, memoized table header section component.
+ * Optimized, memoized table container and root component.
  */
-const TableHeader = React.memo(
-  React.forwardRef<HTMLTableSectionElement, React.ComponentProps<"thead">>(
-    function TableHeader({ className, ...props }, ref) {
-      return (
-        <thead
-          ref={ref}
-          data-slot="table-header"
-          className={cn("[&_tr]:border-b", className)}
-          {...props}
-        />
-      )
-    }
+const Table = createTableComponent<HTMLTableElement, TableProps>(
+  "Table",
+  "table",
+  "w-full caption-bottom text-sm",
+  ({ className, containerClassName, ...props }, ref) => (
+    <div
+      data-slot="table-container"
+      className={cn("relative w-full overflow-x-auto", containerClassName)}
+    >
+      <table
+        ref={ref}
+        data-slot="table"
+        className={cn("w-full caption-bottom text-sm", className)}
+        {...props}
+      />
+    </div>
   )
 )
-TableHeader.displayName = "TableHeader"
 
 /**
- * Creates an optimized, memoized table body section component.
+ * Optimized, memoized table header section component.
  */
-const TableBody = React.memo(
-  React.forwardRef<HTMLTableSectionElement, React.ComponentProps<"tbody">>(
-    function TableBody({ className, ...props }, ref) {
-      return (
-        <tbody
-          ref={ref}
-          data-slot="table-body"
-          className={cn("[&_tr:last-child]:border-0", className)}
-          {...props}
-        />
-      )
-    }
+const TableHeader = createTableComponent<HTMLTableSectionElement, React.ComponentProps<"thead">>(
+  "TableHeader",
+  "table-header",
+  "[&_tr]:border-b",
+  ({ className, ...props }, ref) => (
+    <thead
+      ref={ref}
+      data-slot="table-header"
+      className={cn("[&_tr]:border-b", className)}
+      {...props}
+    />
   )
 )
-TableBody.displayName = "TableBody"
 
 /**
- * Creates an optimized, memoized table footer section component.
+ * Optimized, memoized table body section component.
  */
-const TableFooter = React.memo(
-  React.forwardRef<HTMLTableSectionElement, React.ComponentProps<"tfoot">>(
-    function TableFooter({ className, ...props }, ref) {
-      return (
-        <tfoot
-          ref={ref}
-          data-slot="table-footer"
-          className={cn(
-            "bg-muted/50 border-t font-medium [&>tr]:last:border-b-0",
-            className
-          )}
-          {...props}
-        />
-      )
-    }
+const TableBody = createTableComponent<HTMLTableSectionElement, React.ComponentProps<"tbody">>(
+  "TableBody",
+  "table-body",
+  "[&_tr:last-child]:border-0",
+  ({ className, ...props }, ref) => (
+    <tbody
+      ref={ref}
+      data-slot="table-body"
+      className={cn("[&_tr:last-child]:border-0", className)}
+      {...props}
+    />
   )
 )
-TableFooter.displayName = "TableFooter"
 
 /**
- * Creates an optimized, memoized interactive table row component.
+ * Optimized, memoized table footer section component.
  */
-const TableRow = React.memo(
-  React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr">>(
-    function TableRow({ className, ...props }, ref) {
-      return (
-        <tr
-          ref={ref}
-          data-slot="table-row"
-          className={cn(
-            "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
-            className
-          )}
-          {...props}
-        />
-      )
-    }
+const TableFooter = createTableComponent<HTMLTableSectionElement, React.ComponentProps<"tfoot">>(
+  "TableFooter",
+  "table-footer",
+  "bg-muted/50 border-t font-medium [&>tr]:last:border-b-0",
+  ({ className, ...props }, ref) => (
+    <tfoot
+      ref={ref}
+      data-slot="table-footer"
+      className={cn(
+        "bg-muted/50 border-t font-medium [&>tr]:last:border-b-0",
+        className
+      )}
+      {...props}
+    />
   )
 )
-TableRow.displayName = "TableRow"
 
 /**
- * Creates an optimized, memoized table column header cell component.
+ * Optimized, memoized interactive table row component.
  */
-const TableHead = React.memo(
-  React.forwardRef<HTMLTableCellElement, React.ComponentProps<"th">>(
-    function TableHead({ className, ...props }, ref) {
-      return (
-        <th
-          ref={ref}
-          data-slot="table-head"
-          className={cn(
-            "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-            className
-          )}
-          {...props}
-        />
-      )
-    }
+const TableRow = createTableComponent<HTMLTableRowElement, React.ComponentProps<"tr">>(
+  "TableRow",
+  "table-row",
+  "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+  ({ className, ...props }, ref) => (
+    <tr
+      ref={ref}
+      data-slot="table-row"
+      className={cn(
+        "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+        className
+      )}
+      {...props}
+    />
   )
 )
-TableHead.displayName = "TableHead"
 
 /**
- * Creates an optimized, memoized standard table data cell component.
+ * Optimized, memoized table column header cell component.
  */
-const TableCell = React.memo(
-  React.forwardRef<HTMLTableCellElement, React.ComponentProps<"td">>(
-    function TableCell({ className, ...props }, ref) {
-      return (
-        <td
-          ref={ref}
-          data-slot="table-cell"
-          className={cn(
-            "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-            className
-          )}
-          {...props}
-        />
-      )
-    }
+const TableHead = createTableComponent<HTMLTableCellElement, React.ComponentProps<"th">>(
+  "TableHead",
+  "table-head",
+  "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+  ({ className, ...props }, ref) => (
+    <th
+      ref={ref}
+      data-slot="table-head"
+      className={cn(
+        "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        className
+      )}
+      {...props}
+    />
   )
 )
-TableCell.displayName = "TableCell"
 
 /**
- * Creates an optimized, memoized descriptive table caption component.
+ * Optimized, memoized standard table data cell component.
  */
-const TableCaption = React.memo(
-  React.forwardRef<HTMLTableCaptionElement, React.ComponentProps<"caption">>(
-    function TableCaption({ className, ...props }, ref) {
-      return (
-        <caption
-          ref={ref}
-          data-slot="table-caption"
-          className={cn("text-muted-foreground mt-4 text-sm", className)}
-          {...props}
-        />
-      )
-    }
+const TableCell = createTableComponent<HTMLTableCellElement, React.ComponentProps<"td">>(
+  "TableCell",
+  "table-cell",
+  "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+  ({ className, ...props }, ref) => (
+    <td
+      ref={ref}
+      data-slot="table-cell"
+      className={cn(
+        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        className
+      )}
+      {...props}
+    />
   )
 )
-TableCaption.displayName = "TableCaption"
+
+/**
+ * Optimized, memoized descriptive table caption component.
+ */
+const TableCaption = createTableComponent<HTMLTableCaptionElement, React.ComponentProps<"caption">>(
+  "TableCaption",
+  "table-caption",
+  "text-muted-foreground mt-4 text-sm",
+  ({ className, ...props }, ref) => (
+    <caption
+      ref={ref}
+      data-slot="table-caption"
+      className={cn("text-muted-foreground mt-4 text-sm", className)}
+      {...props}
+    />
+  )
+)
 
 export {
   Table,
