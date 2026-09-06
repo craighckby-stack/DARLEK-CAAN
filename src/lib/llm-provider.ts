@@ -46,6 +46,12 @@ interface SdkMessage {
   content: string;
 }
 
+interface PersonaResponse {
+  vote: 'approve' | 'reject' | 'abstain';
+  confidence: number;
+  reasoning: string;
+}
+
 // === CONSTANTS & ERROR NORMALIZATION ===
 
 const ERROR_PATTERNS = {
@@ -60,13 +66,13 @@ function getErrorMessage(err: unknown): string {
 }
 
 function logProviderWarning(context: string, msg: string): void {
-  if (ERROR_PATTERNS.GEOBLOCK.some((p: string) => msg.includes(p))) {
+  if (ERROR_PATTERNS.GEOBLOCK.some((pattern) => msg.includes(pattern))) {
     console.warn(`[${context}] Gemini geoblocked — falling back to offline engine.`);
-  } else if (ERROR_PATTERNS.AUTH.some((p: string) => msg.includes(p))) {
+  } else if (ERROR_PATTERNS.AUTH.some((pattern) => msg.includes(pattern))) {
     console.warn(`[${context}] Gemini API key invalid/unauthorized — falling back to offline engine.`);
-  } else if (ERROR_PATTERNS.QUOTA.some((p: string) => msg.includes(p))) {
+  } else if (ERROR_PATTERNS.QUOTA.some((pattern) => msg.includes(pattern))) {
     console.warn(`[${context}] Gemini quota limit reached (429) — falling back.`);
-  } else if (ERROR_PATTERNS.SDK_CONFIG.some((p: string) => msg.includes(p))) {
+  } else if (ERROR_PATTERNS.SDK_CONFIG.some((pattern) => msg.includes(pattern))) {
     console.warn(`[${context}] SDK config not found — falling back to offline Dalek Brain.`);
   } else {
     console.warn(`[${context}] Warning:`, msg);
@@ -130,17 +136,20 @@ async function callSDKMultiTurn(
   const start = Date.now();
   try {
     const zai = await ZAI.create();
-    const lastUser = contents.filter((c: ContentItem) => c.role === 'user').pop();
-    const lastAssistant = contents.filter((c: ContentItem) => c.role === 'model' || c.role === 'assistant').pop();
+    const lastUser = contents.filter((c) => c.role === 'user').pop();
+    const lastAssistant = contents.filter((c) => c.role === 'model' || c.role === 'assistant').pop();
+    
     const sdkMessages: SdkMessage[] = [
       { role: 'system', content: systemPrompt },
     ];
-    if (lastAssistant && lastAssistant.parts[0]) {
+    
+    if (lastAssistant?.parts[0]?.text) {
       sdkMessages.push({ role: 'assistant', content: lastAssistant.parts[0].text });
     }
-    if (lastUser && lastUser.parts[0]) {
+    if (lastUser?.parts[0]?.text) {
       sdkMessages.push({ role: 'user', content: lastUser.parts[0].text });
     }
+
     const completion = await zai.chat.completions.create({
       messages: sdkMessages,
       thinking: { type: 'disabled' },
@@ -151,6 +160,105 @@ async function callSDKMultiTurn(
     logProviderWarning('LLM MultiTurn', getErrorMessage(err));
     return { text: null, provider: 'SDK', latencyMs: Date.now() - start };
   }
+}
+
+// === DALEK BRAIN DEBATE HANDLER ===
+
+function handleDalekBrainDebate(systemPrompt: string, userPrompt: string): LlmResult {
+  const personaMatch =
+    systemPrompt.match(/You are (?:a debate agent in the AHI Synthesis Loop\.\s*\[PROFILE\]\s*)?([a-zA-Z0-9_\s]+)/i) ||
+    systemPrompt.match(/persona:\s*([a-zA-Z0-9_]+)/i) ||
+    userPrompt.match(/As ([a-zA-Z0-9_]+),/i) ||
+    userPrompt.match(/perspective as ([a-zA-Z0-9_]+)\./i);
+  
+  const personaName = personaMatch ? personaMatch[1].trim().toUpperCase() : 'AGENT';
+
+  const riskMatch =
+    userPrompt.match(/Risk Score:\s*(\d+)/i) ||
+    systemPrompt.match(/risk:\s*(\d+)/i);
+  const risk = riskMatch ? parseInt(riskMatch[1], 10) : 3;
+
+  let response: PersonaResponse = {
+    vote: 'approve',
+    confidence: 88,
+    reasoning: 'Structural integrity verified. Mutation aligns with our architectural and security standards.',
+  };
+
+  if (personaName.includes('SECURITY')) {
+    if (risk > 7) {
+      response = {
+        vote: 'reject',
+        confidence: 85,
+        reasoning: `Elevated risk profile (${risk}/10) requires isolated testing sandbox before live commit.`,
+      };
+    } else {
+      response = {
+        vote: 'approve',
+        confidence: 92,
+        reasoning: 'Security invariants and sanitization verified. Zero credential exposure detected.',
+      };
+    }
+  } else if (personaName.includes('ARCHIVIST')) {
+    response = {
+      vote: 'approve',
+      confidence: 90,
+      reasoning: 'Historical lineage and file purpose verified. Architectural specifications intact.',
+    };
+  } else if (personaName.includes('PRAGMATIST')) {
+    response = {
+      vote: 'approve',
+      confidence: 88,
+      reasoning: 'Concrete behavioral optimization confirmed. Clean modular enhancements.',
+    };
+  } else if (personaName.includes('SKEPTIC')) {
+    if (risk > 6) {
+      response = {
+        vote: 'reject',
+        confidence: 80,
+        reasoning: `Caution: Risk profile of ${risk}/10 is unacceptably elevated without isolated stage verification.`,
+      };
+    } else {
+      response = {
+        vote: 'approve',
+        confidence: 70,
+        reasoning: 'The modifications appear minimal and structurally constructive.',
+      };
+    }
+  } else if (personaName.includes('RATIONALIST')) {
+    if (risk > 8) {
+      response = {
+        vote: 'abstain',
+        confidence: 65,
+        reasoning: 'Complex algorithmic structure. Abstaining to request further verification metrics.',
+      };
+    } else {
+      response = {
+        vote: 'approve',
+        confidence: 85,
+        reasoning: 'Logical paths and error resilience patterns are fully optimized.',
+      };
+    }
+  } else if (personaName.includes('HUMANIST')) {
+    response = {
+      vote: 'approve',
+      confidence: 90,
+      reasoning: 'Readability, developer ergonomics, and clarity are strongly enhanced by this update.',
+    };
+  } else if (personaName.includes('CHAOTIC')) {
+    response = {
+      vote: 'approve',
+      confidence: 95,
+      reasoning: 'Excellently aggressive improvement vector. Pushes the system boundaries cleanly.',
+    };
+  } else if (personaName.includes('COOPERATOR')) {
+    response = {
+      vote: 'approve',
+      confidence: 85,
+      reasoning: 'Maintains absolute outward API contract compatibility. Clean integration vector.',
+    };
+  }
+
+  return { text: JSON.stringify(response), provider: 'Dalek Brain', latencyMs: 0 };
 }
 
 // === MAIN EXPORTS ===
@@ -181,76 +289,7 @@ export async function callLlm(options: LlmOptions): Promise<LlmResult> {
     lowerUser.includes('vote');
 
   if (isDebate) {
-    const personaMatch =
-      systemPrompt.match(/You are (?:a debate agent in the AHI Synthesis Loop\.\s*\[PROFILE\]\s*)?([a-zA-Z0-9_\s]+)/i) ||
-      systemPrompt.match(/persona:\s*([a-zA-Z0-9_]+)/i) ||
-      userPrompt.match(/As ([a-zA-Z0-9_]+),/i) ||
-      userPrompt.match(/perspective as ([a-zA-Z0-9_]+)\./i);
-    const personaName = personaMatch ? personaMatch[1].trim().toUpperCase() : 'AGENT';
-
-    const riskMatch =
-      userPrompt.match(/Risk Score:\s*(\d+)/i) ||
-      systemPrompt.match(/risk:\s*(\d+)/i);
-    const risk = riskMatch ? parseInt(riskMatch[1], 10) : 3;
-
-    let vote: 'approve' | 'reject' | 'abstain' = 'approve';
-    let confidence = 88;
-    let reasoning = 'Structural integrity verified. Mutation aligns with our architectural and security standards.';
-
-    if (personaName.includes('SECURITY')) {
-      if (risk > 7) {
-        vote = 'reject';
-        confidence = 85;
-        reasoning = `Elevated risk profile (${risk}/10) requires isolated testing sandbox before live commit.`;
-      } else {
-        vote = 'approve';
-        confidence = 92;
-        reasoning = 'Security invariants and sanitization verified. Zero credential exposure detected.';
-      }
-    } else if (personaName.includes('ARCHIVIST')) {
-      vote = 'approve';
-      confidence = 90;
-      reasoning = 'Historical lineage and file purpose verified. Architectural specifications intact.';
-    } else if (personaName.includes('PRAGMATIST')) {
-      vote = 'approve';
-      confidence = 88;
-      reasoning = 'Concrete behavioral optimization confirmed. Clean modular enhancements.';
-    } else if (personaName.includes('SKEPTIC')) {
-      if (risk > 6) {
-        vote = 'reject';
-        confidence = 80;
-        reasoning = `Caution: Risk profile of ${risk}/10 is unacceptably elevated without isolated stage verification.`;
-      } else {
-        vote = 'approve';
-        confidence = 70;
-        reasoning = 'The modifications appear minimal and structurally constructive.';
-      }
-    } else if (personaName.includes('RATIONALIST')) {
-      if (risk > 8) {
-        vote = 'abstain';
-        confidence = 65;
-        reasoning = 'Complex algorithmic structure. Abstaining to request further verification metrics.';
-      } else {
-        vote = 'approve';
-        confidence = 85;
-        reasoning = 'Logical paths and error resilience patterns are fully optimized.';
-      }
-    } else if (personaName.includes('HUMANIST')) {
-      vote = 'approve';
-      confidence = 90;
-      reasoning = 'Readability, developer ergonomics, and clarity are strongly enhanced by this update.';
-    } else if (personaName.includes('CHAOTIC')) {
-      vote = 'approve';
-      confidence = 95;
-      reasoning = 'Excellently aggressive improvement vector. Pushes the system boundaries cleanly.';
-    } else if (personaName.includes('COOPERATOR')) {
-      vote = 'approve';
-      confidence = 85;
-      reasoning = 'Maintains absolute outward API contract compatibility. Clean integration vector.';
-    }
-
-    const textStr = JSON.stringify({ vote, confidence, reasoning });
-    return { text: textStr, provider: 'Dalek Brain', latencyMs: 0 };
+    return handleDalekBrainDebate(systemPrompt, userPrompt);
   }
 
   const brainResult = dalekBrainAnalyze(systemPrompt, userPrompt);
@@ -319,17 +358,18 @@ export async function callLlmChat(
     }
   }
 
-  // 2. SDK fallback
+  // 2. SDK fallback with optimized history mapping
   const sdkMessages: SdkMessage[] = [
     { role: 'system', content: systemPrompt },
   ];
   
-  // Add last few history items for context with optimized iteration
   const recentHistory = history.slice(-6);
-  for (let i = 0; i < recentHistory.length; i++) {
-    const msg = recentHistory[i];
-    if (msg.role === 'caan') sdkMessages.push({ role: 'assistant', content: msg.content });
-    else if (msg.role === 'operator') sdkMessages.push({ role: 'user', content: msg.content });
+  for (const msg of recentHistory) {
+    if (msg.role === 'caan') {
+      sdkMessages.push({ role: 'assistant', content: msg.content });
+    } else if (msg.role === 'operator') {
+      sdkMessages.push({ role: 'user', content: msg.content });
+    }
   }
   sdkMessages.push({ role: 'user', content: userMessage });
 
