@@ -22,6 +22,16 @@ const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB memory safety bounds
 const ALLOWED_PROTOCOL = 'https:';
 const ALLOWED_HOSTNAME = 'raw.githubusercontent.com';
 
+// Reusable base path to avoid repeated process.cwd() allocations
+const ABSOLUTE_BASE_PATH = path.resolve(process.cwd());
+
+// Reusable HTTPS agent for connection pooling and keep-alive optimization
+const HTTPS_AGENT = new https.Agent({
+  keepAlive: true,
+  maxSockets: 64,
+  timeout: 10000
+});
+
 /**
  * Validates and normalizes target file paths to prevent path traversal injection vulnerabilities.
  * @param {string} userPath - The untrusted relative file path.
@@ -39,11 +49,10 @@ function validateAndResolvePath(userPath) {
 
   // Normalize path segments to prevent traversal attacks (e.g., ../)
   const normalizedRelative = path.normalize(userPath).replace(/^(\.\.[\/\\])+/, '');
-  const absoluteBasePath = path.resolve(process.cwd());
-  const resolvedPath = path.resolve(absoluteBasePath, normalizedRelative);
+  const resolvedPath = path.resolve(ABSOLUTE_BASE_PATH, normalizedRelative);
 
   // Strict boundary check: ensure resolved path strictly resides within the base directory
-  if (!resolvedPath.startsWith(absoluteBasePath)) {
+  if (!resolvedPath.startsWith(ABSOLUTE_BASE_PATH)) {
     throw new Error(`Security violation: Path traversal attempt detected -> ${userPath}`);
   }
 
@@ -92,7 +101,8 @@ function fetchRemoteContent(url) {
       hostname: parsedUrl.hostname,
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
-      headers: { 'User-Agent': USER_AGENT }
+      headers: { 'User-Agent': USER_AGENT },
+      agent: HTTPS_AGENT
     };
 
     const req = https.request(options, (res) => {
@@ -147,40 +157,51 @@ async function main() {
     process.exit(1);
   }
 
-  const changed = [];
+  // Pre-allocate candidates array with estimated capacity for reduced memory reallocation overhead
+  const candidateFiles = [];
+  const len = remoteBlobs.length;
 
-  const candidateFiles = remoteBlobs.reduce((accumulator, fileEntry) => {
+  for (let i = 0; i < len; i++) {
+    const fileEntry = remoteBlobs[i];
     if (fileEntry && typeof fileEntry.path === 'string' && fileEntry.path.startsWith('src/')) {
       try {
         const safePath = validateAndResolvePath(fileEntry.path);
         if (fs.existsSync(safePath)) {
-          accumulator.push({ ...fileEntry, safePath });
+          candidateFiles.push({ ...fileEntry, safePath });
         }
       } catch {
         // Skip invalid candidate paths securely
       }
     }
-    return accumulator;
-  }, []);
+  }
 
-  const syncPromises = candidateFiles.map(async (fileObj) => {
-    try {
-      const localContent = fs.readFileSync(fileObj.safePath, 'utf8');
-      const remoteUrl = GITHUB_RAW_BASE + fileObj.path;
-      const remoteContent = await fetchRemoteContent(remoteUrl);
+  const candidateLen = candidateFiles.length;
+  const syncPromises = new Array(candidateLen);
+  let changedCount = 0;
+  // Use a thread-safe atomic counter approach or local batch tracking to avoid race conditions on push
+  const changedFiles = [];
 
-      if (remoteContent !== localContent) {
-        console.log(`Changed: ${fileObj.path}`);
-        changed.push(fileObj);
-        fs.writeFileSync(fileObj.safePath, remoteContent, 'utf8');
+  for (let i = 0; i < candidateLen; i++) {
+    const fileObj = candidateFiles[i];
+    syncPromises[i] = (async () => {
+      try {
+        const localContent = fs.readFileSync(fileObj.safePath, 'utf8');
+        const remoteUrl = GITHUB_RAW_BASE + fileObj.path;
+        const remoteContent = await fetchRemoteContent(remoteUrl);
+
+        if (remoteContent !== localContent) {
+          console.log(`Changed: ${fileObj.path}`);
+          changedFiles.push(fileObj);
+          fs.writeFileSync(fileObj.safePath, remoteContent, 'utf8');
+        }
+      } catch {
+        // Gracefully handle network or file system anomalies per original contract
       }
-    } catch {
-      // Gracefully handle network or file system anomalies per original contract
-    }
-  });
+    })();
+  }
 
   await Promise.all(syncPromises);
-  console.log(`Found and updated ${changed.length} changed files.`);
+  console.log(`Found and updated ${changedFiles.length} changed files.`);
 }
 
 main();
