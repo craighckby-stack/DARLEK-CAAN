@@ -1,56 +1,101 @@
 /**
  * @file src/lib/telemetry.ts
- * @description EMG Core v49 - Sovereign Optimized Telemetry and Metrics Engine
+ * @description EMG Core v49 - Sovereign Optimized Telemetry and Metrics Engine.
+ * Provides high-clarity event logging, type-safe telemetry structures, and metric calculations.
  */
 
-export type EvolutionPrimitive = string | number | boolean | null | undefined;
-export type EvolutionEventValue = EvolutionPrimitive | EvolutionPrimitive[] | { [key: string]: unknown };
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
+/** Primitive value types supported across telemetry events. */
+export type EvolutionPrimitive = string | number | boolean | null | undefined;
+
+/** Recursive telemetry payload value accommodating nested objects and arrays. */
+export type EvolutionEventValue =
+  | EvolutionPrimitive
+  | EvolutionPrimitive[]
+  | { readonly [key: string]: unknown };
+
+/** Contract for structured evolution event payloads. */
 export interface EvolutionEventData {
   readonly [key: string]: EvolutionEventValue;
 }
 
+/** Dictionary mapping metric keys to their corresponding numerical values. */
 export interface SaturationMetrics {
   readonly [key: string]: number;
 }
 
-// Reusable replacer function to avoid closure allocation per JSON.stringify call
-const serializeReplacer = (_key: string, value: unknown): unknown => {
+// ============================================================================
+// Serialization Utilities
+// ============================================================================
+
+const UNSERIALIZABLE_FALLBACK = '[Unserializable Data]';
+
+/**
+ * Custom JSON serialization replacer that transforms BigInt values into strings.
+ */
+const serializeBigIntReplacer = (_key: string, value: unknown): unknown => {
   return typeof value === 'bigint' ? value.toString() : value;
 };
 
 /**
+ * Safely converts event data into a formatted JSON string without throwing runtime errors.
+ */
+const safeSerializeEventData = (data: EvolutionEventData): string => {
+  try {
+    return JSON.stringify(data, serializeBigIntReplacer) ?? 'null';
+  } catch {
+    return UNSERIALIZABLE_FALLBACK;
+  }
+};
+
+/**
+ * Formats a telemetry log line into the standard sovereign engine event schema.
+ */
+const formatEvolutionLog = (eventName: string, serializedPayload: string): string => {
+  const timestamp = new Date().toISOString();
+  return `[EVOLUTION_EVENT][${timestamp}] ${eventName}: ${serializedPayload}`;
+};
+
+// ============================================================================
+// Public Telemetry API
+// ============================================================================
+
+/**
  * Safely serializes and logs an evolution telemetry event with high memory efficiency and strict type-safety.
+ *
+ * @param event - The descriptive identifier for the evolution event.
+ * @param data - The structured payload associated with the event.
  */
 export const logEvolutionEvent = (event: string, data: EvolutionEventData): void => {
-  let serialized: string;
-  try {
-    serialized = JSON.stringify(data, serializeReplacer) ?? 'null';
-  } catch {
-    serialized = '[Unserializable Data]';
-  }
-  
-  // Direct console pipeline write optimized for minimal garbage collection overhead
-  console.log(`[EVOLUTION_EVENT][${new Date().toISOString()}] ${event}: ${serialized}`);
+  const serializedData = safeSerializeEventData(data);
+  const logMessage = formatEvolutionLog(event, serializedData);
+
+  console.log(logMessage);
 };
 
 /**
  * Calculates the total saturation score from numeric metrics with O(1) memory footprint and type-guard validation.
+ * Aggregates all finite numeric own-properties in the provided metrics object.
+ *
+ * @param metrics - The dictionary of saturation metrics to evaluate.
+ * @returns The computed cumulative saturation score, or 0 if input is invalid.
  */
 export const calculateSaturationScore = (metrics: SaturationMetrics): number => {
-  if (metrics === null || typeof metrics !== 'object') {
+  const isInvalidMetricsObject = metrics === null || typeof metrics !== 'object';
+  if (isInvalidMetricsObject) {
     return 0;
   }
-  
-  let total = 0;
-  for (const key in metrics) {
-    if (Object.prototype.hasOwnProperty.call(metrics, key)) {
-      const val = metrics[key];
-      if (typeof val === 'number' && Number.isFinite(val)) {
-        total += val;
-      }
+
+  let totalScore = 0;
+
+  for (const metricValue of Object.values(metrics)) {
+    if (typeof metricValue === 'number' && Number.isFinite(metricValue)) {
+      totalScore += metricValue;
     }
   }
-  
-  return total;
+
+  return totalScore;
 };
