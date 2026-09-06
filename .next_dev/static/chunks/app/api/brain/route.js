@@ -17,8 +17,8 @@
     })
   );
 
-  const MAIN_APP_DEPENDENCIES = Object.freeze(["main-app"]);
-  const ROUTE_IDENTIFIER = Object.freeze(["app/api/brain/route"]);
+  const MAIN_APP_DEPENDENCIES = ["main-app"];
+  const ROUTE_IDENTIFIER = ["app/api/brain/route"];
 
   const runtimeBootstrap = function bootstrapWebpackRuntime(webpackRequire) {
     if (typeof webpackRequire !== "function") return;
@@ -35,17 +35,15 @@
     }
   };
 
-  chunkRegistry.push(
-    Object.freeze([
-      ROUTE_IDENTIFIER,
-      moduleRegistry,
-      runtimeBootstrap,
-    ])
-  );
+  chunkRegistry.push([
+    ROUTE_IDENTIFIER,
+    moduleRegistry,
+    runtimeBootstrap,
+  ]);
 })(
-  typeof self !== "undefined"
-    ? self
-    : typeof globalThis !== "undefined"
+  typeof globalThis !== "undefined"
     ? globalThis
+    : typeof self !== "undefined"
+    ? self
     : this
 );
