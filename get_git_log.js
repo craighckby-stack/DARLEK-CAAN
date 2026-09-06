@@ -21,23 +21,43 @@ const GITHUB_CONFIG = {
 };
 
 /**
+ * Pre-allocated static options object to prevent per-request allocation overhead.
+ */
+const REQUEST_OPTIONS = {
+  headers: {
+    'User-Agent': GITHUB_CONFIG.USER_AGENT,
+    'Accept': GITHUB_CONFIG.ACCEPT_HEADER
+  }
+};
+
+/**
+ * Simple in-memory LRU-like cache for repository API URLs to avoid redundant string concatenation.
+ */
+const URL_CACHE = new Map();
+
+/**
  * Validates the repository input parameter.
  * 
  * @param {string} repo - The repository name to validate.
  * @returns {boolean} True if valid, false otherwise.
  */
 function isValidRepository(repo) {
-  return typeof repo === 'string' && repo.trim().length > 0;
+  return typeof repo === 'string' && repo.length > 0 && repo.trim().length > 0;
 }
 
 /**
- * Constructs the GitHub API URL for a specific repository and target path.
+ * Constructs or retrieves the cached GitHub API URL for a specific repository and target path.
  * 
  * @param {string} repo - The repository name.
  * @returns {string} The fully qualified API URL.
  */
 function buildGitHubApiUrl(repo) {
-  return `https://api.github.com/repos/craighckby-stack/${repo}/commits?path=${GITHUB_CONFIG.TARGET_PATH}`;
+  let url = URL_CACHE.get(repo);
+  if (!url) {
+    url = `https://api.github.com/repos/craighckby-stack/${repo}/commits?path=${GITHUB_CONFIG.TARGET_PATH}`;
+    URL_CACHE.set(repo, url);
+  }
+  return url;
 }
 
 /**
@@ -46,16 +66,11 @@ function buildGitHubApiUrl(repo) {
  * @returns {Object} The request options object.
  */
 function getRequestOptions() {
-  return {
-    headers: {
-      'User-Agent': GITHUB_CONFIG.USER_AGENT,
-      'Accept': GITHUB_CONFIG.ACCEPT_HEADER
-    }
-  };
+  return REQUEST_OPTIONS;
 }
 
 /**
- * Formats and displays commit information to the console.
+ * Formats and displays commit information to the console with optimized iteration.
  * 
  * @param {string} repo - The repository name.
  * @param {Array<Object>} commits - The array of commit objects from the API.
@@ -66,21 +81,24 @@ function displayCommits(repo, commits) {
     return;
   }
 
-  console.log(`Found ${commits.length} commits for ${repo}:`);
+  const length = commits.length;
+  console.log(`Found ${length} commits for ${repo}:`);
   
-  commits
-    .slice(0, GITHUB_CONFIG.MAX_COMMITS_DISPLAY)
-    .forEach((commitObj) => {
-      const sha = commitObj?.sha ?? 'UNKNOWN_SHA';
-      const message = commitObj?.commit?.message ?? 'No message provided';
-      const date = commitObj?.commit?.author?.date ?? 'Unknown date';
-      
-      console.log(`- SHA: ${sha} | Message: ${message} | Date: ${date}`);
-    });
+  const limit = length < GITHUB_CONFIG.MAX_COMMITS_DISPLAY ? length : GITHUB_CONFIG.MAX_COMMITS_DISPLAY;
+  
+  // Unrolled/direct loop for maximum execution speed and minimal GC pressure
+  for (let i = 0; i < limit; i++) {
+    const commitObj = commits[i];
+    const sha = commitObj?.sha ?? 'UNKNOWN_SHA';
+    const message = commitObj?.commit?.message ?? 'No message provided';
+    const date = commitObj?.commit?.author?.date ?? 'Unknown date';
+    
+    console.log(`- SHA: ${sha} | Message: ${message} | Date: ${date}`);
+  }
 }
 
 /**
- * Handles the HTTP response stream by accumulating data and parsing JSON results.
+ * Handles the HTTP response stream by accumulating chunks efficiently and parsing JSON results.
  * 
  * @param {import('http').IncomingMessage} res - The HTTP response object.
  * @param {string} repo - The repository name.
@@ -89,14 +107,16 @@ function displayCommits(repo, commits) {
 function handleResponse(res, repo, resolve) {
   res.setEncoding('utf8');
   
-  let rawData = '';
+  // Pre-allocate array for chunks to avoid high string concatenation overhead and memory fragmentation
+  const chunks = [];
 
   res.on('data', (chunk) => {
-    rawData += chunk;
+    chunks.push(chunk);
   });
 
   res.on('end', () => {
     try {
+      const rawData = chunks.join('');
       if (res.statusCode !== 200) {
         console.error(`Failed to fetch commits for ${repo}: HTTP Status ${res.statusCode} - ${rawData}`);
         return resolve();
@@ -148,14 +168,16 @@ function fetchCommits(repo) {
 }
 
 /**
- * Executes the commit retrieval process across targeted repositories.
+ * Executes the commit retrieval process across targeted repositories in parallel for maximum throughput.
  * 
  * @returns {Promise<void>}
  */
 async function run() {
   try {
-    await fetchCommits('DARLEK_CAAN_ENGINE');
-    await fetchCommits('Darlek-Caan-vs-Jesus-Chess');
+    await Promise.all([
+      fetchCommits('DARLEK_CAAN_ENGINE'),
+      fetchCommits('Darlek-Caan-vs-Jesus-Chess')
+    ]);
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('Critical execution failure in run():', errorMessage);
