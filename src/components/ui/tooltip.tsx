@@ -90,12 +90,16 @@ export const TooltipContent = React.memo<TooltipContentProps>(function TooltipCo
   children,
   ...props
 }) {
+  const computedClassName = React.useMemo(() => {
+    return className ? cn(TOOLTIP_CONTENT_STYLES, className) : TOOLTIP_CONTENT_STYLES
+  }, [className])
+
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
         data-slot="tooltip-content"
         sideOffset={sideOffset}
-        className={cn(TOOLTIP_CONTENT_STYLES, className)}
+        className={computedClassName}
         {...props}
       >
         {children}
