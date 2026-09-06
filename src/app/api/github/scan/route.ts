@@ -17,7 +17,7 @@ const EXCLUDED_DIRECTORIES = Object.freeze([
   '.svn/',
 ]);
 
-const EXCLUDED_FILES = Object.freeze([
+const EXCLUDED_FILES_SET = new Set([
   '.env',
   '.env.local',
   'package-lock.json',
@@ -37,30 +37,31 @@ interface GitHubTreeResponse {
 }
 
 /**
- * Validates whether a file path resides within an excluded directory.
- */
-function isPathInExcludedDirectory(filePath: string): boolean {
-  return EXCLUDED_DIRECTORIES.some((dir) => filePath.includes(dir));
-}
-
-/**
- * Validates whether a file name matches any explicitly excluded system/config files.
- */
-function isExcludedFileName(filePath: string): boolean {
-  const pathSegments = filePath.split('/');
-  const fileName = pathSegments[pathSegments.length - 1];
-  return EXCLUDED_FILES.includes(fileName);
-}
-
-/**
- * Determines if a tree item should be retained in the final file scan list.
+ * Validates whether a file path resides within an excluded directory or matches excluded filenames using O(1) Set lookups and optimized string checks.
  */
 function isValidBlobItem(item: GitHubTreeItem): boolean {
   if (item.type !== 'blob') {
     return false;
   }
 
-  return !isPathInExcludedDirectory(item.path) && !isExcludedFileName(item.path);
+  const path = item.path;
+
+  // Check excluded directories
+  for (let i = 0; i < EXCLUDED_DIRECTORIES.length; i++) {
+    if (path.includes(EXCLUDED_DIRECTORIES[i])) {
+      return false;
+    }
+  }
+
+  // Check excluded files via direct segment extraction without allocations (.split('/') replacement)
+  const lastSlashIndex = path.lastIndexOf('/');
+  const fileName = lastSlashIndex === -1 ? path : path.substring(lastSlashIndex + 1);
+
+  if (EXCLUDED_FILES_SET.has(fileName)) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -71,15 +72,14 @@ export async function GET(): Promise<NextResponse> {
 }
 
 /**
- * Scans a GitHub repository tree recursively while filtering out ignored files and directories.
+ * Scans a GitHub repository tree recursively while filtering out ignored files and directories with reduced memory overhead and fast-path allocations.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body: ScanRepoBody = await safeReqJson(req, {} as ScanRepoBody);
     const { token, owner, repo, branch } = body;
 
-    const encodedBranch = encodeURIComponent(branch);
-    const repositoryTreeUrl = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/git/trees/${encodedBranch}?recursive=1`;
+    const repositoryTreeUrl = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
 
     const githubResponse = await fetch(repositoryTreeUrl, {
       headers: {
@@ -97,28 +97,39 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const data: GitHubTreeResponse = await githubResponse.json();
+    const tree = data.tree;
 
-    if (!data.tree) {
+    if (!tree) {
       return NextResponse.json(
         { error: 'No tree data returned. Check the branch name.' },
         { status: 400 }
       );
     }
 
-    const allBlobs = data.tree.filter((item) => item.type === 'blob');
-    const filteredFiles: GitHubFile[] = allBlobs
-      .filter(isValidBlobItem)
-      .map((item) => ({
-        path: item.path,
-        size: item.size,
-        type: item.type,
-        sha: item.sha,
-      }));
+    const treeLength = tree.length;
+    const filteredFiles: GitHubFile[] = [];
+    let repoTotal = 0;
+
+    // Single-pass stream iteration preventing multiple intermediate array allocations (.filter / .map overhead eliminated)
+    for (let i = 0; i < treeLength; i++) {
+      const item = tree[i];
+      if (item.type === 'blob') {
+        repoTotal++;
+        if (isValidBlobItem(item)) {
+          filteredFiles.push({
+            path: item.path,
+            size: item.size,
+            type: item.type,
+            sha: item.sha,
+          });
+        }
+      }
+    }
 
     return NextResponse.json({
       files: filteredFiles,
       total: filteredFiles.length,
-      repoTotal: allBlobs.length,
+      repoTotal,
     });
   } catch (error) {
     console.error('Scan repo error:', error);
