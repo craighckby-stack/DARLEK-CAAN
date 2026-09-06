@@ -44,12 +44,12 @@ export type ToggleRootProps = React.ComponentProps<typeof TogglePrimitive.Root>
 export type ToggleVariantProps = VariantProps<typeof toggleVariants>
 export type ToggleProps = ToggleRootProps & ToggleVariantProps
 
-function Toggle({
+const Toggle = React.memo(({
   className,
   variant,
   size,
   ...props
-}: ToggleProps) {
+}: ToggleProps) => {
   const computedClassName = React.useMemo(
     () => cn(toggleVariants({ variant, size, className })),
     [variant, size, className]
@@ -62,6 +62,8 @@ function Toggle({
       {...props}
     />
   )
-}
+})
+
+Toggle.displayName = "Toggle"
 
 export { Toggle, toggleVariants }
