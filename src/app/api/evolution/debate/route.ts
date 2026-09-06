@@ -52,12 +52,17 @@ export interface DebateBody {
 }
 
 // ============================================================================
-// Constants
+// Constants & Cached Regex
 // ============================================================================
 
 const MAX_CODE_LENGTH = 35_000;
 const TREE_FETCH_TIMEOUT_MS = 8_000;
 const FILE_FETCH_TIMEOUT_MS = 6_000;
+
+const JSON_FENCE_REGEX = /```json\n?/g;
+const BACKTICK_FENCE_REGEX = /```\n?/g;
+const JSON_STRUCT_REGEX = /\{"newPath"\s*:\s*"[^"]*",\s*"type"\s*:\s*"[^"]*"(?:,\s*"branch"\s*:\s*"[^"]*")?\s*\}/;
+const QUOTE_CLEAN_REGEX = /[{}"]/g;
 
 const AGENT_PERSONAS: readonly AgentPersona[] = [
   {
@@ -101,7 +106,13 @@ async function fetchFileTree(token: string, owner: string, repo: string, branch:
     if (!response.ok) return [];
 
     const data = (await response.json()) as { tree?: readonly { path: string }[] };
-    return Array.isArray(data?.tree) ? data.tree.map((file) => file.path) : [];
+    if (!Array.isArray(data?.tree)) return [];
+    
+    const paths = new Array(data.tree.length);
+    for (let i = 0, len = data.tree.length; i < len; i++) {
+      paths[i] = data.tree[i].path;
+    }
+    return paths;
   } catch {
     return [];
   }
@@ -145,7 +156,7 @@ function truncateCode(code: string): string {
 
 function parseJsonPayload(rawText: string): Record<string, unknown> | null {
   try {
-    const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const cleaned = rawText.replace(JSON_FENCE_REGEX, '').replace(BACKTICK_FENCE_REGEX, '').trim();
     return JSON.parse(cleaned);
   } catch {
     return null;
@@ -300,8 +311,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           if (result.text) {
             const parsed = parseJsonPayload(result.text);
             if (parsed) {
-              if (['approve', 'reject', 'abstain'].includes(parsed.vote as string)) {
-                vote = parsed.vote as 'approve' | 'reject' | 'abstain';
+              if (parsed.vote === 'approve' || parsed.vote === 'reject' || parsed.vote === 'abstain') {
+                vote = parsed.vote;
               }
               if (typeof parsed.confidence === 'number') {
                 confidence = Math.min(100, Math.max(0, Math.round(parsed.confidence)));
@@ -317,11 +328,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               if (lowerText.includes('approve')) vote = 'approve';
               else if (lowerText.includes('reject') || lowerText.includes('deny')) vote = 'reject';
 
-              reasoning = result.text.slice(0, 200).replace(/[{}"]/g, '').trim();
+              reasoning = result.text.slice(0, 200).replace(QUOTE_CLEAN_REGEX, '').trim();
 
-              const match = reasoning.match(
-                /\{"newPath"\s*:\s*"[^"]*",\s*"type"\s*:\s*"[^"]*"(?:,\s*"branch"\s*:\s*"[^"]*")?\s*\}/,
-              );
+              const match = reasoning.match(JSON_STRUCT_REGEX);
               if (match) {
                 try {
                   structuralProposal = JSON.parse(match[0]) as StructuralProposal;
@@ -397,8 +406,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           if (result.text) {
             const parsed = parseJsonPayload(result.text);
             if (parsed) {
-              if (['approve', 'reject', 'abstain'].includes(parsed.vote as string)) {
-                vote = parsed.vote as 'approve' | 'reject' | 'abstain';
+              if (parsed.vote === 'approve' || parsed.vote === 'reject' || parsed.vote === 'abstain') {
+                vote = parsed.vote;
               }
               if (typeof parsed.confidence === 'number') {
                 confidence = Math.min(100, Math.max(0, Math.round(parsed.confidence)));
@@ -411,7 +420,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               if (lowerText.includes('approve')) vote = 'approve';
               else if (lowerText.includes('reject') || lowerText.includes('deny')) vote = 'reject';
 
-              reasoning = result.text.slice(0, 200).replace(/[{}"]/g, '').trim();
+              reasoning = result.text.slice(0, 200).replace(QUOTE_CLEAN_REGEX, '').trim();
             }
           }
 
@@ -442,10 +451,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         currentVotes = await Promise.all(agentPromises);
       }
 
-      const roundRejections = currentVotes.filter((v) => v.vote === 'reject').length;
-      const roundAbstains = currentVotes.filter((v) => v.vote === 'abstain').length;
+      let roundRejections = 0;
+      let roundAbstains = 0;
+      let allApproved = true;
 
-      if (roundRejections === 0 && roundAbstains === 0 && currentVotes.every((v) => v.vote === 'approve')) {
+      for (let i = 0, len = currentVotes.length; i < len; i++) {
+        const v = currentVotes[i];
+        if (v.vote === 'reject') roundRejections++;
+        if (v.vote === 'abstain') roundAbstains++;
+        if (v.vote !== 'approve') allApproved = false;
+      }
+
+      if (roundRejections === 0 && roundAbstains === 0 && allApproved) {
         break;
       }
 
@@ -496,13 +513,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const votes = currentVotes;
-    const approvals = votes.filter((v) => v.vote === 'approve').length;
-    const rejections = votes.filter((v) => v.vote === 'reject').length;
-    const abstains = votes.filter((v) => v.vote === 'abstain').length;
-    const consensus = approvals > rejections ? 'APPROVE' : rejections > approvals ? 'REJECT' : 'TIED';
+    let approvals = 0;
+    let rejections = 0;
+    let abstains = 0;
+    let totalWeights = 0;
+    let positiveWeights = 0;
 
-    const totalWeights = votes.reduce((acc, v) => acc + (v.vote !== 'abstain' ? v.confidence : 0), 0);
-    const positiveWeights = votes.reduce((acc, v) => acc + (v.vote === 'approve' ? v.confidence : 0), 0);
+    for (let i = 0, len = votes.length; i < len; i++) {
+      const v = votes[i];
+      if (v.vote === 'approve') {
+        approvals++;
+        positiveWeights += v.confidence;
+        totalWeights += v.confidence;
+      } else if (v.vote === 'reject') {
+        rejections++;
+        totalWeights += v.confidence;
+      } else {
+        abstains++;
+      }
+    }
+
+    const consensus = approvals > rejections ? 'APPROVE' : rejections > approvals ? 'REJECT' : 'TIED';
     const consensusCoefficient = totalWeights > 0 ? positiveWeights / totalWeights : 0.5;
     const cognitiveFriction = 1.0 - Math.abs(approvals - rejections) / Math.max(1, approvals + rejections);
 
@@ -527,20 +558,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     } catch {}
 
     let structuralProposal: StructuralProposal | null = null;
-    for (const v of votes.filter((v) => v.vote === 'approve')) {
-      if (v.structuralProposal?.newPath) {
-        structuralProposal = v.structuralProposal;
-        break;
-      }
-      try {
-        const match = v.reasoning.match(
-          /\{"newPath"\s*:\s*"[^"]*",\s*"type"\s*:\s*"[^"]*"(?:,\s*"branch"\s*:\s*"[^"]*")?\s*\}/,
-        );
-        if (match) {
-          structuralProposal = JSON.parse(match[0]) as StructuralProposal;
+    for (let i = 0, len = votes.length; i < len; i++) {
+      const v = votes[i];
+      if (v.vote === 'approve') {
+        if (v.structuralProposal?.newPath) {
+          structuralProposal = v.structuralProposal;
           break;
         }
-      } catch {}
+        try {
+          const match = v.reasoning.match(JSON_STRUCT_REGEX);
+          if (match) {
+            structuralProposal = JSON.parse(match[0]) as StructuralProposal;
+            break;
+          }
+        } catch {}
+      }
     }
 
     return NextResponse.json({
