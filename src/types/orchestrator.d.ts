@@ -5,9 +5,17 @@
  * Maximizes type-safety, memory efficiency through readonly modifiers, and runtime predictability.
  */
 
-export type AgentRole = 'controller' | 'worker' | 'observer';
+export const enum AgentRole {
+  CONTROLLER = 'controller',
+  WORKER = 'worker',
+  OBSERVER = 'observer'
+} as const;
 
-export type SystemStatus = 'active' | 'dormant' | 'evolving';
+export const enum SystemStatus {
+  ACTIVE = 'active',
+  DORMANT = 'dormant',
+  EVOLVING = 'evolving'
+} as const;
 
 export interface AgentConfig {
   readonly id: string;
@@ -18,6 +26,6 @@ export interface AgentConfig {
 
 export interface SystemState {
   readonly status: SystemStatus;
-  readonly lastSync: string; // ISO 8601 timestamp string
+  readonly lastSync: string;
   readonly activeAgents: readonly AgentConfig[];
 }
