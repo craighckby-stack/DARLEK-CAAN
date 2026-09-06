@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import type { EvolutionLogEntry } from '@/lib/types';
 import { COLORS, LOG_TYPE_ICONS, LOG_TYPE_COLORS } from '@/lib/constants';
 import { ScrollText } from 'lucide-react';
@@ -13,21 +13,25 @@ interface LogRowProps {
   readonly entry: EvolutionLogEntry;
 }
 
+// Pre-cached date formatter to prevent expensive instantiation loops
+const timeFormatter = new Intl.DateTimeFormat([], {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
+function formatTimestamp(timestamp: string | number | Date): string {
+  try {
+    return timeFormatter.format(new Date(timestamp));
+  } catch {
+    return '00:00:00';
+  }
+}
+
 const LogRow = memo(function LogRow({ entry }: LogRowProps) {
   const accentColor = LOG_TYPE_COLORS[entry.type] ?? COLORS.textDim;
   const logIcon = LOG_TYPE_ICONS[entry.type] ?? '●';
-
-  const formattedTimestamp = useMemo(() => {
-    try {
-      return new Date(entry.timestamp).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-    } catch {
-      return '00:00:00';
-    }
-  }, [entry.timestamp]);
+  const formattedTimestamp = formatTimestamp(entry.timestamp);
 
   return (
     <div
