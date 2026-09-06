@@ -9,15 +9,14 @@
 
 export interface BrainDnaContainer {
     readonly version: string;
-    readonly compressed_chunks: string;
+    readonly compressedChunks: string;
     readonly index: readonly string[];
 }
 
-const EMPTY_INDEX: readonly string[] = [];
-Object.freeze(EMPTY_INDEX);
+const EMPTY_INDEX: readonly string[] = Object.freeze([]);
 
 export const BRAIN_DNA: Readonly<BrainDnaContainer> = Object.freeze({
     version: "2.2.0",
-    compressed_chunks: "",
-    index: EMPTY_INDEX
+    compressedChunks: "",
+    index: EMPTY_INDEX,
 });
