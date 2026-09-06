@@ -7,9 +7,6 @@ import { type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 import { toggleVariants } from "@/components/ui/toggle"
 
-/**
- * Shared configuration context for the toggle group and its items.
- */
 export interface ToggleGroupContextValue extends VariantProps<typeof toggleVariants> {}
 
 const ToggleGroupContext = React.createContext<ToggleGroupContextValue>({
@@ -17,18 +14,12 @@ const ToggleGroupContext = React.createContext<ToggleGroupContextValue>({
   variant: "default",
 })
 
-/**
- * Custom hook to access toggle group context safely.
- */
 const useToggleGroupContext = () => React.useContext(ToggleGroupContext)
 
 export interface ToggleGroupProps
   extends React.ComponentProps<typeof ToggleGroupPrimitive.Root>,
     VariantProps<typeof toggleVariants> {}
 
-/**
- * A container component that manages a group of mutually exclusive or multiple active toggle buttons.
- */
 const ToggleGroup = React.memo(function ToggleGroup({
   className,
   variant = "default",
@@ -70,9 +61,6 @@ export interface ToggleGroupItemProps
   extends React.ComponentProps<typeof ToggleGroupPrimitive.Item>,
     VariantProps<typeof toggleVariants> {}
 
-/**
- * An individual interactive action item within a ToggleGroup container.
- */
 const ToggleGroupItem = React.memo(function ToggleGroupItem({
   className,
   children,
