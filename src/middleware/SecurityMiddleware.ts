@@ -1,54 +1,61 @@
 /**
  * File Path: "src/middleware/SecurityMiddleware.ts"
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
- * Sovereign Overhaul: Performance, Type-Safety, Memory Efficiency, and Error Resilience.
+ * Sovereign Overhaul: Enhanced Readability, Architectural Clarity, and Modern Idioms.
  */
 
 /**
- * SecurityMiddleware: Enforces OMEGA ARCHITECTURE SECURITY PROTOCOL
- * Prevents volatile state leakage into the repository.
+ * SecurityMiddleware enforces the OMEGA ARCHITECTURE SECURITY PROTOCOL
+ * to prevent volatile state leakage into repository revisions.
  */
 export class SecurityMiddleware {
   private static readonly FORBIDDEN_EXTENSIONS: readonly string[] = Object.freeze([
     '.consciousness.dump',
-    '.quantum.data'
+    '.quantum.data',
   ]);
 
   /**
-   * Validates staged files against OMEGA ARCHITECTURE SECURITY PROTOCOL.
-   * Maximizes performance and memory efficiency via pre-compiled checks and optimized iteration.
-   * 
+   * Validates staged files against the OMEGA ARCHITECTURE SECURITY PROTOCOL.
+   *
    * @param stagedFiles Readonly array of file paths to validate.
-   * @returns boolean indicating if the commit passes security constraints.
+   * @returns `true` if all files pass security constraints, `false` if violations are found.
    */
   public static validateCommit(stagedFiles: readonly string[]): boolean {
     if (!Array.isArray(stagedFiles) || stagedFiles.length === 0) {
       return true;
     }
 
-    const extensions = SecurityMiddleware.FORBIDDEN_EXTENSIONS;
-    const violations: string[] = [];
-
-    for (let i = 0, len = stagedFiles.length; i < len; i++) {
-      const file = stagedFiles[i];
-      if (typeof file !== 'string') {
-        continue;
-      }
-
-      for (let j = 0, extLen = extensions.length; j < extLen; j++) {
-        if (file.endsWith(extensions[j])) {
-          violations.push(file);
-          break;
-        }
-      }
-    }
+    const violations = SecurityMiddleware.findForbiddenFiles(stagedFiles);
 
     if (violations.length > 0) {
-      // Maintained error format and signature contract
       console.error('SECURITY_VIOLATION_CODE_0x00: Forbidden files detected:', violations);
       return false;
     }
 
     return true;
+  }
+
+  /**
+   * Filters input file paths to identify any that violate restricted extension policies.
+   *
+   * @param filePaths Readonly array of file paths to inspect.
+   * @returns Array of file paths matching forbidden extensions.
+   */
+  private static findForbiddenFiles(filePaths: readonly string[]): string[] {
+    return filePaths.filter(
+      (filePath) => typeof filePath === 'string' && SecurityMiddleware.hasForbiddenExtension(filePath)
+    );
+  }
+
+  /**
+   * Determines whether a given file path ends with any defined forbidden extension.
+   *
+   * @param filePath The file path string to test.
+   * @returns `true` if the file has a forbidden extension; otherwise `false`.
+   */
+  private static hasForbiddenExtension(filePath: string): boolean {
+    return SecurityMiddleware.FORBIDDEN_EXTENSIONS.some((extension) =>
+      filePath.endsWith(extension)
+    );
   }
 }
