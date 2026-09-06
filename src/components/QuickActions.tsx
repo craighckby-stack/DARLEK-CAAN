@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { 
   Search, 
   FileCode, 
@@ -61,7 +61,7 @@ interface ActionDefinition {
 }
 
 // ============================================================================
-// CONSTANTS
+// CONSTANTS (Hoisted outside component scope to prevent memory reallocation)
 // ============================================================================
 
 const QUICK_ACTION_REGISTRY: ActionDefinition[] = [
@@ -85,6 +85,7 @@ const QUICK_ACTION_REGISTRY: ActionDefinition[] = [
 
 const PRESET_CYCLES = [1, 5, 10] as const;
 const RISK_LEVELS: RiskLevel[] = ['low', 'medium', 'high', 'hallucinate'];
+const CUSTOM_CYCLE_VALUES = [2, 3, 4, 15, 20, 50, 100] as const;
 
 // ============================================================================
 // SUB-COMPONENTS
@@ -99,45 +100,169 @@ interface ToggleSwitchProps {
   title: string;
 }
 
-function ControlToggle({ active, activeColor, label, icon, onToggle, title }: ToggleSwitchProps) {
+const ControlToggle = memo(function ControlToggle({ active, activeColor, label, icon, onToggle, title }: ToggleSwitchProps) {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggle();
+  }, [onToggle]);
+
+  const toggleStyle = useMemo(() => ({
+    fontFamily: 'var(--font-orbitron), sans-serif',
+    fontSize: '7px',
+    letterSpacing: '0.1em',
+    color: active ? activeColor : COLORS.textMuted,
+    background: active ? `${activeColor}1a` : 'transparent',
+    border: `1px solid ${active ? `${activeColor}66` : 'rgba(255,255,255,0.1)'}`,
+  }), [active, activeColor]);
+
+  const indicatorTrackStyle = useMemo(() => ({
+    background: active ? `${activeColor}4d` : 'rgba(255,255,255,0.1)',
+  }), [active, activeColor]);
+
+  const indicatorThumbStyle = useMemo(() => ({
+    left: active ? '10px' : '2px',
+    background: active ? activeColor : '#555',
+    boxShadow: active ? `0 0 6px ${activeColor}80` : 'none',
+  }), [active, activeColor]);
+
   return (
     <button
       type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggle();
-      }}
+      onClick={handleClick}
       className="flex items-center gap-1.5 px-2 py-0.5 rounded-sm transition-all duration-200 cursor-pointer"
-      style={{
-        fontFamily: 'var(--font-orbitron), sans-serif',
-        fontSize: '7px',
-        letterSpacing: '0.1em',
-        color: active ? activeColor : COLORS.textMuted,
-        background: active ? `${activeColor}1a` : 'transparent',
-        border: `1px solid ${active ? `${activeColor}66` : 'rgba(255,255,255,0.1)'}`,
-      }}
+      style={toggleStyle}
       title={title}
     >
       <span style={{ opacity: active ? 1 : 0.4 }}>{icon}</span>
       <span>{label}</span>
-      <div
-        className="relative w-5 h-2.5 rounded-full transition-colors duration-200"
-        style={{
-          background: active ? `${activeColor}4d` : 'rgba(255,255,255,0.1)',
-        }}
-      >
-        <div
-          className="absolute top-0.5 w-1.5 h-1.5 rounded-full transition-all duration-200"
-          style={{
-            left: active ? '10px' : '2px',
-            background: active ? activeColor : '#555',
-            boxShadow: active ? `0 0 6px ${activeColor}80` : 'none',
-          }}
-        />
+      <div className="relative w-5 h-2.5 rounded-full transition-colors duration-200" style={indicatorTrackStyle}>
+        <div className="absolute top-0.5 w-1.5 h-1.5 rounded-full transition-all duration-200" style={indicatorThumbStyle} />
       </div>
     </button>
   );
+});
+
+// ============================================================================
+// MEMOIZED INDIVIDUAL ACTION BUTTON COMPONENT
+// ============================================================================
+
+interface ActionButtonProps {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  color: string;
+  disabled: boolean;
+  batchMode?: boolean;
+  pushStatus?: string;
+  deployStatus?: string;
+  rebootStatus?: string;
+  undoStatus?: string;
+  bulkCommitStatus?: string;
+  onAction: (id: string) => void;
 }
+
+const ActionButton = memo(function ActionButton({
+  id,
+  label,
+  icon: Icon,
+  color,
+  disabled,
+  batchMode,
+  pushStatus,
+  deployStatus,
+  rebootStatus,
+  undoStatus,
+  bulkCommitStatus,
+  onAction,
+}: ActionButtonProps) {
+  
+  // Inline resolution for zero-overhead performance
+  let isBusy = false;
+  let resolvedColor = color;
+
+  if (id === 'push-enhancements') {
+    isBusy = pushStatus === 'pushing';
+    if (pushStatus === 'success') resolvedColor = COLORS.green;
+    if (pushStatus === 'error') resolvedColor = COLORS.dalekRed;
+  } else if (id === 'deploy-new-repo') {
+    isBusy = deployStatus === 'deploying';
+    if (deployStatus === 'success') resolvedColor = COLORS.green;
+    if (deployStatus === 'error') resolvedColor = COLORS.dalekRed;
+  } else if (id === 'reboot-system') {
+    isBusy = rebootStatus === 'rebooting';
+    if (rebootStatus === 'success') resolvedColor = COLORS.green;
+    if (rebootStatus === 'error') resolvedColor = COLORS.dalekRed;
+  } else if (id === 'undo-mutation') {
+    isBusy = undoStatus === 'undoing';
+    if (undoStatus === 'success') resolvedColor = COLORS.green;
+    if (undoStatus === 'error') resolvedColor = COLORS.dalekRed;
+  } else if (id === 'bulk-commit') {
+    isBusy = bulkCommitStatus === 'committing';
+    if (bulkCommitStatus === 'success') resolvedColor = COLORS.green;
+    if (bulkCommitStatus === 'error') resolvedColor = COLORS.dalekRed;
+  } else if (id === 'propose-all' && batchMode) {
+    resolvedColor = '#00ccff';
+  }
+
+  const isActionDisabled = disabled || isBusy;
+  const isProposeAllActiveBatch = id === 'propose-all' && batchMode;
+
+  let busyLabel = label;
+  if (id === 'push-enhancements' && pushStatus === 'pushing') busyLabel = 'PUSHING...';
+  else if (id === 'deploy-new-repo' && deployStatus === 'deploying') busyLabel = 'DEPLOYING...';
+  else if (id === 'reboot-system' && rebootStatus === 'rebooting') busyLabel = 'REBOOTING...';
+  else if (id === 'undo-mutation' && undoStatus === 'undoing') busyLabel = 'UNDOING...';
+  else if (id === 'bulk-commit' && bulkCommitStatus === 'committing') busyLabel = 'COMMITTING...';
+
+  const handleClick = useCallback(() => {
+    onAction(id);
+  }, [onAction, id]);
+
+  const handleMouseEnter = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isActionDisabled) {
+      e.currentTarget.style.background = `${resolvedColor}15`;
+      e.currentTarget.style.boxShadow = `0 0 10px ${resolvedColor}20, inset 0 0 20px ${resolvedColor}05`;
+      e.currentTarget.style.borderColor = `${resolvedColor}50`;
+    }
+  }, [isActionDisabled, resolvedColor]);
+
+  const handleMouseLeave = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isActionDisabled) {
+      e.currentTarget.style.background = `${resolvedColor}06`;
+      e.currentTarget.style.boxShadow = isProposeAllActiveBatch ? '0 0 12px rgba(0, 204, 255, 0.2)' : 'none';
+      e.currentTarget.style.borderColor = isProposeAllActiveBatch ? 'rgba(0, 204, 255, 0.4)' : `${resolvedColor}25`;
+    }
+  }, [isActionDisabled, resolvedColor, isProposeAllActiveBatch]);
+
+  const buttonStyle = useMemo(() => ({
+    fontFamily: 'var(--font-orbitron), sans-serif',
+    fontWeight: 500,
+    letterSpacing: '0.05em',
+    background: isActionDisabled ? '#1a1a1a' : `${resolvedColor}06`,
+    color: isActionDisabled ? '#333' : resolvedColor,
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: isProposeAllActiveBatch ? 'rgba(0, 204, 255, 0.4)' : (isActionDisabled ? '#1a1a1a' : `${resolvedColor}25`),
+    cursor: isActionDisabled ? 'not-allowed' : 'pointer',
+    ...(isProposeAllActiveBatch ? { boxShadow: '0 0 12px rgba(0, 204, 255, 0.2)' } : {}),
+  }), [isActionDisabled, resolvedColor, isProposeAllActiveBatch]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={isActionDisabled}
+      className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[10px] transition-all duration-200"
+      style={buttonStyle}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <Icon size={11} className={isBusy ? 'animate-spin' : ''} />
+      <span>&#9673;</span>
+      {busyLabel}
+    </button>
+  );
+});
 
 // ============================================================================
 // MAIN COMPONENT
@@ -168,48 +293,39 @@ export default function QuickActions({
   saturationLevel,
   onSaturationLevelChange,
 }: QuickActionsProps) {
-  
-  // Helper to determine status color and active states for individual action buttons
-  const resolveActionState = (id: string, defaultColor: string) => {
-    let isBusy = false;
-    let resolvedColor = defaultColor;
 
-    if (id === 'push-enhancements') {
-      isBusy = pushStatus === 'pushing';
-      if (pushStatus === 'success') resolvedColor = COLORS.green;
-      if (pushStatus === 'error') resolvedColor = COLORS.dalekRed;
-    } else if (id === 'deploy-new-repo') {
-      isBusy = deployStatus === 'deploying';
-      if (deployStatus === 'success') resolvedColor = COLORS.green;
-      if (deployStatus === 'error') resolvedColor = COLORS.dalekRed;
-    } else if (id === 'reboot-system') {
-      isBusy = rebootStatus === 'rebooting';
-      if (rebootStatus === 'success') resolvedColor = COLORS.green;
-      if (rebootStatus === 'error') resolvedColor = COLORS.dalekRed;
-    } else if (id === 'undo-mutation') {
-      isBusy = undoStatus === 'undoing';
-      if (undoStatus === 'success') resolvedColor = COLORS.green;
-      if (undoStatus === 'error') resolvedColor = COLORS.dalekRed;
-    } else if (id === 'bulk-commit') {
-      isBusy = bulkCommitStatus === 'committing';
-      if (bulkCommitStatus === 'success') resolvedColor = COLORS.green;
-      if (bulkCommitStatus === 'error') resolvedColor = COLORS.dalekRed;
-    } else if (id === 'propose-all' && batchMode) {
-      resolvedColor = '#00ccff';
+  // Memoized callback handlers to avoid allocation overhead during renders
+  const handleLazyAssClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onEngageLazyAssCycle) onEngageLazyAssCycle();
+  }, [onEngageLazyAssCycle]);
+
+  const handleHallucinationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (onHallucinationLevelChange) onHallucinationLevelChange(Number(e.target.value));
+  }, [onHallucinationLevelChange]);
+
+  const handleSaturationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (onSaturationLevelChange) onSaturationLevelChange(Number(e.target.value));
+  }, [onSaturationLevelChange]);
+
+  const handleCycleSelectChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (e.target.value && onCycleAmountChange) {
+      onCycleAmountChange(Number(e.target.value));
     }
+  }, [onCycleAmountChange]);
 
-    const isActionDisabled = disabled || isBusy;
-    return { isBusy, isActionDisabled, resolvedColor };
-  };
-
-  const getBusyLabel = (id: string, label: string) => {
-    if (id === 'push-enhancements' && pushStatus === 'pushing') return 'PUSHING...';
-    if (id === 'deploy-new-repo' && deployStatus === 'deploying') return 'DEPLOYING...';
-    if (id === 'reboot-system' && rebootStatus === 'rebooting') return 'REBOOTING...';
-    if (id === 'undo-mutation' && undoStatus === 'undoing') return 'UNDOING...';
-    if (id === 'bulk-commit' && bulkCommitStatus === 'committing') return 'COMMITTING...';
-    return label;
-  };
+  const saturationFillStyle = useMemo(() => {
+    const level = saturationLevel ?? 0;
+    return {
+      width: `${level}%`,
+      background: level > 80 
+        ? 'linear-gradient(90deg, #ff0055, #ff0000)' 
+        : level > 50 
+          ? 'linear-gradient(90deg, #00e5ff, #ffaa00)' 
+          : 'linear-gradient(90deg, #00ff88, #00e5ff)',
+      boxShadow: `0 0 6px ${level > 80 ? '#ff0000' : '#00e5ff'}`
+    };
+  }, [saturationLevel]);
 
   return (
     <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
@@ -285,10 +401,7 @@ export default function QuickActions({
             {onEngageLazyAssCycle && (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEngageLazyAssCycle();
-                }}
+                onClick={handleLazyAssClick}
                 className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm transition-all duration-200 cursor-pointer text-[#ff00a0] bg-pink-950/15 border border-[#ff00a0]/30 hover:border-[#ff00a0] hover:bg-pink-950/30 font-bold active:scale-95 shadow-[0_0_8px_rgba(255,0,160,0.1)] hover:shadow-[0_0_12px_rgba(255,0,160,0.35)]"
                 style={{
                   fontFamily: 'var(--font-orbitron), sans-serif',
@@ -361,7 +474,7 @@ export default function QuickActions({
                 min="0"
                 max="100"
                 value={hallucinationLevel}
-                onChange={(e) => onHallucinationLevelChange(Number(e.target.value))}
+                onChange={handleHallucinationChange}
                 className="w-full accent-[#c800ff] cursor-pointer"
               />
             </div>
@@ -386,21 +499,13 @@ export default function QuickActions({
                 min="0"
                 max="100"
                 value={saturationLevel}
-                onChange={(e) => onSaturationLevelChange(Number(e.target.value))}
+                onChange={handleSaturationChange}
                 className="w-full accent-[#00e5ff] cursor-pointer"
               />
               <div className="w-full h-1 bg-black/60 rounded overflow-hidden border border-white/10 flex">
                 <div 
                   className={`h-full transition-all duration-300 ${saturationLevel > 80 ? 'animate-pulse' : ''}`}
-                  style={{ 
-                    width: `${saturationLevel}%`,
-                    background: saturationLevel > 80 
-                      ? 'linear-gradient(90deg, #ff0055, #ff0000)' 
-                      : saturationLevel > 50 
-                        ? 'linear-gradient(90deg, #00e5ff, #ffaa00)' 
-                        : 'linear-gradient(90deg, #00ff88, #00e5ff)',
-                    boxShadow: `0 0 6px ${saturationLevel > 80 ? '#ff0000' : '#00e5ff'}`
-                  }}
+                  style={saturationFillStyle}
                 />
               </div>
             </div>
@@ -442,18 +547,14 @@ export default function QuickActions({
                 <select
                   aria-label="Variable debate cycles selector"
                   value={PRESET_CYCLES.includes(cycleAmount as any) ? '' : cycleAmount}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      onCycleAmountChange(Number(e.target.value));
-                    }
-                  }}
+                  onChange={handleCycleSelectChange}
                   className="py-1 px-1 rounded text-[8px] font-mono bg-[#050000] border border-transparent hover:border-white/10 text-gray-400 cursor-pointer text-center outline-none"
                   style={{ width: '45px' }}
                 >
                   <option value="" disabled className="bg-[#050000] text-gray-500">
                     VAR
                   </option>
-                  {[2, 3, 4, 15, 20, 50, 100].map((customVal) => (
+                  {CUSTOM_CYCLE_VALUES.map((customVal) => (
                     <option key={customVal} value={customVal} className="bg-[#050000] text-gray-200">
                       {customVal}
                     </option>
@@ -467,50 +568,23 @@ export default function QuickActions({
 
       {/* Action Buttons Grid */}
       <div className="flex flex-wrap gap-2">
-        {QUICK_ACTION_REGISTRY.map(({ id, label, icon: Icon, color }) => {
-          const { isBusy, isActionDisabled, resolvedColor } = resolveActionState(id, color);
-          const isProposeAllActiveBatch = id === 'propose-all' && batchMode;
-
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onAction(id)}
-              disabled={isActionDisabled}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[10px] transition-all duration-200"
-              style={{
-                fontFamily: 'var(--font-orbitron), sans-serif',
-                fontWeight: 500,
-                letterSpacing: '0.05em',
-                background: isActionDisabled ? '#1a1a1a' : `${resolvedColor}06`,
-                color: isActionDisabled ? '#333' : resolvedColor,
-                borderWidth: '1px',
-                borderStyle: 'solid',
-                borderColor: isProposeAllActiveBatch ? 'rgba(0, 204, 255, 0.4)' : (isActionDisabled ? '#1a1a1a' : `${resolvedColor}25`),
-                cursor: isActionDisabled ? 'not-allowed' : 'pointer',
-                ...(isProposeAllActiveBatch ? { boxShadow: '0 0 12px rgba(0, 204, 255, 0.2)' } : {}),
-              }}
-              onMouseEnter={(e) => {
-                if (!isActionDisabled) {
-                  e.currentTarget.style.background = `${resolvedColor}15`;
-                  e.currentTarget.style.boxShadow = `0 0 10px ${resolvedColor}20, inset 0 0 20px ${resolvedColor}05`;
-                  e.currentTarget.style.borderColor = `${resolvedColor}50`;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActionDisabled) {
-                  e.currentTarget.style.background = `${resolvedColor}06`;
-                  e.currentTarget.style.boxShadow = isProposeAllActiveBatch ? '0 0 12px rgba(0, 204, 255, 0.2)' : 'none';
-                  e.currentTarget.style.borderColor = isProposeAllActiveBatch ? 'rgba(0, 204, 255, 0.4)' : `${resolvedColor}25`;
-                }
-              }}
-            >
-              <Icon size={11} className={isBusy ? 'animate-spin' : ''} />
-              <span>&#9673;</span>
-              {getBusyLabel(id, label)}
-            </button>
-          );
-        })}
+        {QUICK_ACTION_REGISTRY.map(({ id, label, icon, color }) => (
+          <ActionButton
+            key={id}
+            id={id}
+            label={label}
+            icon={icon}
+            color={color}
+            disabled={disabled}
+            batchMode={batchMode}
+            pushStatus={pushStatus}
+            deployStatus={deployStatus}
+            rebootStatus={rebootStatus}
+            undoStatus={undoStatus}
+            bulkCommitStatus={bulkCommitStatus}
+            onAction={onAction}
+          />
+        ))}
       </div>
     </div>
   );
