@@ -20,7 +20,7 @@ const CONFIG = Object.freeze({
 });
 
 /**
- * Handles the incoming HTTPS response stream with strict memory bounds validation.
+ * Validates HTTP status and wires up data collection streams.
  * @param {import('http').IncomingMessage} response 
  * @param {import('http').ClientRequest} request 
  */
@@ -31,7 +31,6 @@ function handleResponse(response, request) {
     return;
   }
 
-  // Pre-allocate chunks array to prevent expensive string concatenation garbage collection overhead
   const chunks = [];
   let currentDataSize = 0;
 
@@ -47,7 +46,6 @@ function handleResponse(response, request) {
 
   response.on('end', () => {
     if (currentDataSize <= CONFIG.maxDataSizeBytes) {
-      // Buffer.concat is significantly faster and consumes less memory than string += appending
       const finalBuffer = Buffer.concat(chunks, currentDataSize);
       process.stdout.write(finalBuffer.toString('utf8') + '\n');
     } else {
