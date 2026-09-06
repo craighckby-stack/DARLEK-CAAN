@@ -12,18 +12,18 @@ const https = require('https');
 /**
  * Configuration constants for network operations.
  */
-const NETWORK_CONFIG = {
+const NETWORK_CONFIG = Object.freeze({
   USER_AGENT: 'DARLEK-CANN-Engine/4.9 (Node.js)',
   TIMEOUT_MS: 10000,
   PREVIEW_LINE_COUNT: 5
-};
+});
 
 /**
- * Pre-allocated static objects to eliminate runtime allocation overhead.
+ * Base HTTP headers utilized across outgoing requests.
  */
-const BASE_HEADERS = {
+const BASE_HEADERS = Object.freeze({
   'User-Agent': NETWORK_CONFIG.USER_AGENT
-};
+});
 
 /**
  * Logs a standardized error block for a given label.
@@ -44,13 +44,11 @@ function logError(label, message) {
 function consumeResponseBody(response) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    let totalLength = 0;
     
     response.setEncoding('utf8');
 
     response.on('data', (chunk) => {
       chunks.push(chunk);
-      totalLength += chunk.length;
     });
 
     response.on('end', () => resolve(chunks.join('')));
@@ -65,7 +63,7 @@ function consumeResponseBody(response) {
  * @param {string} data - The raw page content.
  */
 function analyzeAndReportContent(label, data) {
-  const len = data.length;
+  const contentLen = data.length;
   const previewLimit = NETWORK_CONFIG.PREVIEW_LINE_COUNT;
   
   let totalLines = 0;
@@ -73,15 +71,13 @@ function analyzeAndReportContent(label, data) {
   let lastLinesStart = 0;
   
   // Single-pass newline tracking to prevent massive array creation from split()
-  for (let i = 0; i < len; i++) {
-    const char = data.charCodeAt(i);
-    if (char === 10) { // '\n'
+  for (let i = 0; i < contentLen; i++) {
+    if (data.charCodeAt(i) === 10) { // '\n'
       totalLines++;
       if (totalLines === previewLimit) {
         firstLinesEnd = i;
       }
       if (totalLines > previewLimit) {
-        // Advance lastLinesStart past the previous newline
         lastLinesStart = data.indexOf('\n', lastLinesStart) + 1;
       }
     }
