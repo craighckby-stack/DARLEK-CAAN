@@ -10,32 +10,14 @@
 const fs = require('fs');
 const https = require('https');
 const path = require('path');
-const crypto = require('crypto');
-
-/**
- * @typedef {Object} GitTreeNode
- * @property {string} path - The file path in the repository.
- * @property {string} mode - The file mode.
- * @property {string} type - The node type ('blob' | 'tree').
- * @property {string} sha - The Git SHA hash.
- * @property {number} [size] - The file size in bytes if available.
- * @property {string} [url] - API URL for the blob.
- */
-
-/**
- * @typedef {Object} GitTreeResponse
- * @property {string} sha - The commit SHA.
- * @property {string} url - The tree API URL.
- * @property {GitTreeNode[]} tree - Array of tree nodes.
- * @property {boolean} truncated - Whether the response was truncated.
- */
 
 const MAX_RESPONSE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB limit for DoS mitigation
 const BASE_WATCH_DIR = 'src';
+const RESOLVED_BASE = path.resolve(BASE_WATCH_DIR);
 
 /**
- * Recursively scans a directory for files using dirents to minimize filesystem I/O overhead.
- * Enforces strict input validation and path traversal sanitization.
+ * Recursively scans a directory for files using synchronous iteration to minimize overhead.
+ * Utilizes pre-resolved base paths to eliminate redundant path calculations.
  *
  * @param {string} dirPath - Directory path to traverse.
  * @param {string[]} [accumulator=[]] - Accumulator array for accumulated file paths.
@@ -46,36 +28,33 @@ function walk(dirPath, accumulator = []) {
     return accumulator;
   }
 
-  const resolvedBase = path.resolve(BASE_WATCH_DIR);
   const resolvedTarget = path.resolve(dirPath);
 
-  if (!resolvedTarget.startsWith(resolvedBase)) {
+  if (!resolvedTarget.startsWith(RESOLVED_BASE)) {
     console.error(`Security violation: Attempted path traversal outside base directory: '${dirPath}'`);
     return accumulator;
   }
 
-  if (!fs.existsSync(resolvedTarget)) {
+  let entries;
+  try {
+    entries = fs.readdirSync(resolvedTarget, { withFileTypes: true });
+  } catch {
     return accumulator;
   }
 
-  try {
-    const entries = fs.readdirSync(resolvedTarget, { withFileTypes: true });
-    
-    for (const entry of entries) {
-      if (!entry || typeof entry.name !== 'string') {
-        continue;
-      }
-      
-      const fullPath = path.join(resolvedTarget, entry.name);
-      
-      if (entry.isDirectory()) {
-        walk(fullPath, accumulator);
-      } else if (entry.isFile()) {
-        accumulator.push(fullPath);
-      }
+  const len = entries.length;
+  for (let i = 0; i < len; ++i) {
+    const entry = entries[i];
+    if (!entry || typeof entry.name !== 'string') {
+      continue;
     }
-  } catch (error) {
-    console.error(`Error traversing directory '${dirPath}':`, error);
+    
+    const fullPath = path.join(resolvedTarget, entry.name);
+    if (entry.isDirectory()) {
+      walk(fullPath, accumulator);
+    } else if (entry.isFile()) {
+      accumulator.push(fullPath);
+    }
   }
 
   return accumulator;
@@ -89,15 +68,24 @@ function walk(dirPath, accumulator = []) {
  */
 function processTreeResponse(rawData) {
   try {
-    /** @type {GitTreeResponse} */
     const parsedData = JSON.parse(rawData);
 
     if (!parsedData || !Array.isArray(parsedData.tree)) {
       throw new TypeError('Invalid response schema: missing "tree" array');
     }
 
-    const remoteFiles = parsedData.tree.filter((node) => node?.type === 'blob');
-    const localFiles = walk(BASE_WATCH_DIR);
+    const tree = parsedData.tree;
+    const len = tree.length;
+    const remoteFiles = [];
+    
+    for (let i = 0; i < len; ++i) {
+      const node = tree[i];
+      if (node && node.type === 'blob') {
+        remoteFiles.push(node);
+      }
+    }
+
+    walk(BASE_WATCH_DIR);
 
     fs.writeFileSync('remote_blobs.json', JSON.stringify(remoteFiles, null, 2), {
       encoding: 'utf8',
