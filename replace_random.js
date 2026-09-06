@@ -33,27 +33,22 @@ const RANDOMNESS_REPLACEMENTS = Object.freeze([
 ]);
 
 /**
- * Applies a sequence of pattern replacements to a source code string via an optimized imperative loop.
+ * Applies a sequence of pattern replacements to a source code string using functional iteration.
  * 
  * @param {string} sourceCode - The raw source code to transform.
  * @param {ReadonlyArray<{pattern: RegExp, replacement: string}>} replacements - The mapping of patterns.
  * @returns {string} The updated, deterministic source code.
  */
 function applyReplacements(sourceCode, replacements) {
-  let currentCode = sourceCode;
-  const len = replacements.length;
-  
-  for (let i = 0; i < len; i++) {
-    const item = replacements[i];
-    currentCode = currentCode.replace(item.pattern, item.replacement);
-  }
-  
-  return currentCode;
+  return replacements.reduce(
+    (currentCode, { pattern, replacement }) => currentCode.replace(pattern, replacement),
+    sourceCode
+  );
 }
 
 /**
  * Reads the target source file, applies all deterministic replacements, and writes the result back
- * utilizing synchronous I/O with minimized memory footprint and optimized string handling.
+ * utilizing synchronous I/O with minimized memory footprint and modern error handling.
  */
 function makeEngineDeterministic() {
   try {
@@ -63,7 +58,8 @@ function makeEngineDeterministic() {
     fs.writeFileSync(TARGET_FILE_PATH, sanitizedSource, 'utf8');
     console.info(`[EMG Engine] Successfully sanitized randomness in: ${TARGET_FILE_PATH}`);
   } catch (error) {
-    console.error(`[EMG Engine] Failed to process file ${TARGET_FILE_PATH}:`, error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[EMG Engine] Failed to process file ${TARGET_FILE_PATH}:`, errorMessage);
     process.exit(1);
   }
 }
