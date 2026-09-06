@@ -6,10 +6,10 @@
 
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
+const { readFileSync, writeFileSync } = require('node:fs');
+const { normalize } = require('node:path');
 
-const TARGET_FILE_PATH = path.normalize('src/app/api/evolution/propose/route.ts');
+const TARGET_FILE_PATH = normalize('src/app/api/evolution/propose/route.ts');
 
 const PATCH_CONFIGS = Object.freeze([
     {
@@ -32,9 +32,10 @@ const PATCH_CONFIGS = Object.freeze([
  * @returns {void}
  */
 function validateTargetSignatures(sourceContent, filePath) {
-    for (const { name, search } of PATCH_CONFIGS) {
-        if (!sourceContent.includes(search)) {
-            console.warn(`[EMG-v49] Warning: ${name} not found in ${filePath}`);
+    for (let i = 0; i < PATCH_CONFIGS.length; i++) {
+        const config = PATCH_CONFIGS[i];
+        if (!sourceContent.includes(config.search)) {
+            console.warn(`[EMG-v49] Warning: ${config.name} not found in ${filePath}`);
         }
     }
 }
@@ -46,10 +47,12 @@ function validateTargetSignatures(sourceContent, filePath) {
  * @returns {string} The updated file content.
  */
 function applyPatches(sourceContent) {
-    return PATCH_CONFIGS.reduce(
-        (content, { search, replacement }) => content.replace(search, replacement),
-        sourceContent
-    );
+    let content = sourceContent;
+    for (let i = 0; i < PATCH_CONFIGS.length; i++) {
+        const config = PATCH_CONFIGS[i];
+        content = content.replace(config.search, config.replacement);
+    }
+    return content;
 }
 
 /**
@@ -61,13 +64,13 @@ function applyPatches(sourceContent) {
  */
 function patchLogging() {
     try {
-        const originalCode = fs.readFileSync(TARGET_FILE_PATH, 'utf8');
+        const originalCode = readFileSync(TARGET_FILE_PATH, 'utf8');
 
         validateTargetSignatures(originalCode, TARGET_FILE_PATH);
 
         const updatedCode = applyPatches(originalCode);
 
-        fs.writeFileSync(TARGET_FILE_PATH, updatedCode, 'utf8');
+        writeFileSync(TARGET_FILE_PATH, updatedCode, 'utf8');
         console.log(`[EMG-v49] Successfully patched target file: ${TARGET_FILE_PATH}`);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
