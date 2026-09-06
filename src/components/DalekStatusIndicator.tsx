@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 
 export type DalekStatus = 'connected' | 'offline' | (string & {});
 
@@ -12,7 +12,7 @@ interface StatusConfiguration {
   readonly className: string;
 }
 
-const KNOWN_STATUS_CONFIGS: Record<'connected' | 'offline', StatusConfiguration> = {
+const KNOWN_STATUS_CONFIGS: Readonly<Record<'connected' | 'offline', StatusConfiguration>> = {
   connected: {
     text: '● SECURE',
     className: 'text-green-500',
@@ -21,7 +21,7 @@ const KNOWN_STATUS_CONFIGS: Record<'connected' | 'offline', StatusConfiguration>
     text: '○ OFFLINE',
     className: 'text-red-500',
   },
-} as const;
+};
 
 const BASE_INDICATOR_CLASSES = 'text-[10px] uppercase tracking-widest';
 
@@ -29,19 +29,23 @@ export const DalekStatusIndicator: React.FC<DalekStatusIndicatorProps> = memo(({
   status, 
   className = '' 
 }) => {
-  const statusConfig = useMemo<StatusConfiguration>(() => {
-    if (status === 'connected') return KNOWN_STATUS_CONFIGS.connected;
-    if (status === 'offline') return KNOWN_STATUS_CONFIGS.offline;
-    
-    return {
-      text: `○ ${status.toUpperCase()}`,
-      className: 'text-yellow-500',
-    };
-  }, [status]);
+  let text: string;
+  let statusClassName: string;
 
-  const combinedClassName = useMemo(() => {
-    return `${BASE_INDICATOR_CLASSES} ${statusConfig.className} ${className}`.trim();
-  }, [statusConfig.className, className]);
+  if (status === 'connected') {
+    text = KNOWN_STATUS_CONFIGS.connected.text;
+    statusClassName = KNOWN_STATUS_CONFIGS.connected.className;
+  } else if (status === 'offline') {
+    text = KNOWN_STATUS_CONFIGS.offline.text;
+    statusClassName = KNOWN_STATUS_CONFIGS.offline.className;
+  } else {
+    text = `○ ${status.toUpperCase()}`;
+    statusClassName = 'text-yellow-500';
+  }
+
+  const combinedClassName = className 
+    ? `${BASE_INDICATOR_CLASSES} ${statusClassName} ${className}` 
+    : `${BASE_INDICATOR_CLASSES} ${statusClassName}`;
 
   return (
     <div 
@@ -50,7 +54,7 @@ export const DalekStatusIndicator: React.FC<DalekStatusIndicatorProps> = memo(({
       aria-live="polite"
       aria-label={`Dalek status: ${status}`}
     >
-      {statusConfig.text}
+      {text}
     </div>
   );
 });
