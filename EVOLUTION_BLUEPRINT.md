@@ -1,17 +1,36 @@
 # DARLEK CANN v3.2 — Evolution Blueprint
 
-## Architecture
+> **EMG Core v49 Executive Summary**: The DARLEK CANN v3.2 architecture enforces zero-downtime, idempotent mutations through atomic regex injections and transactional backup provisioning. This document outlines core system architecture, the three-phase execution pipeline, legacy integration schemas, and hardened security protocols.
 
-- **Atomic Injection**: Utilizes marker-based regular expressions to guarantee idempotent updates and prevent state corruption during file mutations.
-- **Transactional Safety**: Automatically provisions isolated backups within the `.evolve_backups/` directory prior to executing any write operations.
-- **Integration Layer**: Incorporates siphoned user interface (UI) patterns and design tokens derived from legacy systems `darlek-cann-v3` and `SN: OMEGA`.
+---
 
-## Workflow Execution Pipeline
+## Quick Navigation
+- [1. Architecture](#1-architecture)
+- [2. Workflow Execution Pipeline](#2-workflow-execution-pipeline)
+- [3. Integration Schema](#3-integration-schema)
+- [4. Security Guidelines & Vulnerability Reporting](#4-security-guidelines--vulnerability-reporting)
 
-1. **Scan Phase**: `updateModule.js` ingests and parses the primary target source file (`src/App.tsx`).
+---
+
+## 1. Architecture
+
+| Component | Mechanism | Purpose |
+| :--- | :--- | :--- |
+| **Atomic Injection** | Marker-based RegEx | Guarantees idempotent updates and prevents state corruption during file mutations. |
+| **Transactional Safety** | Isolated `.evolve_backups/` snapshots | Provisions pre-flight backups prior to executing any write operations. |
+| **Integration Layer** | Siphoned UI patterns & design tokens | Incorporates legacy assets derived from `darlek-cann-v3` and `SN: OMEGA`. |
+
+---
+
+## 2. Workflow Execution Pipeline
+
+The execution sequence operated by `updateModule.js` follows three strict operational phases:
+
+1. **Scan Phase**: Ingests and parses the primary target source file (`src/App.tsx`).
 2. **Validation Phase**: Verifies the presence, syntax, and structural integrity of designated injection boundaries.
-3. **Execution Phase**: Performs an atomic file write accompanied by a pre-flight backup snapshot to ensure zero-downtime recovery.
+3. **Execution Phase**: Performs an atomic file write accompanied by a pre-flight backup snapshot for zero-downtime recovery.
 
+### Core Implementation (`updateModule.js`)
 ```javascript
 /**
  * @file updateModule.js
@@ -46,30 +65,26 @@ function injectAtomicModule(targetPath, payload, markers) {
 module.exports = { injectAtomicModule };
 ```
 
-## Integration Schema
+---
+
+## 3. Integration Schema
 
 - **Quantum Node**: Advanced computation logic siphoned from `sovereign-v86`.
 - **Temporal Fortune**: Reactive user interface component adapted from `claudios_system_book`.
 
 ---
 
-## Security Guidelines and Vulnerability Reporting
+## 4. Security Guidelines & Vulnerability Reporting
 
-### Security Best Practices
+### 4.1 Security Best Practices
+- **Input Validation**: Sanitize all target paths and payloads to prevent path traversal and arbitrary file write vulnerabilities.
+- **Access Control**: Restrict `.evolve_backups/` directories and backup snapshots with strict file permissions (`chmod 600` equivalent) to block unauthorized state history reads.
+- **Idempotency & Integrity**: Enforce rigorous RegEx boundary validations to defend against malformed or malicious marker injections.
 
-- **Input Validation**: All target paths and payloads passed into injection routines must undergo strict sanitization and path-traversal checks to prevent arbitrary file write vulnerabilities.
-- **Access Control**: Ensure that `.evolve_backups/` directories and backup snapshots are restricted with strict file permissions (`chmod 600` or equivalent) to prevent unauthorized read access to sensitive state history.
-- **Idempotency and Integrity**: Maintain rigorous regex boundary validations to ensure automated updates cannot be exploited via malformed or malicious marker injection.
+### 4.2 Responsible Disclosure Policy
+Do not disclose vulnerabilities publicly until the engineering team has deployed an official patch. 
 
-### Responsible Disclosure Policy
-
-We take the security of the DARLEK CANN ecosystem seriously. If you discover a security vulnerability within this blueprint, codebase, or associated integration modules, please do not disclose it publicly until our engineering team has addressed it.
-
-### Vulnerability Reporting Instructions
-
-To report a security issue, please adhere to the following protocol:
-
-1. **Do Not Open Public Issues**: Avoid submitting public GitHub issues or pull requests detailing active vulnerabilities.
-2. **Direct Reporting**: Send a detailed report via secure channels or email to our core security operations team at `security@darlek-cann.internal` (or your designated security contact).
-3. **Required Information**: Include a clear description of the vulnerability, steps to reproduce, potential impact assessment, and any proposed remediation strategies.
-4. **Response Timeline**: Our security team will acknowledge receipt within 48 hours and provide an estimated timeline for patching and disclosure coordination.
+### 4.3 Vulnerability Reporting Protocol
+1. **Private Reporting**: Send detailed reports securely to `security@darlek-cann.internal` (avoid public GitHub issues).
+2. **Required Payload**: Include vulnerability descriptions, reproduction steps, impact assessments, and proposed remediations.
+3. **SLA**: Core security operations will acknowledge receipt within **48 hours** and coordinate patching timelines.
