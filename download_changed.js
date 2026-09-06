@@ -35,24 +35,45 @@ function loadRemoteBlobs() {
   try {
     const rawData = fs.readFileSync('remote_blobs.json', 'utf8');
     const parsed = JSON.parse(rawData);
+    
     if (!Array.isArray(parsed)) {
       return [];
     }
-    const len = parsed.length;
-    /** @type {RemoteBlob[]} */
-    const validItems = [];
-    for (let i = 0; i < len; i++) {
-      const item = parsed[i];
-      if (item !== null && typeof item === 'object' && typeof item.path === 'string') {
-        validItems.push(item);
-      }
-    }
-    return validItems;
+
+    return parsed.filter(
+      (item) => item !== null && typeof item === 'object' && typeof item.path === 'string'
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('CRITICAL: Failed to read or parse remote_blobs.json:', errorMessage);
     return [];
   }
+}
+
+/**
+ * Validates and safely parses an input URL string against allowed protocols.
+ * @param {string} url - Target URL to validate.
+ * @returns {URL} Validated URL object.
+ */
+function parseAndValidateUrl(url) {
+  const parsedUrl = new URL(url);
+  if (parsedUrl.protocol !== 'https:') {
+    throw new Error('Insecure protocol blocked; HTTPS required.');
+  }
+  return parsedUrl;
+}
+
+/**
+ * Validates target file path constraints to prevent directory traversal attacks.
+ * @param {string} rawPath - Target file path string.
+ * @returns {string|null} Sanitized safe path string or null if unsafe.
+ */
+function getSanitizedFilePath(rawPath) {
+  const sanitizedPath = path.normalize(rawPath).replace(/^(\.\.(\/|\\))+/, '');
+  if (path.isAbsolute(sanitizedPath) || sanitizedPath.startsWith('..') || sanitizedPath.includes('\0')) {
+    return null;
+  }
+  return sanitizedPath;
 }
 
 /**
@@ -64,13 +85,9 @@ function fetchRemoteContent(url) {
   return new Promise((resolve, reject) => {
     let parsedUrl;
     try {
-      parsedUrl = new URL(url);
+      parsedUrl = parseAndValidateUrl(url);
     } catch (err) {
-      return reject(new Error(`Invalid URL provided: ${url}`));
-    }
-
-    if (parsedUrl.protocol !== 'https:') {
-      return reject(new Error('Insecure protocol blocked; HTTPS required.'));
+      return reject(err);
     }
 
     const request = https.get(
@@ -129,23 +146,35 @@ function fetchRemoteContent(url) {
 }
 
 /**
+ * Checks whether a given local file path currently exists on disk.
+ * @param {string} filePath - Path to check.
+ * @returns {Promise<boolean>} True if file exists, false otherwise.
+ */
+async function checkFileExists(filePath) {
+  try {
+    await fsPromises.access(filePath, fs.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Asynchronously processes remote blobs, detects modifications, synchronizes files securely, and outputs results.
  * @returns {Promise<void>}
  */
 async function processBlobsSequentially() {
   const remoteBlobs = loadRemoteBlobs();
-  const len = remoteBlobs.length;
   /** @type {RemoteBlob[]} */
   const changedFilesList = [];
 
-  for (let i = 0; i < len; i++) {
-    const fileObj = remoteBlobs[i];
+  for (const fileObj of remoteBlobs) {
     if (!fileObj || typeof fileObj.path !== 'string') {
       continue;
     }
 
-    const sanitizedPath = path.normalize(fileObj.path).replace(/^(\.\.(\/|\\))+/, '');
-    if (path.isAbsolute(sanitizedPath) || sanitizedPath.startsWith('..') || sanitizedPath.includes('\0')) {
+    const sanitizedPath = getSanitizedFilePath(fileObj.path);
+    if (!sanitizedPath) {
       console.warn(`Warning: Skipped unsafe or malformed file path detected: "${fileObj.path}"`);
       continue;
     }
@@ -155,13 +184,7 @@ async function processBlobsSequentially() {
     }
 
     try {
-      let fileExists = false;
-      try {
-        await fsPromises.access(sanitizedPath, fs.constants.F_OK);
-        fileExists = true;
-      } catch {
-        fileExists = false;
-      }
+      const fileExists = await checkFileExists(sanitizedPath);
 
       if (fileExists) {
         const localContent = await fsPromises.readFile(sanitizedPath, 'utf8');
