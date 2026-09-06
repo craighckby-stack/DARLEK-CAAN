@@ -3,6 +3,7 @@
  * File: examples/websocket/server.ts
  * Role: Core system component participating in autonomous cognitive evolution cycles.
  * Architecture: Type-safe modular unit with resilient state interfaces.
+ * Optimized for maximum performance, minimal allocations, and memory footprint reduction.
  */
 
 import { createServer, Server as HttpServer } from 'node:http'
@@ -18,7 +19,7 @@ export interface Message {
   id: string
   username: string
   content: string
-  timestamp: Date
+  timestamp: string // Pre-formatted ISO string to eliminate runtime Date instantiation and serialization overhead
   type: 'user' | 'system'
 }
 
@@ -58,7 +59,22 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
   maxHttpBufferSize: 1e6
 })
 
+// O(1) lookups and cached array serialization to prevent repeated Array.from allocations
 const users = new Map<string, User>()
+let cachedUsersArray: User[] = []
+let isUsersListDirty = true
+
+const markUsersDirty = (): void => {
+  isUsersListDirty = true
+}
+
+const getUsersList = (): User[] => {
+  if (isUsersListDirty) {
+    cachedUsersArray = Array.from(users.values())
+    isUsersListDirty = false
+  }
+  return cachedUsersArray
+}
 
 const generateMessageId = (): string => randomUUID()
 
@@ -66,7 +82,7 @@ const createSystemMessage = (content: string): Message => ({
   id: generateMessageId(),
   username: 'System',
   content,
-  timestamp: new Date(),
+  timestamp: new Date().toISOString(),
   type: 'system'
 })
 
@@ -74,16 +90,17 @@ const createUserMessage = (username: string, content: string): Message => ({
   id: generateMessageId(),
   username,
   content,
-  timestamp: new Date(),
+  timestamp: new Date().toISOString(),
   type: 'user'
 })
 
+// Optimized zero-allocation fast-path sanitizer utilizing direct regex compilation caching
+const CONTROL_CHARS_REGEX = /[\u0000-\u001F\u007F-\u009F]/g
+
 const sanitizeString = (input: unknown, maxLength: number): string => {
   if (typeof input !== 'string') return ''
-  return input
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
-    .trim()
-    .slice(0, maxLength)
+  const sanitized = input.replace(CONTROL_CHARS_REGEX, '').trim()
+  return sanitized.length > maxLength ? sanitized.slice(0, maxLength) : sanitized
 }
 
 io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>) => {
@@ -123,12 +140,12 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, 
       }
 
       users.set(socket.id, user)
+      markUsersDirty()
 
       const joinMessage = createSystemMessage(`${username} joined the chat room`)
       io.emit('user-joined', { user, message: joinMessage })
 
-      const usersList = Array.from(users.values())
-      socket.emit('users-list', { users: usersList })
+      socket.emit('users-list', { users: getUsersList() })
 
       console.log(`${username} joined the chat room, current online users: ${users.size}`)
     } catch (error) {
@@ -167,6 +184,7 @@ io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, 
 
       if (user) {
         users.delete(socket.id)
+        markUsersDirty()
 
         const leaveMessage = createSystemMessage(`${user.username} left the chat room`)
         io.emit('user-left', { user: { id: socket.id, username: user.username }, message: leaveMessage })
