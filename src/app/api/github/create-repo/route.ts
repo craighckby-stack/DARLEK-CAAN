@@ -55,7 +55,7 @@ async function collectProjectFiles(dir: string, base: string = ''): Promise<File
     return [];
   }
 
-  const promises = entries.map(async (entry) => {
+  const promises = entries.map(async (entry): Promise<FileItem[]> => {
     const entryName = entry.name;
     const fullPath = path.join(dir, entryName);
     const relativePath = base ? `${base}/${entryName}` : entryName;
@@ -77,29 +77,17 @@ async function collectProjectFiles(dir: string, base: string = ''): Promise<File
         }
       }
       return [];
-    } else if (entry.isDirectory()) {
+    }
+    
+    if (entry.isDirectory()) {
       return collectProjectFiles(fullPath, relativePath);
     }
+    
     return [];
   });
 
-  const results = await Promise.all(promises);
-  let totalLength = 0;
-  for (let i = 0; i < results.length; i++) {
-    totalLength += results[i].length;
-  }
-  
-  const filesToPush = new Array<FileItem>(totalLength);
-  let offset = 0;
-  for (let i = 0; i < results.length; i++) {
-    const res = results[i];
-    const resLen = res.length;
-    for (let j = 0; j < resLen; j++) {
-      filesToPush[offset++] = res[j];
-    }
-  }
-
-  return filesToPush;
+  const nestedResults = await Promise.all(promises);
+  return nestedResults.flat();
 }
 
 async function fetchBranchReference(
@@ -165,27 +153,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const headers = buildGitHubHeaders(token);
 
-    const [userRes, existingRepoRes, filesToPush] = await Promise.all([
+    const [userRes, filesToPush] = await Promise.all([
       fetch('https://api.github.com/user', { headers }),
-      fetch(`https://api.github.com/repos/${token ? JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString() || '{}').login : ''}/${encodeURIComponent(repoName)}`, { headers }).catch(() => null), // Fallback handled sequentially below if needed, but fetch user first for owner login.
       collectProjectFiles(process.cwd())
     ]);
 
-    // Re-evaluating optimal parallel chain since owner is needed for repo check
-    const userRealRes = userRes;
-    if (!userRealRes.ok) {
+    if (!userRes.ok) {
       return NextResponse.json({ error: 'GitHub authentication failed' }, { status: 401 });
     }
     
-    const userData = (await userRealRes.json()) as GitHubUser;
+    const userData = (await userRes.json()) as GitHubUser;
     const owner = userData.login;
 
-    const [realExistingRepoRes, realFilesToPush] = await Promise.all([
-      fetch(`https://api.github.com/repos/${owner}/${encodeURIComponent(repoName)}`, { headers }),
-      Promise.resolve(filesToPush)
-    ]);
+    const existingRepoRes = await fetch(`https://api.github.com/repos/${owner}/${encodeURIComponent(repoName)}`, { headers });
 
-    let repoCreated = realExistingRepoRes.ok;
+    let repoCreated = existingRepoRes.ok;
     let defaultBranch = 'main';
 
     if (!repoCreated) {
@@ -209,34 +191,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       repoCreated = true;
     } else {
-      const repoData = (await realExistingRepoRes.json()) as GitHubRepo;
+      const repoData = (await existingRepoRes.json()) as GitHubRepo;
       defaultBranch = repoData.default_branch || 'main';
     }
 
-    if (realFilesToPush.length === 0) {
+    if (filesToPush.length === 0) {
       return NextResponse.json({ error: 'No files valid for push' }, { status: 400 });
     }
 
-    const [refSha, treeRes] = await Promise.all([
-      fetchBranchReference(owner, repoName, defaultBranch, headers),
-      (async () => {
-        return null; // Will fetch base tree sha after refSha
-      })()
-    ]);
-
+    const refSha = await fetchBranchReference(owner, repoName, defaultBranch, headers);
     const baseTreeSha = refSha ? await fetchBaseTreeSha(owner, repoName, refSha, headers) : null;
 
-    const totalFiles = realFilesToPush.length;
-    const treeItems = new Array(totalFiles);
-    for (let i = 0; i < totalFiles; i++) {
-      const file = realFilesToPush[i];
-      treeItems[i] = {
-        path: file.path,
-        mode: '100644',
-        type: 'blob',
-        content: file.content,
-      };
-    }
+    const totalFiles = filesToPush.length;
+    const treeItems = filesToPush.map(file => ({
+      path: file.path,
+      mode: '100644',
+      type: 'blob',
+      content: file.content,
+    }));
 
     const treeBody: Record<string, unknown> = {
       tree: treeItems,
