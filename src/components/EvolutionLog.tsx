@@ -14,20 +14,26 @@ interface LogRowProps {
 }
 
 // Pre-cached date formatter to prevent expensive instantiation loops
-const timeFormatter = new Intl.DateTimeFormat([], {
+const TIME_FORMATTER = new Intl.DateTimeFormat([], {
   hour: '2-digit',
   minute: '2-digit',
   second: '2-digit',
 });
 
+/**
+ * Safely formats a timestamp value into a readable string representation.
+ */
 function formatTimestamp(timestamp: string | number | Date): string {
   try {
-    return timeFormatter.format(new Date(timestamp));
+    return TIME_FORMATTER.format(new Date(timestamp));
   } catch {
     return '00:00:00';
   }
 }
 
+/**
+ * Renders an individual entry row in the evolution log.
+ */
 const LogRow = memo(function LogRow({ entry }: LogRowProps) {
   const accentColor = LOG_TYPE_COLORS[entry.type] ?? COLORS.textDim;
   const logIcon = LOG_TYPE_ICONS[entry.type] ?? '●';
@@ -89,6 +95,9 @@ const LogRow = memo(function LogRow({ entry }: LogRowProps) {
   );
 });
 
+/**
+ * Displays a chronological list of system evolution events and actions.
+ */
 export default function EvolutionLog({ entries }: EvolutionLogProps) {
   const totalEntries = entries.length;
 
