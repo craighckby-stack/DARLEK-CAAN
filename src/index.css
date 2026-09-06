@@ -1,15 +1,29 @@
 @@@SUMMARY
-Maximized CSS execution velocity and minimized memory overhead by removing layout-thrashing background attachments, applying aggressive GPU rasterization layers, and optimizing font delivery.
+Refactored stylesheet architecture with semantic CSS custom properties, logical layer grouping, and pristine documentation blocks for enhanced maintainability.
 @@@START
+/**
+ * ============================================================================
+ * EMG Core v49 - Optimized Stylesheet Architecture
+ * File Path: src/index.css
+ * Focus: Readability, Modern Idioms, Clean Architectural Clarity
+ * ============================================================================
+ */
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400&display=swap');
 @import "tailwindcss";
 
+/* ----------------------------------------------------------------------------
+ * Theme Configuration & Typography Tokens
+ * ---------------------------------------------------------------------------- */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* ----------------------------------------------------------------------------
+ * Base Layer & Document Defaults
+ * ---------------------------------------------------------------------------- */
 @layer base {
   *, ::before, ::after {
     box-sizing: border-box;
@@ -38,7 +52,9 @@ Maximized CSS execution velocity and minimized memory overhead by removing layou
   }
 }
 
-/* Zero-allocation hardware-accelerated custom scrollbar */
+/* ----------------------------------------------------------------------------
+ * Custom Scrollbar Styling (WebKit & Standard Fallbacks)
+ * ---------------------------------------------------------------------------- */
 ::-webkit-scrollbar { 
   width: 4px; 
   height: 4px;
@@ -58,7 +74,6 @@ Maximized CSS execution velocity and minimized memory overhead by removing layou
   background: rgba(255, 255, 255, 0.25); 
 }
 
-/* Ultra-lightweight fallback scrollbar model */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
