@@ -23,7 +23,7 @@ export const ToastViewport = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () => (className ? cn(VIEWPORT_STYLES, className) : VIEWPORT_STYLES),
+    () => cn(VIEWPORT_STYLES, className),
     [className]
   )
 
@@ -72,10 +72,10 @@ export const Toast = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
   VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
-  const computedClassName = React.useMemo(() => {
-    const variantStyles = toastVariants({ variant })
-    return className ? cn(variantStyles, className) : variantStyles
-  }, [variant, className])
+  const computedClassName = React.useMemo(
+    () => cn(toastVariants({ variant }), className),
+    [variant, className]
+  )
 
   return (
     <ToastPrimitives.Root
@@ -105,7 +105,7 @@ export const ToastAction = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () => (className ? cn(ACTION_STYLES, className) : ACTION_STYLES),
+    () => cn(ACTION_STYLES, className),
     [className]
   )
 
@@ -134,7 +134,7 @@ export const ToastClose = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () => (className ? cn(CLOSE_STYLES, className) : CLOSE_STYLES),
+    () => cn(CLOSE_STYLES, className),
     [className]
   )
 
@@ -158,7 +158,7 @@ export const ToastTitle = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () => (className ? cn(TITLE_STYLES, className) : TITLE_STYLES),
+    () => cn(TITLE_STYLES, className),
     [className]
   )
 
@@ -179,7 +179,7 @@ export const ToastDescription = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
 >(({ className, ...props }, ref) => {
   const computedClassName = React.useMemo(
-    () => (className ? cn(DESCRIPTION_STYLES, className) : DESCRIPTION_STYLES),
+    () => cn(DESCRIPTION_STYLES, className),
     [className]
   )
 
