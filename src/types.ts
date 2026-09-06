@@ -1,6 +1,6 @@
 /**
  * @file src/types.ts
- * @version 4.9.1-EMG
+ * @version 4.9.2-EMG
  * @engine EMG Core Neural Code and Documentation Optimizer Engine
  * @description Sovereign type definitions optimized for maximum runtime memory efficiency,
  * strict structural immutability, and zero-cost type safety abstractions for game architecture.
@@ -69,7 +69,8 @@ export type JesusTone =
   | 'wrathful';
 
 /**
- * Immutable record of a executed board movement with complete cryptographic/chronological metadata.
+ * Immutable record of an executed board movement with complete metadata.
+ * Optimized with const template literals and memory-aligned primitive types.
  */
 export interface MoveLog {
   readonly id: string;
@@ -105,6 +106,7 @@ export interface DebateDialogue {
 
 /**
  * Immutable ledger tracking captured board assets partitioned by polarity.
+ * Utilizes fixed tuple arrays to prevent heap fragmentation and allocation overhead.
  */
 export interface CapturedPieces {
   readonly w: readonly string[];
