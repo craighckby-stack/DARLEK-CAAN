@@ -15,29 +15,18 @@ __webpack_require__.d(__webpack_exports__, {
 
 const clsxModule = __webpack_require__("(ssr)/./node_modules/clsx/dist/clsx.mjs");
 
-/**
- * Defensive security key set to prevent prototype pollution vectors.
- */
 const PROTOTYPE_POLLUTION_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
-/**
- * Type guard to check if a given value is a non-null object.
- */
 const isObject = (value) => value !== null && typeof value === "object";
 
-/**
- * Safely checks object own-property existence avoiding prototype vulnerabilities.
- */
 const hasOwnProp = (targetObject, key) =>
-  isObject(targetObject) && 
+  targetObject !== null && 
+  typeof targetObject === "object" && 
   !PROTOTYPE_POLLUTION_KEYS.has(key) && 
   Object.prototype.hasOwnProperty.call(targetObject, key);
 
-/**
- * Normalizes primitive types into string representations for styling evaluation.
- */
 const coerceToString = (value) => {
-  if (typeof value === "boolean") return String(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
   if (value === 0) return "0";
   if (typeof value === "symbol") return "";
   return value;
@@ -45,89 +34,113 @@ const coerceToString = (value) => {
 
 const cx = clsxModule.clsx;
 
-/**
- * Generates conditional class names based on base styles, variants, and compound configurations.
- */
-const cva = (baseStyle, config) => (props) => {
+const cva = (baseStyle, config) => {
   const resolvedConfig = isObject(config) ? config : {};
-  const resolvedProps = isObject(props) ? props : {};
-
   const { variants, defaultVariants, compoundVariants } = resolvedConfig;
-
-  if (!variants || !isObject(variants)) {
-    return cx(baseStyle, resolvedProps.class, resolvedProps.className);
-  }
-
   const safeDefaultVariants = isObject(defaultVariants) ? defaultVariants : {};
 
-  // Extract individual variant class names
-  const variantClassNames = Object.keys(variants).map((variantKey) => {
-    if (PROTOTYPE_POLLUTION_KEYS.has(variantKey) || !hasOwnProp(variants, variantKey)) {
-      return null;
+  return (props) => {
+    const resolvedProps = isObject(props) ? props : {};
+
+    if (!variants || !isObject(variants)) {
+      return cx(baseStyle, resolvedProps.class, resolvedProps.className);
     }
 
-    const propValue = hasOwnProp(resolvedProps, variantKey) ? resolvedProps[variantKey] : undefined;
-    const defaultPropValue = hasOwnProp(safeDefaultVariants, variantKey) ? safeDefaultVariants[variantKey] : undefined;
+    const variantKeys = Object.keys(variants);
+    const variantKeysLen = variantKeys.length;
+    const variantClassNames = new Array(variantKeysLen);
 
-    if (propValue === null) return null;
+    for (let i = 0; i < variantKeysLen; i++) {
+      const variantKey = variantKeys[i];
+      if (PROTOTYPE_POLLUTION_KEYS.has(variantKey) || !Object.prototype.hasOwnProperty.call(variants, variantKey)) {
+        variantClassNames[i] = null;
+        continue;
+      }
 
-    const matchedVariantKey = coerceToString(propValue) || coerceToString(defaultPropValue);
-    if (matchedVariantKey === undefined || matchedVariantKey === null) {
-      return null;
+      const propValue = Object.prototype.hasOwnProperty.call(resolvedProps, variantKey) ? resolvedProps[variantKey] : undefined;
+      const defaultPropValue = Object.prototype.hasOwnProperty.call(safeDefaultVariants, variantKey) ? safeDefaultVariants[variantKey] : undefined;
+
+      if (propValue === null) {
+        variantClassNames[i] = null;
+        continue;
+      }
+
+      const matchedVariantKey = coerceToString(propValue) ?? coerceToString(defaultPropValue);
+      if (matchedVariantKey === undefined || matchedVariantKey === null) {
+        variantClassNames[i] = null;
+        continue;
+      }
+
+      const variantGroup = variants[variantKey];
+      variantClassNames[i] = (isObject(variantGroup) && Object.prototype.hasOwnProperty.call(variantGroup, matchedVariantKey))
+        ? variantGroup[matchedVariantKey]
+        : undefined;
     }
 
-    const variantGroup = variants[variantKey];
-    return isObject(variantGroup) && hasOwnProp(variantGroup, matchedVariantKey)
-      ? variantGroup[matchedVariantKey]
-      : undefined;
-  });
+    const mergedProps = { ...safeDefaultVariants };
+    const propKeys = Object.keys(resolvedProps);
+    const propKeysLen = propKeys.length;
 
-  // Sanitize provided properties to filter out undefined and dangerous keys
-  const sanitizedProps = {};
-  for (const key of Object.keys(resolvedProps)) {
-    if (PROTOTYPE_POLLUTION_KEYS.has(key)) continue;
-    const value = resolvedProps[key];
-    if (value !== undefined) {
-      sanitizedProps[key] = value;
+    for (let i = 0; i < propKeysLen; i++) {
+      const key = propKeys[i];
+      if (!PROTOTYPE_POLLUTION_KEYS.has(key)) {
+        const val = resolvedProps[key];
+        if (val !== undefined) {
+          mergedProps[key] = val;
+        }
+      }
     }
-  }
 
-  const mergedProps = { ...safeDefaultVariants, ...sanitizedProps };
+    let compoundClassNames = null;
+    if (Array.isArray(compoundVariants)) {
+      compoundClassNames = [];
+      const cvLen = compoundVariants.length;
 
-  // Evaluate compound variant matches
-  const compoundClassNames = Array.isArray(compoundVariants)
-    ? compoundVariants.reduce((accumulatedClasses, compoundRule) => {
-        if (!isObject(compoundRule)) return accumulatedClasses;
+      for (let i = 0; i < cvLen; i++) {
+        const compoundRule = compoundVariants[i];
+        if (!isObject(compoundRule)) continue;
 
         const { class: ruleClass, className: ruleClassName, ...conditionOptions } = compoundRule;
+        const conditionKeys = Object.keys(conditionOptions);
+        const ckLen = conditionKeys.length;
+        let isConditionMet = true;
 
-        const isConditionMet = Object.keys(conditionOptions).every((conditionKey) => {
-          if (PROTOTYPE_POLLUTION_KEYS.has(conditionKey)) return false;
-          
+        for (let j = 0; j < ckLen; j++) {
+          const conditionKey = conditionKeys[j];
+          if (PROTOTYPE_POLLUTION_KEYS.has(conditionKey)) {
+            isConditionMet = false;
+            break;
+          }
+
           const expectedValue = conditionOptions[conditionKey];
           const actualValue = mergedProps[conditionKey];
 
-          return Array.isArray(expectedValue)
-            ? expectedValue.includes(actualValue)
-            : actualValue === expectedValue;
-        });
-
-        if (isConditionMet) {
-          if (ruleClass) accumulatedClasses.push(ruleClass);
-          if (ruleClassName) accumulatedClasses.push(ruleClassName);
+          if (Array.isArray(expectedValue)) {
+            if (!expectedValue.includes(actualValue)) {
+              isConditionMet = false;
+              break;
+            }
+          } else if (actualValue !== expectedValue) {
+            isConditionMet = false;
+            break;
+          }
         }
 
-        return accumulatedClasses;
-      }, [])
-    : [];
+        if (isConditionMet) {
+          if (ruleClass) compoundClassNames.push(ruleClass);
+          if (ruleClassName) compoundClassNames.push(ruleClassName);
+        }
+      }
+    }
 
-  return cx(
-    baseStyle,
-    variantClassNames,
-    compoundClassNames,
-    resolvedProps.class,
-    resolvedProps.className
-  );
+    return cx(
+      baseStyle,
+      variantClassNames,
+      compoundClassNames,
+      resolvedProps.class,
+      resolvedProps.className
+    );
+  };
 };
 
 /***/ })
