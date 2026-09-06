@@ -24,7 +24,6 @@ const PROVIDERS: readonly ProviderConfig[] = [
   { id: 'github', label: 'GITHUB' },
 ] as const;
 
-// Static mapping objects to eliminate runtime conditional allocations during render mapping
 const STATUS_COLORS = {
   connected: COLORS.cyan,
   error: COLORS.dalekRed,
