@@ -5,11 +5,11 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-const fs = require('fs');
-const path = require('path');
+import { readFileSync, statSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const CONFIG = Object.freeze({
-    ALLOWED_BASE_DIR: path.resolve('src/app/api/evolution'),
+    ALLOWED_BASE_DIR: resolve('src/app/api/evolution'),
     RELATIVE_FILE_PATH: 'propose/route.ts',
     MAX_FILE_SIZE_BYTES: 5 * 1024 * 1024, // 5MB limit
     ENCODING: 'utf8',
@@ -22,7 +22,7 @@ const CONFIG = Object.freeze({
  * Optimized with direct string validation to eliminate unnecessary object allocations.
  */
 function resolveAndValidatePath(baseDir, relativePath) {
-    const resolvedPath = path.resolve(baseDir, relativePath);
+    const resolvedPath = resolve(baseDir, relativePath);
     if (!resolvedPath.startsWith(baseDir)) {
         throw new Error('SECURITY ERROR: Unauthorized file access attempt detected.');
     }
@@ -35,7 +35,7 @@ function resolveAndValidatePath(baseDir, relativePath) {
 function validateFileConstraints(filePath, maxSize) {
     let stats;
     try {
-        stats = fs.statSync(filePath);
+        stats = statSync(filePath);
     } catch (err) {
         throw new Error(`SECURITY ERROR: Failed to stat target file: ${err.message}`);
     }
@@ -54,7 +54,7 @@ function validateFileConstraints(filePath, maxSize) {
  * Optimized to use direct string replacement avoiding global regex overhead.
  */
 function sanitizeSourceCode(filePath, targetStr, replacementStr, encoding) {
-    const code = fs.readFileSync(filePath, encoding);
+    const code = readFileSync(filePath, encoding);
 
     const index = code.indexOf(targetStr);
     if (index === -1) {
@@ -63,10 +63,12 @@ function sanitizeSourceCode(filePath, targetStr, replacementStr, encoding) {
 
     // Direct slice and concatenation for peak performance over string.replace
     const updatedCode = code.slice(0, index) + replacementStr + code.slice(index + targetStr.length);
-    fs.writeFileSync(filePath, updatedCode, encoding);
+    writeFileSync(filePath, updatedCode, encoding);
 }
 
-// Main Execution Flow
+/**
+ * Main Execution Flow
+ */
 function executeEvolutionaryPromptFix() {
     const targetPath = resolveAndValidatePath(CONFIG.ALLOWED_BASE_DIR, CONFIG.RELATIVE_FILE_PATH);
     validateFileConstraints(targetPath, CONFIG.MAX_FILE_SIZE_BYTES);
