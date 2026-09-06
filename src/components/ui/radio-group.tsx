@@ -27,35 +27,49 @@ const RADIO_GROUP_ICON_STYLES = "fill-primary absolute top-1/2 left-1/2 size-2 -
 const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
   RadioGroupProps
->(({ className, ...props }, ref) => (
-  <RadioGroupPrimitive.Root
-    ref={ref}
-    data-slot="radio-group"
-    className={cn(RADIO_GROUP_ROOT_STYLES, className)}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  const computedClassName = React.useMemo(
+    () => (className ? cn(RADIO_GROUP_ROOT_STYLES, className) : RADIO_GROUP_ROOT_STYLES),
+    [className]
+  )
+
+  return (
+    <RadioGroupPrimitive.Root
+      ref={ref}
+      data-slot="radio-group"
+      className={computedClassName}
+      {...props}
+    />
+  )
+})
 
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName
 
 const RadioGroupItem = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Item>,
   RadioGroupItemProps
->(({ className, ...props }, ref) => (
-  <RadioGroupPrimitive.Item
-    ref={ref}
-    data-slot="radio-group-item"
-    className={cn(RADIO_GROUP_ITEM_STYLES, className)}
-    {...props}
-  >
-    <RadioGroupPrimitive.Indicator
-      data-slot="radio-group-indicator"
-      className={RADIO_GROUP_INDICATOR_STYLES}
+>(({ className, ...props }, ref) => {
+  const computedClassName = React.useMemo(
+    () => (className ? cn(RADIO_GROUP_ITEM_STYLES, className) : RADIO_GROUP_ITEM_STYLES),
+    [className]
+  )
+
+  return (
+    <RadioGroupPrimitive.Item
+      ref={ref}
+      data-slot="radio-group-item"
+      className={computedClassName}
+      {...props}
     >
-      <CircleIcon className={RADIO_GROUP_ICON_STYLES} />
-    </RadioGroupPrimitive.Indicator>
-  </RadioGroupPrimitive.Item>
-))
+      <RadioGroupPrimitive.Indicator
+        data-slot="radio-group-indicator"
+        className={RADIO_GROUP_INDICATOR_STYLES}
+      >
+        <CircleIcon className={RADIO_GROUP_ICON_STYLES} />
+      </RadioGroupPrimitive.Indicator>
+    </RadioGroupPrimitive.Item>
+  )
+})
 
 RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName
 
