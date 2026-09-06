@@ -26,8 +26,13 @@ interface MutationHistoryPanelProps {
   refreshTrigger?: number;
 }
 
-// Global lookup caches to eliminate runtime string allocation and parsing overhead
-const STATUS_COLOR_CACHE: Record<string, string> = {
+interface MutationStats {
+  applied: number;
+  rejected: number;
+  pending: number;
+}
+
+const STATUS_COLOR_MAP: Record<string, string> = {
   applied: COLORS.green,
   rejected: COLORS.dalekRed,
   failed: COLORS.dalekRed,
@@ -38,9 +43,7 @@ const STATUS_COLOR_CACHE: Record<string, string> = {
 const PATH_NAME_CACHE = new Map<string, string>();
 const DATE_FORMAT_CACHE = new Map<string, string>();
 
-const getStatusColor = (status: string): string => {
-  return STATUS_COLOR_CACHE[status] || COLORS.textMuted;
-};
+const getStatusColor = (status: string): string => STATUS_COLOR_MAP[status] || COLORS.textMuted;
 
 const getRiskColor = (risk: number): string => {
   if (risk <= 3) return COLORS.cyan;
@@ -50,92 +53,96 @@ const getRiskColor = (risk: number): string => {
 
 const getCachedFileName = (filePath: string): string => {
   if (!filePath) return 'unknown';
-  let cached = PATH_NAME_CACHE.get(filePath);
-  if (cached === undefined) {
-    const lastSlash = filePath.lastIndexOf('/');
-    cached = lastSlash !== -1 ? filePath.substring(lastSlash + 1) : filePath;
-    PATH_NAME_CACHE.set(filePath, cached);
+  let cachedFileName = PATH_NAME_CACHE.get(filePath);
+  if (cachedFileName === undefined) {
+    const lastSlashIndex = filePath.lastIndexOf('/');
+    cachedFileName = lastSlashIndex !== -1 ? filePath.substring(lastSlashIndex + 1) : filePath;
+    PATH_NAME_CACHE.set(filePath, cachedFileName);
   }
-  return cached;
+  return cachedFileName;
 };
 
-const getCachedFormattedDate = (dateStr: string): string => {
-  if (!dateStr) return '';
-  let cached = DATE_FORMAT_CACHE.get(dateStr);
-  if (cached === undefined) {
+const getCachedFormattedDate = (dateString: string): string => {
+  if (!dateString) return '';
+  let cachedFormattedDate = DATE_FORMAT_CACHE.get(dateString);
+  if (cachedFormattedDate === undefined) {
     try {
-      cached = new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      cachedFormattedDate = new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch {
-      cached = '';
+      cachedFormattedDate = '';
     }
-    DATE_FORMAT_CACHE.set(dateStr, cached);
+    DATE_FORMAT_CACHE.set(dateString, cachedFormattedDate);
   }
-  return cached;
+  return cachedFormattedDate;
 };
 
 export default function MutationHistoryPanel({ sessionId, refreshTrigger }: MutationHistoryPanelProps) {
   const [mutations, setMutations] = useState<MutationRecord[]>([]);
-  const [expanded, setExpanded] = useState<boolean>(false);
-  const fetchedRef = useRef<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  
+  const fetchedSessionIdRef = useRef<string | null>(null);
   const lastRefreshTriggerRef = useRef<number | undefined>(refreshTrigger);
 
   useEffect(() => {
     if (!sessionId) return;
     
     const hasTriggerChanged = refreshTrigger !== lastRefreshTriggerRef.current;
-    if (fetchedRef.current === sessionId && !hasTriggerChanged) return;
+    if (fetchedSessionIdRef.current === sessionId && !hasTriggerChanged) return;
     
-    fetchedRef.current = sessionId;
+    fetchedSessionIdRef.current = sessionId;
     lastRefreshTriggerRef.current = refreshTrigger;
 
-    let cancelled = false;
+    let isCancelled = false;
     
-    const fetchHistory = async () => {
+    const fetchMutationHistory = async () => {
       try {
-        const res = await fetch('/api/brain', {
+        const response = await fetch('/api/brain', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'get-mutation-history', sessionId, limit: 20 }),
         });
-        const data = (await safeResponseJson(res, {})) as MutationApiResponse;
-        if (!cancelled && data && data.success && Array.isArray(data.mutations)) {
-          setMutations(data.mutations);
+        const responseData = (await safeResponseJson(response, {})) as MutationApiResponse;
+        if (!isCancelled && responseData?.success && Array.isArray(responseData.mutations)) {
+          setMutations(responseData.mutations);
         }
       } catch {
-        // Suppress network/parsing errors gracefully in production monitoring panel
+        // Suppress network or parsing anomalies gracefully in production monitoring panels
       }
     };
 
-    fetchHistory();
+    fetchMutationHistory();
 
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
   }, [sessionId, refreshTrigger]);
 
-  const toggleExpanded = useCallback(() => {
-    setExpanded((prev) => !prev);
+  const handleToggleExpanded = useCallback(() => {
+    setIsExpanded((previousState) => !previousState);
   }, []);
 
-  const stats = useMemo(() => {
-    let applied = 0;
-    let rejected = 0;
-    let pending = 0;
+  const mutationStats = useMemo<MutationStats>(() => {
+    let appliedCount = 0;
+    let rejectedCount = 0;
+    let pendingCount = 0;
 
-    const len = mutations.length;
-    for (let i = 0; i < len; i++) {
-      const status = mutations[i].status;
-      if (status === 'applied') applied++;
-      else if (status === 'rejected' || status === 'failed') rejected++;
-      else if (status === 'pending' || status === 'approved') pending++;
+    for (let index = 0, length = mutations.length; index < length; index++) {
+      const currentStatus = mutations[index].status;
+      if (currentStatus === 'applied') {
+        appliedCount++;
+      } else if (currentStatus === 'rejected' || currentStatus === 'failed') {
+        rejectedCount++;
+      } else if (currentStatus === 'pending' || currentStatus === 'approved') {
+        pendingCount++;
+      }
     }
 
-    return { applied, rejected, pending };
+    return { applied: appliedCount, rejected: rejectedCount, pending: pendingCount };
   }, [mutations]);
 
   const displayedMutations = useMemo(() => {
-    return expanded ? mutations : mutations.slice(0, 3);
-  }, [mutations, expanded]);
+    return isExpanded ? mutations : mutations.slice(0, 3);
+  }, [mutations, isExpanded]);
 
   if (!sessionId || mutations.length === 0) return null;
 
@@ -143,11 +150,15 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
     <div className="dalek-panel rounded-lg p-4 space-y-3">
       <div
         className="dalek-panel-header py-2 px-1 flex items-center justify-between cursor-pointer select-none"
-        onClick={toggleExpanded}
+        onClick={handleToggleExpanded}
         role="button"
         tabIndex={0}
-        aria-expanded={expanded}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleExpanded(); }}
+        aria-expanded={isExpanded}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            handleToggleExpanded();
+          }
+        }}
       >
         <div className="flex items-center gap-2">
           <Activity size={14} style={{ color: COLORS.cyan }} />
@@ -155,28 +166,28 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
         </div>
         <div className="flex items-center gap-2">
           <span style={{ fontSize: '8px', color: COLORS.textMuted, fontFamily: 'var(--font-orbitron), sans-serif' }}>
-            {stats.applied} applied / {stats.rejected} rejected / {stats.pending} pending
+            {mutationStats.applied} applied / {mutationStats.rejected} rejected / {mutationStats.pending} pending
           </span>
           <span style={{ fontSize: '8px', color: COLORS.textDim }}>
-            {expanded ? '\u25B2' : '\u25BC'}
+            {isExpanded ? '\u25B2' : '\u25BC'}
           </span>
         </div>
       </div>
 
       <div className="space-y-1.5">
-        {displayedMutations.map((m) => {
-          const statusCol = getStatusColor(m.status);
-          const fileName = getCachedFileName(m.filePath);
-          const statusText = m.status ? m.status.toUpperCase().slice(0, 4) : 'UNK';
-          const formattedDate = getCachedFormattedDate(m.createdAt);
-          const riskColor = getRiskColor(m.riskScore);
-          const commitShort = m.commitSha ? m.commitSha.slice(0, 7) : null;
+        {displayedMutations.map((mutation) => {
+          const statusColor = getStatusColor(mutation.status);
+          const fileName = getCachedFileName(mutation.filePath);
+          const statusText = mutation.status ? mutation.status.toUpperCase().slice(0, 4) : 'UNK';
+          const formattedDate = getCachedFormattedDate(mutation.createdAt);
+          const riskColor = getRiskColor(mutation.riskScore);
+          const shortCommitSha = mutation.commitSha ? mutation.commitSha.slice(0, 7) : null;
 
           return (
             <div
-              key={m.id}
+              key={mutation.id}
               className="px-3 py-2 rounded transition-colors"
-              style={{ background: '#080808', border: `1px solid ${statusCol}15` }}
+              style={{ background: '#080808', border: `1px solid ${statusColor}15` }}
             >
               <div className="flex items-center gap-2">
                 <span
@@ -184,7 +195,7 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
                     fontSize: '7px',
                     fontFamily: 'var(--font-orbitron), sans-serif',
                     fontWeight: 700,
-                    color: statusCol,
+                    color: statusColor,
                     letterSpacing: '0.05em',
                   }}
                 >
@@ -200,7 +211,7 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                   }}
-                  title={m.filePath}
+                  title={mutation.filePath}
                 >
                   {fileName}
                 </span>
@@ -211,16 +222,16 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
                     fontWeight: 600,
                   }}
                 >
-                  {m.riskScore}/10
+                  {mutation.riskScore}/10
                 </span>
                 <span style={{ fontSize: '7px', color: '#444' }}>
                   {formattedDate}
                 </span>
               </div>
-              {commitShort && (
+              {shortCommitSha && (
                 <div style={{ fontSize: '7px', color: '#333', marginTop: '2px', paddingLeft: '2px' }}>
-                  commit: {commitShort}
-                  {m.provider && ` via ${m.provider}`}
+                  commit: {shortCommitSha}
+                  {mutation.provider && ` via ${mutation.provider}`}
                 </div>
               )}
             </div>
@@ -230,7 +241,7 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
 
       {mutations.length > 3 && (
         <button
-          onClick={toggleExpanded}
+          onClick={handleToggleExpanded}
           style={{
             fontSize: '8px',
             color: COLORS.textMuted,
@@ -245,7 +256,7 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
           }}
           type="button"
         >
-          {expanded ? '\u25B2 COLLAPSE' : `\u25BC SHOW ALL (${mutations.length})`}
+          {isExpanded ? '\u25B2 COLLAPSE' : `\u25BC SHOW ALL (${mutations.length})`}
         </button>
       )}
     </div>
