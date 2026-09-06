@@ -1,47 +1,99 @@
 /**
  * @file src/types/brain-runtime.d.ts
- * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * @module Types/BrainRuntime
  * @description Sovereign-tier type definitions for the Brain Runtime core module.
- * Optimized for maximum type-safety, zero-allocation patterns, and memory footprint reduction.
+ * Structured for maximum readability, clean architectural separation, and strict type safety.
  */
 
-/**
- * Union type representing the supported runtime operational environments.
- * Optimized as a const-equivalent union for strict JIT monomorphization hints.
- */
-export type RuntimeEnvironment = 'development' | 'staging' | 'production' | 'isolated';
+// ============================================================================
+// Environment & Infrastructure Declarations
+// ============================================================================
 
 /**
- * Represents the immutable snapshot state of the neural brain runtime.
- * Optimized with deep readonly modifiers and tuple allocations to prevent GC pressure.
+ * Operational execution environments supported by the Brain Runtime engine.
+ */
+export type RuntimeEnvironment =
+  | 'development'
+  | 'staging'
+  | 'production'
+  | 'isolated';
+
+/**
+ * High-level operational health indicators emitted by the runtime monitor.
+ */
+export type HealthState =
+  | 'nominal'
+  | 'degraded'
+  | 'critical';
+
+// ============================================================================
+// State & Snapshot Contracts
+// ============================================================================
+
+/**
+ * Immutable snapshot representation of the Neural Brain runtime state.
  */
 export interface BrainState {
+  /** Semantic version identifier of the state schema. */
   readonly version: string;
+
+  /** Encoded and compressed binary payload chunks. */
   readonly compressed_chunks: string;
+
+  /** Ordered collection of state index keys. */
   readonly index: readonly string[];
+
+  /** POSIX millisecond timestamp of the last synchronization event. */
   readonly last_sync: number;
+
+  /** Extensible, read-only metadata dictionary for telemetry or audit tags. */
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
+// ============================================================================
+// Configuration & Client Initialization Contracts
+// ============================================================================
+
 /**
- * Configuration contract required to initialize the runtime infrastructure.
- * Enforces strict typing and optional environmental isolation flags with branded primitives.
+ * Configuration contract required to initialize and bootstrap the Brain Runtime.
  */
 export interface RuntimeConfig {
+  /** Authentication secret key for runtime API gateway access. */
   readonly apiKey: string;
+
+  /** Fully qualified endpoint URL of the target database service. */
   readonly databaseURL: string;
+
+  /** Unique project identifier within the sovereign cluster. */
   readonly projectId: string;
+
+  /** Target execution environment context. Defaults to runtime default if omitted. */
   readonly environment?: RuntimeEnvironment;
+
+  /** Network and execution timeout threshold in milliseconds. */
   readonly timeoutMs?: number;
+
+  /** Maximum retry attempts for transient I/O or network failures. */
   readonly maxRetries?: number;
 }
 
+// ============================================================================
+// Telemetry & Diagnostic Contracts
+// ============================================================================
+
 /**
- * Diagnostic health payload emitted by the runtime infrastructure.
+ * Diagnostic health status and telemetry payload emitted by the runtime infrastructure.
  */
 export interface RuntimeHealthStatus {
-  readonly status: 'nominal' | 'degraded' | 'critical';
+  /** Current operating health status of the runtime system. */
+  readonly status: HealthState | 'nominal' | 'degraded' | 'critical';
+
+  /** Total number of currently active client and database connections. */
   readonly activeConnections: number;
+
+  /** Cumulative uptime duration of the runtime process in milliseconds. */
   readonly uptimeMs: number;
+
+  /** Descriptive message or trace of the most recent error condition, if present. */
   readonly lastError?: string;
 }
