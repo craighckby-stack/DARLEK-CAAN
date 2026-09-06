@@ -11,8 +11,8 @@ export interface SelectTriggerProps
   readonly size?: "sm" | "default"
 }
 
-// Style Constants for Architectural Clarity
-const STYLES = {
+// Pre-compiled style constants using `cn` once to eliminate runtime execution cycles
+const STYLES = Object.freeze({
   trigger: cn(
     "border-input data-[placeholder]:text-muted-foreground",
     "[&_svg:not([class*='text-'])]:text-muted-foreground",
@@ -49,14 +49,14 @@ const STYLES = {
   ),
   itemIndicatorWrapper: "absolute right-2 flex size-3.5 items-center justify-center",
   separator: "bg-border pointer-events-none -mx-1 my-1 h-px",
-} as const
+})
 
 const Select = React.memo(
   React.forwardRef<
     React.ElementRef<typeof SelectPrimitive.Root>,
     React.ComponentProps<typeof SelectPrimitive.Root>
   >(function Select(props, ref) {
-    return <SelectPrimitive.Root data-slot="select" {...props} />
+    return <SelectPrimitive.Root ref={ref} data-slot="select" {...props} />
   })
 )
 Select.displayName = "Select"
@@ -66,7 +66,7 @@ const SelectGroup = React.memo(
     React.ElementRef<typeof SelectPrimitive.Group>,
     React.ComponentProps<typeof SelectPrimitive.Group>
   >(function SelectGroup(props, ref) {
-    return <SelectPrimitive.Group data-slot="select-group" {...props} />
+    return <SelectPrimitive.Group ref={ref} data-slot="select-group" {...props} />
   })
 )
 SelectGroup.displayName = "SelectGroup"
@@ -76,7 +76,7 @@ const SelectValue = React.memo(
     React.ElementRef<typeof SelectPrimitive.Value>,
     React.ComponentProps<typeof SelectPrimitive.Value>
   >(function SelectValue(props, ref) {
-    return <SelectPrimitive.Value data-slot="select-value" {...props} />
+    return <SelectPrimitive.Value ref={ref} data-slot="select-value" {...props} />
   })
 )
 SelectValue.displayName = "SelectValue"
@@ -86,12 +86,14 @@ const SelectTrigger = React.memo(
     React.ElementRef<typeof SelectPrimitive.Trigger>,
     SelectTriggerProps
   >(function SelectTrigger({ className, size = "default", children, ...props }, ref) {
+    const computedClassName = className ? cn(STYLES.trigger, className) : STYLES.trigger
+
     return (
       <SelectPrimitive.Trigger
         ref={ref}
         data-slot="select-trigger"
         data-size={size}
-        className={cn(STYLES.trigger, className)}
+        className={computedClassName}
         {...props}
       >
         {children}
@@ -109,11 +111,13 @@ const SelectScrollUpButton = React.memo(
     React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
     React.ComponentProps<typeof SelectPrimitive.ScrollUpButton>
   >(function SelectScrollUpButton({ className, ...props }, ref) {
+    const computedClassName = className ? cn(STYLES.scrollButton, className) : STYLES.scrollButton
+
     return (
       <SelectPrimitive.ScrollUpButton
         ref={ref}
         data-slot="select-scroll-up-button"
-        className={cn(STYLES.scrollButton, className)}
+        className={computedClassName}
         {...props}
       >
         <ChevronUpIcon className="size-4" />
@@ -128,11 +132,13 @@ const SelectScrollDownButton = React.memo(
     React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
     React.ComponentProps<typeof SelectPrimitive.ScrollDownButton>
   >(function SelectScrollDownButton({ className, ...props }, ref) {
+    const computedClassName = className ? cn(STYLES.scrollButton, className) : STYLES.scrollButton
+
     return (
       <SelectPrimitive.ScrollDownButton
         ref={ref}
         data-slot="select-scroll-down-button"
-        className={cn(STYLES.scrollButton, className)}
+        className={computedClassName}
         {...props}
       >
         <ChevronDownIcon className="size-4" />
@@ -148,27 +154,28 @@ const SelectContent = React.memo(
     React.ComponentProps<typeof SelectPrimitive.Content>
   >(function SelectContent({ className, children, position = "popper", ...props }, ref) {
     const isPopper = position === "popper"
+    const computedClassName = React.useMemo(() => {
+      let base = STYLES.content
+      if (isPopper) base = `${base} ${STYLES.popperContentOffset}`
+      if (className) base = `${base} ${className}`
+      return base
+    }, [isPopper, className])
+
+    const viewportClassName = React.useMemo(() => {
+      return isPopper ? cn(STYLES.viewport, STYLES.popperViewport) : STYLES.viewport
+    }, [isPopper])
 
     return (
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
           ref={ref}
           data-slot="select-content"
-          className={cn(
-            STYLES.content,
-            isPopper && STYLES.popperContentOffset,
-            className
-          )}
+          className={computedClassName}
           position={position}
           {...props}
         >
           <SelectScrollUpButton />
-          <SelectPrimitive.Viewport
-            className={cn(
-              STYLES.viewport,
-              isPopper && STYLES.popperViewport
-            )}
-          >
+          <SelectPrimitive.Viewport className={viewportClassName}>
             {children}
           </SelectPrimitive.Viewport>
           <SelectScrollDownButton />
@@ -184,11 +191,13 @@ const SelectLabel = React.memo(
     React.ElementRef<typeof SelectPrimitive.Label>,
     React.ComponentProps<typeof SelectPrimitive.Label>
   >(function SelectLabel({ className, ...props }, ref) {
+    const computedClassName = className ? cn(STYLES.label, className) : STYLES.label
+
     return (
       <SelectPrimitive.Label
         ref={ref}
         data-slot="select-label"
-        className={cn(STYLES.label, className)}
+        className={computedClassName}
         {...props}
       />
     )
@@ -201,11 +210,13 @@ const SelectItem = React.memo(
     React.ElementRef<typeof SelectPrimitive.Item>,
     React.ComponentProps<typeof SelectPrimitive.Item>
   >(function SelectItem({ className, children, ...props }, ref) {
+    const computedClassName = className ? cn(STYLES.item, className) : STYLES.item
+
     return (
       <SelectPrimitive.Item
         ref={ref}
         data-slot="select-item"
-        className={cn(STYLES.item, className)}
+        className={computedClassName}
         {...props}
       >
         <span className={STYLES.itemIndicatorWrapper}>
@@ -225,11 +236,13 @@ const SelectSeparator = React.memo(
     React.ElementRef<typeof SelectPrimitive.Separator>,
     React.ComponentProps<typeof SelectPrimitive.Separator>
   >(function SelectSeparator({ className, ...props }, ref) {
+    const computedClassName = className ? cn(STYLES.separator, className) : STYLES.separator
+
     return (
       <SelectPrimitive.Separator
         ref={ref}
         data-slot="select-separator"
-        className={cn(STYLES.separator, className)}
+        className={computedClassName}
         {...props}
       />
     )
