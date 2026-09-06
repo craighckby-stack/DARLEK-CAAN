@@ -20,7 +20,6 @@ const CONFIG = Object.freeze({
 // Cache resolved base directory to minimize path allocation overhead
 const BASE_DIR = path.resolve(process.cwd());
 const TARGET_PATH = path.resolve(BASE_DIR, CONFIG.RELATIVE_TARGET_PATH);
-const NORMALIZED_BASE = path.resolve(BASE_DIR);
 
 /**
  * Validates target path security to ensure it resides strictly within the base directory.
@@ -31,8 +30,9 @@ const NORMALIZED_BASE = path.resolve(BASE_DIR);
  */
 function assertPathSecurity(baseDir, targetPath) {
   const normalizedTarget = path.resolve(targetPath);
+  const normalizedBase = path.resolve(baseDir);
 
-  if (!normalizedTarget.startsWith(NORMALIZED_BASE) || !path.isAbsolute(normalizedTarget)) {
+  if (!normalizedTarget.startsWith(normalizedBase) || !path.isAbsolute(normalizedTarget)) {
     throw new Error('[EMG Core v49 Security Violation]: Path traversal attempt detected.');
   }
 }
