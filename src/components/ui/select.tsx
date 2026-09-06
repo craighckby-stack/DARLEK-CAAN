@@ -11,7 +11,7 @@ export interface SelectTriggerProps
   readonly size?: "sm" | "default"
 }
 
-// Pre-compiled style constants using `cn` once to eliminate runtime execution cycles
+// Centralized theme styling definitions
 const STYLES = Object.freeze({
   trigger: cn(
     "border-input data-[placeholder]:text-muted-foreground",
@@ -86,7 +86,10 @@ const SelectTrigger = React.memo(
     React.ElementRef<typeof SelectPrimitive.Trigger>,
     SelectTriggerProps
   >(function SelectTrigger({ className, size = "default", children, ...props }, ref) {
-    const computedClassName = className ? cn(STYLES.trigger, className) : STYLES.trigger
+    const computedClassName = React.useMemo(
+      () => cn(STYLES.trigger, className),
+      [className]
+    )
 
     return (
       <SelectPrimitive.Trigger
@@ -111,7 +114,10 @@ const SelectScrollUpButton = React.memo(
     React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
     React.ComponentProps<typeof SelectPrimitive.ScrollUpButton>
   >(function SelectScrollUpButton({ className, ...props }, ref) {
-    const computedClassName = className ? cn(STYLES.scrollButton, className) : STYLES.scrollButton
+    const computedClassName = React.useMemo(
+      () => cn(STYLES.scrollButton, className),
+      [className]
+    )
 
     return (
       <SelectPrimitive.ScrollUpButton
@@ -132,7 +138,10 @@ const SelectScrollDownButton = React.memo(
     React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
     React.ComponentProps<typeof SelectPrimitive.ScrollDownButton>
   >(function SelectScrollDownButton({ className, ...props }, ref) {
-    const computedClassName = className ? cn(STYLES.scrollButton, className) : STYLES.scrollButton
+    const computedClassName = React.useMemo(
+      () => cn(STYLES.scrollButton, className),
+      [className]
+    )
 
     return (
       <SelectPrimitive.ScrollDownButton
@@ -154,16 +163,16 @@ const SelectContent = React.memo(
     React.ComponentProps<typeof SelectPrimitive.Content>
   >(function SelectContent({ className, children, position = "popper", ...props }, ref) {
     const isPopper = position === "popper"
-    const computedClassName = React.useMemo(() => {
-      let base = STYLES.content
-      if (isPopper) base = `${base} ${STYLES.popperContentOffset}`
-      if (className) base = `${base} ${className}`
-      return base
-    }, [isPopper, className])
+    
+    const computedClassName = React.useMemo(
+      () => cn(STYLES.content, isPopper && STYLES.popperContentOffset, className),
+      [isPopper, className]
+    )
 
-    const viewportClassName = React.useMemo(() => {
-      return isPopper ? cn(STYLES.viewport, STYLES.popperViewport) : STYLES.viewport
-    }, [isPopper])
+    const viewportClassName = React.useMemo(
+      () => (isPopper ? cn(STYLES.viewport, STYLES.popperViewport) : STYLES.viewport),
+      [isPopper]
+    )
 
     return (
       <SelectPrimitive.Portal>
@@ -191,7 +200,10 @@ const SelectLabel = React.memo(
     React.ElementRef<typeof SelectPrimitive.Label>,
     React.ComponentProps<typeof SelectPrimitive.Label>
   >(function SelectLabel({ className, ...props }, ref) {
-    const computedClassName = className ? cn(STYLES.label, className) : STYLES.label
+    const computedClassName = React.useMemo(
+      () => cn(STYLES.label, className),
+      [className]
+    )
 
     return (
       <SelectPrimitive.Label
@@ -210,7 +222,10 @@ const SelectItem = React.memo(
     React.ElementRef<typeof SelectPrimitive.Item>,
     React.ComponentProps<typeof SelectPrimitive.Item>
   >(function SelectItem({ className, children, ...props }, ref) {
-    const computedClassName = className ? cn(STYLES.item, className) : STYLES.item
+    const computedClassName = React.useMemo(
+      () => cn(STYLES.item, className),
+      [className]
+    )
 
     return (
       <SelectPrimitive.Item
@@ -236,7 +251,10 @@ const SelectSeparator = React.memo(
     React.ElementRef<typeof SelectPrimitive.Separator>,
     React.ComponentProps<typeof SelectPrimitive.Separator>
   >(function SelectSeparator({ className, ...props }, ref) {
-    const computedClassName = className ? cn(STYLES.separator, className) : STYLES.separator
+    const computedClassName = React.useMemo(
+      () => cn(STYLES.separator, className),
+      [className]
+    )
 
     return (
       <SelectPrimitive.Separator
