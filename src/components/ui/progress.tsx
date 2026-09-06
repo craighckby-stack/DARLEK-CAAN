@@ -16,18 +16,24 @@ export interface ProgressProps extends React.ComponentPropsWithoutRef<typeof Pro
   max?: number
 }
 
-// Pre-allocate style object/string cache structures to minimize runtime garbage collection overhead
 const ZERO_PERCENT_TRANSFORM = "translateX(-100%)"
 
 /**
- * Calculates a sanitized and bounded percentage representation from a raw value and maximum boundary.
- * Optimized with primitive branching to avoid redundant evaluations.
+ * Clamps and normalizes a progress value within valid boundaries.
  */
-function calculateProgressPercentage(value: number | null | undefined, max: number): number {
+function clampProgressValue(value: number | null | undefined, max: number): number {
   if (value == null || Number.isNaN(value)) return 0
   if (value <= 0) return 0
-  if (value >= max) return 100
-  return (value / max) * 100
+  if (value >= max) return max
+  return value
+}
+
+/**
+ * Computes the translateX percentage string for the progress indicator element.
+ */
+function getIndicatorTransform(percentage: number): string {
+  if (percentage === 0) return ZERO_PERCENT_TRANSFORM
+  return `translateX(-${100 - percentage}%)`
 }
 
 const Progress = React.memo(
@@ -35,18 +41,16 @@ const Progress = React.memo(
     React.ElementRef<typeof ProgressPrimitive.Root>,
     ProgressProps
   >(({ className, value, max = 100, ...props }, ref) => {
-    // Single-pass computation for valid value and bounds
-    const safeValue = typeof value === "number" && !Number.isNaN(value) ? value : 0
-    const clampedValue = safeValue < 0 ? 0 : safeValue > max ? max : safeValue
+    const validMax = max > 0 ? max : 100
+    const clampedValue = clampProgressValue(value, validMax)
     
-    // Compute percentage directly using conditional shortcuts
-    const percentage = max > 0 
-      ? (clampedValue === 0 ? 0 : clampedValue === max ? 100 : (clampedValue / max) * 100)
-      : 0
+    const percentage = clampedValue === 0 
+      ? 0 
+      : clampedValue === validMax 
+        ? 100 
+        : (clampedValue / validMax) * 100
 
-    const indicatorTransform = percentage === 0 
-      ? ZERO_PERCENT_TRANSFORM 
-      : `translateX(-${100 - percentage}%)`
+    const indicatorTransform = getIndicatorTransform(percentage)
 
     return (
       <ProgressPrimitive.Root
@@ -54,7 +58,7 @@ const Progress = React.memo(
         data-slot="progress"
         aria-valuenow={clampedValue}
         aria-valuemin={0}
-        aria-valuemax={max}
+        aria-valuemax={validMax}
         className={cn(
           "relative h-2 w-full overflow-hidden rounded-full bg-primary/20",
           className
