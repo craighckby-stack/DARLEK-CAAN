@@ -21,13 +21,20 @@ const VIEWPORT_STYLES = cn(
 export const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Viewport
-    ref={ref}
-    className={cn(VIEWPORT_STYLES, className)}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  const computedClassName = React.useMemo(
+    () => (className ? cn(VIEWPORT_STYLES, className) : VIEWPORT_STYLES),
+    [className]
+  )
+
+  return (
+    <ToastPrimitives.Viewport
+      ref={ref}
+      className={computedClassName}
+      {...props}
+    />
+  )
+})
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 // ----------------------------------------------------------------------------
@@ -64,13 +71,20 @@ export const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
   VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => (
-  <ToastPrimitives.Root
-    ref={ref}
-    className={cn(toastVariants({ variant }), className)}
-    {...props}
-  />
-))
+>(({ className, variant, ...props }, ref) => {
+  const computedClassName = React.useMemo(() => {
+    const variantStyles = toastVariants({ variant })
+    return className ? cn(variantStyles, className) : variantStyles
+  }, [variant, className])
+
+  return (
+    <ToastPrimitives.Root
+      ref={ref}
+      className={computedClassName}
+      {...props}
+    />
+  )
+})
 Toast.displayName = ToastPrimitives.Root.displayName
 
 // ----------------------------------------------------------------------------
@@ -89,13 +103,20 @@ const ACTION_STYLES = cn(
 export const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Action
-    ref={ref}
-    className={cn(ACTION_STYLES, className)}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  const computedClassName = React.useMemo(
+    () => (className ? cn(ACTION_STYLES, className) : ACTION_STYLES),
+    [className]
+  )
+
+  return (
+    <ToastPrimitives.Action
+      ref={ref}
+      className={computedClassName}
+      {...props}
+    />
+  )
+})
 ToastAction.displayName = ToastPrimitives.Action.displayName
 
 const CLOSE_STYLES = cn(
@@ -106,43 +127,70 @@ const CLOSE_STYLES = cn(
   "group-[.destructive]:focus:ring-offset-red-600"
 )
 
+const CLOSE_ICON = <X className="h-4 w-4" />
+
 export const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Close
-    ref={ref}
-    className={cn(CLOSE_STYLES, className)}
-    toast-close=""
-    {...props}
-  >
-    <X className="h-4 w-4" />
-  </ToastPrimitives.Close>
-))
+>(({ className, ...props }, ref) => {
+  const computedClassName = React.useMemo(
+    () => (className ? cn(CLOSE_STYLES, className) : CLOSE_STYLES),
+    [className]
+  )
+
+  return (
+    <ToastPrimitives.Close
+      ref={ref}
+      className={computedClassName}
+      toast-close=""
+      {...props}
+    >
+      {CLOSE_ICON}
+    </ToastPrimitives.Close>
+  )
+})
 ToastClose.displayName = ToastPrimitives.Close.displayName
+
+const TITLE_STYLES = "text-sm font-semibold [&+div]:text-xs"
 
 export const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Title
-    ref={ref}
-    className={cn("text-sm font-semibold [&+div]:text-xs", className)}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  const computedClassName = React.useMemo(
+    () => (className ? cn(TITLE_STYLES, className) : TITLE_STYLES),
+    [className]
+  )
+
+  return (
+    <ToastPrimitives.Title
+      ref={ref}
+      className={computedClassName}
+      {...props}
+    />
+  )
+})
 ToastTitle.displayName = ToastPrimitives.Title.displayName
+
+const DESCRIPTION_STYLES = "text-sm opacity-90"
 
 export const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Description
-    ref={ref}
-    className={cn("text-sm opacity-90", className)}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  const computedClassName = React.useMemo(
+    () => (className ? cn(DESCRIPTION_STYLES, className) : DESCRIPTION_STYLES),
+    [className]
+  )
+
+  return (
+    <ToastPrimitives.Description
+      ref={ref}
+      className={computedClassName}
+      {...props}
+    />
+  )
+})
 ToastDescription.displayName = ToastPrimitives.Description.displayName
 
 // ----------------------------------------------------------------------------
