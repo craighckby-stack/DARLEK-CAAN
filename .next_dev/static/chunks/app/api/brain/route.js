@@ -1,9 +1,7 @@
 "use strict";
 
 (function initializeWebpackChunk(globalScope) {
-  if (!globalScope) {
-    return;
-  }
+  if (!globalScope) return;
 
   const WEBPACK_CHUNK_KEY = "webpackChunk_N_E";
   const chunkRegistry = (globalScope[WEBPACK_CHUNK_KEY] ??= []);
@@ -23,9 +21,7 @@
   const ROUTE_IDENTIFIER = Object.freeze(["app/api/brain/route"]);
 
   const runtimeBootstrap = function bootstrapWebpackRuntime(webpackRequire) {
-    if (typeof webpackRequire !== "function") {
-      return;
-    }
+    if (typeof webpackRequire !== "function") return;
 
     if (typeof webpackRequire.O === "function") {
       webpackRequire.O(0, MAIN_APP_DEPENDENCIES, () => {
