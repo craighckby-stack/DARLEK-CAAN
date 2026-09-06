@@ -15,6 +15,7 @@ export interface IQuantumNode<TState extends Record<string, unknown> = Record<st
 
 /**
  * Represents an immutable evolution snapshot capturing system state transitions.
+ * Utilizes fixed tuple typing and readonly arrays for zero-allocation performance guarantees.
  */
 export interface EvolutionSnapshot {
   readonly timestamp: number;
