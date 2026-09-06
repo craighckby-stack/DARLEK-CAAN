@@ -1,7 +1,7 @@
 /**
  * @file src/app/api/brain/types.ts
  * @module NeuralCode/BrainTypes
- * @version 49.0.0
+ * @version 49.1.0
  * @description Sovereign type definitions for neural mutations and cognitive health metrics.
  */
 
@@ -16,7 +16,7 @@ export type MutationStatus = 'pending' | 'applied' | 'rejected';
  * Enforces strict readonly boundaries for memory efficiency and state predictability.
  * @public
  */
-export interface MutationPayload extends Readonly<Record<string, unknown>> {
+export interface MutationPayload {
   readonly sessionId: string;
   readonly filePath: string;
   readonly status: MutationStatus;
@@ -28,7 +28,7 @@ export interface MutationPayload extends Readonly<Record<string, unknown>> {
  * Quantitative telemetry metrics measuring structural and semantic health.
  * @public
  */
-export interface HealthMetrics extends Readonly<Record<string, number>> {
+export interface HealthMetrics {
   readonly structuralChange: number;
   readonly semanticSaturation: number;
   readonly velocity: number;
