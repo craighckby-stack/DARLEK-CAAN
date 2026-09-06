@@ -1,7 +1,7 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "patch_alignment.js"
- * Objective: PERFORMANCE - High execution speed, memory footprint reduction, avoiding unnecessary allocations.
+ * Objective: READABILITY - Pristine modern idioms, descriptive naming, modular decomposition, and clean architectural clarity.
  */
 
 'use strict';
@@ -29,49 +29,65 @@ const EDGE_GOVERNANCE_VALIDATION_BLOCK = `
     }`;
 const CHECK_COUNTER_REPLACEMENT = `${CHECK_COUNTER_TARGET}\n${EDGE_GOVERNANCE_VALIDATION_BLOCK}`;
 
-/** Pre-compiled RegExp cache for zero-allocation pattern generation. */
-const REGEXP_CACHE = new Map();
+/** Internal cache for compiled regular expression patterns. */
+const regularExpressionCache = new Map();
 
 /**
- * Retrieves a cached global RegExp for the given target string, eliminating dynamic compilation overhead.
- * @param {string} target - The exact substring to locate.
- * @returns {RegExp} The compiled global RegExp.
+ * Escapes special regular expression characters within a target string.
+ * @param {string} stringValue - The string to escape.
+ * @returns {string} The safely escaped string.
  */
-function getCachedRegExp(target) {
-  let pattern = REGEXP_CACHE.get(target);
-  if (pattern === undefined) {
-    pattern = new RegExp(target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-    REGEXP_CACHE.set(target, pattern);
-  } else {
-    pattern.lastIndex = 0;
+function escapeRegExpSpecialCharacters(stringValue) {
+  return stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Retrieves a cached global regular expression for the given target string.
+ * @param {string} targetSubstring - The exact substring to locate.
+ * @returns {RegExp} The compiled global RegExp instance.
+ */
+function getCachedGlobalRegExp(targetSubstring) {
+  if (!regularExpressionCache.has(targetSubstring)) {
+    const escapedPattern = escapeRegExpSpecialCharacters(targetSubstring);
+    regularExpressionCache.set(targetSubstring, new RegExp(escapedPattern, 'g'));
   }
-  return pattern;
+
+  const compiledRegExp = regularExpressionCache.get(targetSubstring);
+  compiledRegExp.lastIndex = 0;
+  return compiledRegExp;
 }
 
 /**
- * Performs a high-performance string replacement utilizing cached RegExp patterns.
+ * Applies a code injection patch to the source content using cached regular expressions.
  * @param {string} sourceCode - The original source code content.
- * @param {string} target - The exact substring to locate and replace.
- * @param {string} replacement - The replacement content.
- * @returns {string} The updated source code.
+ * @param {string} targetSubstring - The exact substring to locate and replace.
+ * @param {string} replacementContent - The replacement content.
+ * @returns {string} The modified source code.
  */
-function injectPatch(sourceCode, target, replacement) {
-  return sourceCode.replace(getCachedRegExp(target), replacement);
+function injectPatch(sourceCode, targetSubstring, replacementContent) {
+  const matchingPattern = getCachedGlobalRegExp(targetSubstring);
+  return sourceCode.replace(matchingPattern, replacementContent);
 }
 
 /**
- * Applies architectural patch alignments to the target AGI engine source code with minimal memory allocation.
+ * Reads, updates, and writes back the architectural patch alignments to the target AGI engine source file.
  */
 function applyPatchAlignment() {
-  const originalSource = readFileSync(TARGET_FILE_PATH, 'utf8');
+  const originalSourceCode = readFileSync(TARGET_FILE_PATH, 'utf8');
 
-  const updatedSource = injectPatch(
-    injectPatch(originalSource, OVERSEER_PATCH_TARGET, OVERSEER_PATCH_REPLACEMENT),
+  const sourceWithOverseer = injectPatch(
+    originalSourceCode,
+    OVERSEER_PATCH_TARGET,
+    OVERSEER_PATCH_REPLACEMENT
+  );
+
+  const fullyPatchedSource = injectPatch(
+    sourceWithOverseer,
     CHECK_COUNTER_TARGET,
     CHECK_COUNTER_REPLACEMENT
   );
 
-  writeFileSync(TARGET_FILE_PATH, updatedSource, 'utf8');
+  writeFileSync(TARGET_FILE_PATH, fullyPatchedSource, 'utf8');
 }
 
 applyPatchAlignment();
