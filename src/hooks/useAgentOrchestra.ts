@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 
 export type OrchestraStatus = 'IDLE' | `EXECUTING_${string}`;
 
@@ -28,9 +28,13 @@ export const useAgentOrchestra = (): UseAgentOrchestraReturn => {
     if (statusRef.current !== nextStatus) {
       setStatus(nextStatus);
     }
-    
-    // Logic for multi-tier LLM fallback integration
   }, []);
 
-  return { status, dispatch };
+  return useMemo(
+    () => ({
+      status,
+      dispatch,
+    }),
+    [status, dispatch]
+  );
 };
