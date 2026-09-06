@@ -3,23 +3,26 @@
 `File Path: src/components/DebateChamber.md`
 
 ## Executive Summary
-The `DebateChamber` component functions as the core visualization layer for the Agent Orchestra consensus mechanism, rendering real-time, interactive decision matrices utilizing memoized selectors, custom CSS theming, and synchronized lifecycle animations.
+
+The `DebateChamber` component functions as the core visualization layer for the Agent Orchestra consensus mechanism. It renders real-time, interactive decision matrices by utilizing memoized selectors, custom CSS theming, and synchronized lifecycle animations.
 
 ---
 
 ## Table of Contents
-1. [Overview](#overview)
-2. [Integration Schema](#integration-schema)
+
+1. [Overview](#1-overview)
+2. [Integration Schema](#2-integration-schema)
    - [State Management](#state-management)
    - [Styling & Theming](#styling--theming)
    - [Lifecycle & Animations](#lifecycle--animations)
-3. [Code Implementation Example](#code-implementation-example)
-4. [Future Roadmap & Extensions](#future-roadmap--extensions)
+3. [Code Implementation Example](#3-code-implementation-example)
+4. [Future Roadmap & Extensions](#4-future-roadmap--extensions)
 
 ---
 
 ## 1. Overview
-`DebateChamber` consumes `DebateAgent` and `AgentVote` types to provide high-fidelity visualization of agent deliberation and voting states in real time.
+
+The `DebateChamber` component consumes `DebateAgent` and `AgentVote` types to provide high-fidelity visualization of agent deliberation and voting states in real time.
 
 ---
 
