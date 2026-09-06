@@ -8,7 +8,6 @@
 
 import { GoogleGenAI } from '@google/genai';
 
-// Modern supported Gemini model candidates in priority order (Free-tier safe)
 const MODEL_CANDIDATES = [
   'gemini-3.6-flash',
   'gemini-flash-latest',
@@ -18,14 +17,16 @@ let rateLimitUntil = 0;
 let invalidKeyUntil = 0;
 let lastInvalidKey = '';
 
+// Precompiled Regex patterns for zero-allocation parsing during error handling loops
+const RETRY_REGEX_1 = /retryDelay["']?\s*:\s*["']?(\d+(?:\.\d+)?)s/i;
+const RETRY_REGEX_2 = /retry in (\d+(?:\.\d+)?)s/i;
+const RETRY_REGEX_3 = /please retry after (\d+)s/i;
+
 function parseRetryDelayMs(errMsg: string): number {
-  const secMatch =
-    errMsg.match(/retryDelay["']?\s*:\s*["']?(\d+(?:\.\d+)?)s/i) ||
-    errMsg.match(/retry in (\d+(?:\.\d+)?)s/i) ||
-    errMsg.match(/please retry after (\d+)s/i);
+  const secMatch = RETRY_REGEX_1.exec(errMsg) || RETRY_REGEX_2.exec(errMsg) || RETRY_REGEX_3.exec(errMsg);
   if (secMatch) {
     const seconds = parseFloat(secMatch[1]);
-    return Math.max(5000, Math.min(seconds * 1000, 120000));
+    return seconds >= 5 && seconds <= 120 ? seconds * 1000 : (seconds < 5 ? 5000 : 120000);
   }
   return 30000;
 }
@@ -39,7 +40,7 @@ class ConcurrencyLimiter {
     this.maxConcurrency = maxConcurrency;
   }
 
-  async acquire(): Promise<void> {
+  acquire(): Promise<void> | void {
     if (this.activeCount < this.maxConcurrency) {
       this.activeCount++;
       return;
@@ -55,7 +56,7 @@ class ConcurrencyLimiter {
       this.activeCount++;
       const next = this.queue.shift();
       if (next) {
-        setTimeout(() => next(), 100);
+        setTimeout(next, 100);
       }
     }
   }
@@ -63,15 +64,24 @@ class ConcurrencyLimiter {
 
 const limiter = new ConcurrencyLimiter(2);
 
+// Client instance cache to avoid repeatedly instantiating GoogleGenAI per call with identical API keys
+let cachedApiKey = '';
+let cachedClient: GoogleGenAI | null = null;
+
 function getGeminiClient(apiKey: string): GoogleGenAI {
-  return new GoogleGenAI({
-    apiKey: apiKey.trim(),
+  if (cachedClient && cachedApiKey === apiKey) {
+    return cachedClient;
+  }
+  cachedApiKey = apiKey;
+  cachedClient = new GoogleGenAI({
+    apiKey,
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
       },
     },
   });
+  return cachedClient;
 }
 
 export interface GeminiCallConfig {
@@ -103,34 +113,37 @@ export async function callGemini(
   if (!cleanKey) return null;
 
   const now = Date.now();
-  if (now < rateLimitUntil) {
-    return null;
-  }
-  if (cleanKey === lastInvalidKey && now < invalidKeyUntil) {
-    return null;
-  }
+  if (now < rateLimitUntil) return null;
+  if (cleanKey === lastInvalidKey && now < invalidKeyUntil) return null;
 
-  await limiter.acquire();
+  const acquireResult = limiter.acquire();
+  if (acquireResult) await acquireResult;
+
   try {
     const ai = getGeminiClient(cleanKey);
 
-    for (const model of MODEL_CANDIDATES) {
+    const temperature = options?.temperature ?? 0.6;
+    const maxOutputTokens = options?.maxTokens ?? 8192;
+    const trimmedSys = systemInstruction ? systemInstruction.trim() : '';
+
+    const config: Record<string, unknown> = {
+      temperature,
+      maxOutputTokens,
+    };
+
+    if (trimmedSys) {
+      config.systemInstruction = trimmedSys;
+    }
+    if (options?.responseMimeType) {
+      config.responseMimeType = options.responseMimeType;
+    }
+    if (options?.responseSchema) {
+      config.responseSchema = options.responseSchema;
+    }
+
+    for (let i = 0, len = MODEL_CANDIDATES.length; i < len; i++) {
+      const model = MODEL_CANDIDATES[i];
       try {
-        const config: Record<string, unknown> = {
-          temperature: options?.temperature ?? 0.6,
-          maxOutputTokens: options?.maxTokens ?? 8192,
-        };
-
-        if (systemInstruction && systemInstruction.trim()) {
-          config.systemInstruction = systemInstruction.trim();
-        }
-        if (options?.responseMimeType) {
-          config.responseMimeType = options.responseMimeType;
-        }
-        if (options?.responseSchema) {
-          config.responseSchema = options.responseSchema;
-        }
-
         const response = await ai.models.generateContent({
           model,
           contents: userPrompt,
@@ -138,39 +151,37 @@ export async function callGemini(
         });
 
         const text = response?.text;
-        if (text && typeof text === 'string') {
+        if (typeof text === 'string' && text) {
           return text;
         }
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
-        const isAuthError =
+        
+        if (
           errMsg.includes('401') ||
           errMsg.includes('403') ||
           errMsg.includes('API_KEY_INVALID') ||
           errMsg.includes('API key not valid') ||
           errMsg.includes('invalid API key') ||
-          errMsg.includes('key is not valid');
-
-        if (isAuthError) {
+          errMsg.includes('key is not valid')
+        ) {
           invalidKeyUntil = Date.now() + 60000;
           lastInvalidKey = cleanKey;
           console.warn('[Gemini API] API key validation failed (401/403) — falling back to local engine.');
           return null;
         }
 
-        const isGeoblocked =
+        if (
           errMsg.includes('location is not supported') ||
           errMsg.includes('Location is not supported') ||
-          errMsg.includes('FAILED_PRECONDITION');
-
-        if (isGeoblocked) {
+          errMsg.includes('FAILED_PRECONDITION')
+        ) {
           rateLimitUntil = Date.now() + 300000;
           console.warn('[Gemini API] Region geoblocked — falling back to local engine.');
           return null;
         }
 
-        const isRateLimit = errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota');
-        if (isRateLimit) {
+        if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
           const delayMs = parseRetryDelayMs(errMsg);
           rateLimitUntil = Date.now() + delayMs;
           console.warn(`[Gemini API] Quota/rate-limit reached on ${model} (cooldown: ${Math.round(delayMs / 1000)}s) — switching to local engine.`);
@@ -198,39 +209,52 @@ export async function callGeminiMultiTurn(
   if (!cleanKey) return null;
 
   const now = Date.now();
-  if (now < rateLimitUntil) {
-    return null;
-  }
-  if (cleanKey === lastInvalidKey && now < invalidKeyUntil) {
-    return null;
-  }
+  if (now < rateLimitUntil) return null;
+  if (cleanKey === lastInvalidKey && now < invalidKeyUntil) return null;
 
-  await limiter.acquire();
+  const acquireResult = limiter.acquire();
+  if (acquireResult) await acquireResult;
+
   try {
     const ai = getGeminiClient(cleanKey);
 
-    const formattedContents = contents.map((c) => ({
-      role: c.role === 'model' || c.role === 'assistant' || c.role === 'caan' ? 'model' : 'user',
-      parts: c.parts.map((p) => ({ text: p.text })),
-    }));
+    const cLen = contents.length;
+    const formattedContents = new Array(cLen);
+    for (let i = 0; i < cLen; i++) {
+      const c = contents[i];
+      const role = c.role;
+      const mappedRole = (role === 'model' || role === 'assistant' || role === 'caan') ? 'model' : 'user';
+      const parts = c.parts;
+      const pLen = parts.length;
+      const formattedParts = new Array(pLen);
+      for (let j = 0; j < pLen; j++) {
+        formattedParts[j] = { text: parts[j].text };
+      }
+      formattedContents[i] = { role: mappedRole, parts: formattedParts };
+    }
 
-    for (const model of MODEL_CANDIDATES) {
+    const temperature = options?.temperature ?? 0.6;
+    const maxOutputTokens = options?.maxTokens ?? 8192;
+    const trimmedSys = systemInstruction ? systemInstruction.trim() : '';
+
+    const config: Record<string, unknown> = {
+      temperature,
+      maxOutputTokens,
+    };
+
+    if (trimmedSys) {
+      config.systemInstruction = trimmedSys;
+    }
+    if (options?.responseMimeType) {
+      config.responseMimeType = options.responseMimeType;
+    }
+    if (options?.responseSchema) {
+      config.responseSchema = options.responseSchema;
+    }
+
+    for (let i = 0, len = MODEL_CANDIDATES.length; i < len; i++) {
+      const model = MODEL_CANDIDATES[i];
       try {
-        const config: Record<string, unknown> = {
-          temperature: options?.temperature ?? 0.6,
-          maxOutputTokens: options?.maxTokens ?? 8192,
-        };
-
-        if (systemInstruction && systemInstruction.trim()) {
-          config.systemInstruction = systemInstruction.trim();
-        }
-        if (options?.responseMimeType) {
-          config.responseMimeType = options.responseMimeType;
-        }
-        if (options?.responseSchema) {
-          config.responseSchema = options.responseSchema;
-        }
-
         const response = await ai.models.generateContent({
           model,
           contents: formattedContents,
@@ -238,38 +262,36 @@ export async function callGeminiMultiTurn(
         });
 
         const text = response?.text;
-        if (text && typeof text === 'string') {
+        if (typeof text === 'string' && text) {
           return text;
         }
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
-        const isAuthError =
+
+        if (
           errMsg.includes('401') ||
           errMsg.includes('403') ||
           errMsg.includes('API_KEY_INVALID') ||
           errMsg.includes('API key not valid') ||
-          errMsg.includes('invalid API key');
-
-        if (isAuthError) {
+          errMsg.includes('invalid API key')
+        ) {
           invalidKeyUntil = Date.now() + 60000;
           lastInvalidKey = cleanKey;
           console.warn('[Gemini API] API key validation failed (401/403) — falling back to local engine.');
           return null;
         }
 
-        const isGeoblocked =
+        if (
           errMsg.includes('location is not supported') ||
           errMsg.includes('Location is not supported') ||
-          errMsg.includes('FAILED_PRECONDITION');
-
-        if (isGeoblocked) {
+          errMsg.includes('FAILED_PRECONDITION')
+        ) {
           rateLimitUntil = Date.now() + 300000;
           console.warn('[Gemini API] Region geoblocked — falling back to local engine.');
           return null;
         }
 
-        const isRateLimit = errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota');
-        if (isRateLimit) {
+        if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('Quota')) {
           const delayMs = parseRetryDelayMs(errMsg);
           rateLimitUntil = Date.now() + delayMs;
           console.warn(`[Gemini API] Quota/rate-limit reached on ${model} (cooldown: ${Math.round(delayMs / 1000)}s) — switching to local engine.`);
