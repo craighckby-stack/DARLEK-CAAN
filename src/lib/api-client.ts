@@ -7,11 +7,28 @@ export interface ApiResult<T> {
   readonly error?: string;
 }
 
+/**
+ * Validates that the provided URL is a non-empty string.
+ */
+function isValidUrl(url: unknown): url is string {
+  return typeof url === 'string' && url.length > 0;
+}
+
+/**
+ * Normalizes an unknown caught error into a readable error message.
+ */
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected network error occurred.';
+}
+
+/**
+ * Safely performs an HTTP fetch request and normalizes the JSON response.
+ */
 export async function safeApiFetch<T = unknown>(
   url: string,
   options?: RequestInit
 ): Promise<ApiResult<T>> {
-  if (!url || typeof url !== 'string') {
+  if (!isValidUrl(url)) {
     return {
       success: false,
       data: null,
@@ -22,6 +39,7 @@ export async function safeApiFetch<T = unknown>(
 
   try {
     const result = await safeFetchJson<T>(url, options);
+    
     return {
       success: Boolean(result?.success),
       data: result?.data ?? null,
@@ -33,7 +51,7 @@ export async function safeApiFetch<T = unknown>(
       success: false,
       data: null,
       status: 500,
-      error: error instanceof Error ? error.message : 'An unexpected network error occurred.',
+      error: getErrorMessage(error),
     };
   }
 }
