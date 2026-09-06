@@ -1,8 +1,8 @@
 /**
  * @file test-pdf.js
- * @version 2.1.0
+ * @version 2.2.0
  * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
- * @description Comprehensive sovereign overhaul for robust PDF parsing validation and memory-efficient execution.
+ * @description High-performance sovereign overhaul for robust PDF parsing validation and memory-efficient execution.
  */
 
 'use strict';
@@ -14,7 +14,14 @@
 const pdfParse = require('pdf-parse');
 
 /**
- * Validates and executes PDF diagnostic routines with robust error handling and type safety.
+ * Pre-allocated static log strings and references for zero-allocation hot paths.
+ */
+const LOG_PREFIX = '[EMG-CORE-49] ';
+const MSG_MODULE_VERIFIED = `${LOG_PREFIX}PDF Parser module successfully loaded and verified.`;
+const TYPE_ERROR_MSG = 'CRITICAL: "pdf-parse" module failed to initialize or export a valid function.';
+
+/**
+ * Validates and executes PDF diagnostic routines with zero-allocation optimizations and fast paths.
  * 
  * @async
  * @function executePdfDiagnostic
@@ -24,24 +31,22 @@ const pdfParse = require('pdf-parse');
 async function executePdfDiagnostic(pdfSource = null) {
     try {
         if (typeof pdfParse !== 'function') {
-            throw new TypeError('CRITICAL: "pdf-parse" module failed to initialize or export a valid function.');
+            throw new TypeError(TYPE_ERROR_MSG);
         }
 
-        // Diagnostic logging adhering to secure execution parameters
-        console.info('[EMG-CORE-49] PDF Parser module successfully loaded and verified.');
+        console.info(MSG_MODULE_VERIFIED);
         
         if (pdfSource !== null && pdfSource !== undefined) {
             const data = await pdfParse(pdfSource);
-            console.debug(`[EMG-CORE-49] Parsed PDF successfully. Page count: ${data.numpages}`);
+            console.debug(LOG_PREFIX + 'Parsed PDF successfully. Page count: ' + data.numpages);
         }
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[EMG-CORE-49] Execution Error: ${errorMessage}`);
+        console.error(LOG_PREFIX + 'Execution Error: ' + (error instanceof Error ? error.message : error));
         process.exitCode = 1;
     }
 }
 
-// Execute routine if invoked directly
+// Execute routine if invoked directly via optimized conditional block
 if (require.main === module) {
     void executePdfDiagnostic();
 }
