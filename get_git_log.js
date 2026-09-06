@@ -12,23 +12,23 @@ const https = require('https');
 /**
  * Configuration constants for GitHub API interaction.
  */
-const GITHUB_CONFIG = {
+const GITHUB_CONFIG = Object.freeze({
   USER_AGENT: 'EMG-Core-v49-Optimizer',
   ACCEPT_HEADER: 'application/vnd.github.v3+json',
   TARGET_PATH: 'src/app/page.tsx',
   TIMEOUT_MS: 10000,
   MAX_COMMITS_DISPLAY: 10
-};
+});
 
 /**
  * Pre-allocated static options object to prevent per-request allocation overhead.
  */
-const REQUEST_OPTIONS = {
-  headers: {
+const REQUEST_OPTIONS = Object.freeze({
+  headers: Object.freeze({
     'User-Agent': GITHUB_CONFIG.USER_AGENT,
     'Accept': GITHUB_CONFIG.ACCEPT_HEADER
-  }
-};
+  })
+});
 
 /**
  * Simple in-memory LRU-like cache for repository API URLs to avoid redundant string concatenation.
@@ -42,7 +42,7 @@ const URL_CACHE = new Map();
  * @returns {boolean} True if valid, false otherwise.
  */
 function isValidRepository(repo) {
-  return typeof repo === 'string' && repo.length > 0 && repo.trim().length > 0;
+  return typeof repo === 'string' && repo.trim().length > 0;
 }
 
 /**
@@ -81,17 +81,16 @@ function displayCommits(repo, commits) {
     return;
   }
 
-  const length = commits.length;
-  console.log(`Found ${length} commits for ${repo}:`);
+  const totalCommits = commits.length;
+  console.log(`Found ${totalCommits} commits for ${repo}:`);
   
-  const limit = length < GITHUB_CONFIG.MAX_COMMITS_DISPLAY ? length : GITHUB_CONFIG.MAX_COMMITS_DISPLAY;
+  const displayLimit = Math.min(totalCommits, GITHUB_CONFIG.MAX_COMMITS_DISPLAY);
   
-  // Unrolled/direct loop for maximum execution speed and minimal GC pressure
-  for (let i = 0; i < limit; i++) {
-    const commitObj = commits[i];
-    const sha = commitObj?.sha ?? 'UNKNOWN_SHA';
-    const message = commitObj?.commit?.message ?? 'No message provided';
-    const date = commitObj?.commit?.author?.date ?? 'Unknown date';
+  for (let i = 0; i < displayLimit; i++) {
+    const commitRecord = commits[i];
+    const sha = commitRecord?.sha ?? 'UNKNOWN_SHA';
+    const message = commitRecord?.commit?.message ?? 'No message provided';
+    const date = commitRecord?.commit?.author?.date ?? 'Unknown date';
     
     console.log(`- SHA: ${sha} | Message: ${message} | Date: ${date}`);
   }
@@ -107,16 +106,15 @@ function displayCommits(repo, commits) {
 function handleResponse(res, repo, resolve) {
   res.setEncoding('utf8');
   
-  // Pre-allocate array for chunks to avoid high string concatenation overhead and memory fragmentation
-  const chunks = [];
+  const responseChunks = [];
 
   res.on('data', (chunk) => {
-    chunks.push(chunk);
+    responseChunks.push(chunk);
   });
 
   res.on('end', () => {
     try {
-      const rawData = chunks.join('');
+      const rawData = responseChunks.join('');
       if (res.statusCode !== 200) {
         console.error(`Failed to fetch commits for ${repo}: HTTP Status ${res.statusCode} - ${rawData}`);
         return resolve();
