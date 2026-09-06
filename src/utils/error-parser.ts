@@ -5,6 +5,9 @@
  * @description High-performance, type-safe system error parsing and normalization engine.
  */
 
+/**
+ * Expected shape of JSON-encoded error payloads produced by system operations.
+ */
 export interface SystemErrorPayload {
   readonly operationType?: string;
   readonly error?: string;
@@ -12,63 +15,75 @@ export interface SystemErrorPayload {
   readonly [key: string]: unknown;
 }
 
+/**
+ * Normalized, type-safe representation of an error for application consumption.
+ */
 export interface ParsedSystemError {
   readonly isSystemError: boolean;
   readonly message: string;
   readonly path: string;
 }
 
+/** Default fallback values for unparsable or missing error details. */
 const FALLBACK_PATH = 'N/A' as const;
-const UNKNOWN_ERROR_MSG = 'Unknown error occurred' as const;
+const UNKNOWN_ERROR_MESSAGE = 'Unknown error occurred' as const;
 
-const NULL_ERROR_RESULT: ParsedSystemError = {
+/** Pre-allocated immutable default result for null or undefined error inputs. */
+const NULL_ERROR_RESULT: ParsedSystemError = Object.freeze({
   isSystemError: false,
-  message: UNKNOWN_ERROR_MSG,
-  path: FALL_BACK_PATH_SAFE()
-};
+  message: UNKNOWN_ERROR_MESSAGE,
+  path: FALLBACK_PATH,
+});
 
-function FALL_BACK_PATH_SAFE() {
-  return FALLBACK_PATH;
-}
+/**
+ * Type guard checking if a value is a non-empty string.
+ */
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0;
+
+/**
+ * Checks whether a raw message string is a potential JSON object (starts with '{').
+ */
+const isJsonCandidate = (message: string | undefined | null): message is string =>
+  typeof message === 'string' && message.charCodeAt(0) === 123;
 
 /**
  * Parses an incoming Error object, extracting structured system error payloads if valid JSON,
- * or gracefully falling back to standard error representations with maximum memory and execution efficiency.
+ * or gracefully falling back to standard error representations with maximum execution clarity.
  *
- * @param {Error} error - The raw Error instance to parse.
- * @returns {ParsedSystemError} The normalized, type-safe error structure.
+ * @param error - The raw Error instance to parse.
+ * @returns The normalized, type-safe error structure.
  */
 export const parseSystemError = (error: Error): ParsedSystemError => {
-  if (error === null || error === undefined) {
+  if (!error) {
     return NULL_ERROR_RESULT;
   }
 
   const rawMessage = error.message;
 
-  if (rawMessage === null || rawMessage === undefined || rawMessage.charCodeAt(0) !== 123) {
+  if (!isJsonCandidate(rawMessage)) {
     return {
       isSystemError: false,
-      message: rawMessage || UNKNOWN_ERROR_MSG,
+      message: rawMessage || UNKNOWN_ERROR_MESSAGE,
       path: FALLBACK_PATH,
     };
   }
 
   try {
     const data = JSON.parse(rawMessage) as SystemErrorPayload;
-    if (data !== null && typeof data === 'object') {
-      const operationType = data.operationType;
-      const isSystemError = typeof operationType === 'string' && operationType.length > 0;
-      const errProp = data.error;
-      const pathProp = data.path;
+
+    if (data && typeof data === 'object') {
+      const { operationType, error: errorProp, path: pathProp } = data;
+      const isSystemError = isNonEmptyString(operationType);
 
       return {
         isSystemError,
-        message: (typeof errProp === 'string' && errProp) || rawMessage,
-        path: (typeof pathProp === 'string' && pathProp) || FALLBACK_PATH,
+        message: isNonEmptyString(errorProp) ? errorProp : rawMessage,
+        path: isNonEmptyString(pathProp) ? pathProp : FALLBACK_PATH,
       };
     }
   } catch {
-    // Fall through on parsing failure
+    // Graceful fallback on JSON syntax or parsing failure
   }
 
   return {
