@@ -1,54 +1,56 @@
 import * as React from "react"
 
 /**
- * The standard mobile layout breakpoint in pixels (matches Tailwind's 'md' prefix minus 1px).
+ * The standard mobile layout breakpoint query matching screens below 768px.
  */
-const MOBILE_QUERY = "(max-width: 767px)" as const
+const MOBILE_BREAKPOINT_QUERY = "(max-width: 767px)" as const
 
 /**
- * Cached global MediaQueryList instance to prevent repeated allocations during SSR/client transitions.
+ * Lazily initializes and caches the global MediaQueryList instance to prevent redundant allocations.
  */
-let mediaQueryListCache: MediaQueryList | null = null
+let sharedMediaQueryList: MediaQueryList | null = null
 
-const getMediaQueryList = (): MediaQueryList | null => {
+function getCachedMediaQueryList(): MediaQueryList | null {
   if (typeof window === "undefined") {
     return null
   }
-  if (!mediaQueryListCache) {
-    mediaQueryListCache = window.matchMedia(MOBILE_QUERY)
+
+  if (!sharedMediaQueryList) {
+    sharedMediaQueryList = window.matchMedia(MOBILE_BREAKPOINT_QUERY)
   }
-  return mediaQueryListCache
+
+  return sharedMediaQueryList
 }
 
 /**
- * Initial state initializer using direct evaluation to avoid redundant state allocations.
+ * Resolves the initial mobile state safely across server and client environments.
  */
-const getInitialState = (): boolean => {
-  const mql = getMediaQueryList()
-  return mql ? mql.matches : false
+function evaluateInitialMobileState(): boolean {
+  const mediaQueryList = getCachedMediaQueryList()
+  return mediaQueryList?.matches ?? false
 }
 
 /**
- * React hook that tracks and returns whether the current viewport matches mobile screen dimensions.
- * Utilizes matchMedia for high-performance reactive updates with optimized memory footprints and cached queries.
+ * React hook that monitors viewport dimensions and returns whether the current layout matches mobile specifications.
  */
 export function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = React.useState<boolean>(getInitialState)
+  const [isMobile, setIsMobile] = React.useState<boolean>(evaluateInitialMobileState)
 
   React.useEffect(() => {
-    const mediaQueryList = getMediaQueryList()
+    const mediaQueryList = getCachedMediaQueryList()
+    
     if (!mediaQueryList) {
       return
     }
 
-    const handleMediaQueryChange = (event: MediaQueryListEvent): void => {
+    const handleBreakpointChange = (event: MediaQueryListEvent): void => {
       setIsMobile(event.matches)
     }
 
-    // Ensure strict synchronization on mount
+    // Sync current state immediately upon mount
     setIsMobile(mediaQueryList.matches)
 
-    mediaQueryList.addEventListener("change", handleMediaQueryChange)
+    mediaQueryList.addEventListener("change", handleBreakpointChange)
 
     return () => {
       mediaQueryList.removeEventListener("change", handleMediaQueryChange)
