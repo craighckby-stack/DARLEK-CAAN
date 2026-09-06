@@ -10,46 +10,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-/**
- * Validates path traversal boundaries and file system integrity.
- * 
- * @param {string} targetRelativePath - The relative path to the target file.
- * @returns {string} The fully resolved and validated absolute file path.
- * @throws {Error} If path traversal or file validation fails.
- */
-function getValidatedFilePath(targetRelativePath) {
-  const currentWorkingDirectory = process.cwd();
-  const resolvedPath = path.resolve(currentWorkingDirectory, targetRelativePath);
-  const expectedBaseDir = path.resolve(currentWorkingDirectory, 'src/app/api/evolution/propose');
-  const allowedSourceDir = path.resolve(currentWorkingDirectory, 'src');
+// Cache static constants and resolved paths to avoid redundant allocations and syscalls
+const CWD = process.cwd();
+const EXPECTED_BASE_DIR = path.resolve(CWD, 'src/app/api/evolution/propose');
+const ALLOWED_SOURCE_DIR = path.resolve(CWD, 'src');
 
-  const isWithinBounds = 
-    resolvedPath.startsWith(expectedBaseDir) || 
-    resolvedPath.startsWith(allowedSourceDir);
-
-  if (!isWithinBounds) {
-    throw new Error('SECURITY_VIOLATION: Access denied to target file path.');
-  }
-
-  if (!fs.existsSync(resolvedPath)) {
-    throw new Error(`SECURITY_VIOLATION: Target file does not exist: ${targetRelativePath}`);
-  }
-
-  const fileStats = fs.statSync(resolvedPath);
-  if (!fileStats.isFile()) {
-    throw new Error('SECURITY_VIOLATION: Target path is not a valid regular file.');
-  }
-
-  return resolvedPath;
-}
-
-/**
- * Constructs the structured replacement block for the evolution prompt formatting guidelines.
- * 
- * @returns {string} The formatted replacement string.
- */
-function buildReplacementContent() {
-  return `Format your response exactly like this:
+// Cache constant replacement string to eliminate redundant template instantiation overhead
+const REPLACEMENT_CONTENT = `Format your response exactly like this:
 \\\`\\\`\\\`json
 {
   "analysis": "Specific analysis of what dead-weight or bugs were fixed...",
@@ -70,6 +37,44 @@ function buildReplacementContent() {
 \\\`\\\`\\\`
 
 Risk scoring guidelines:`;
+
+const TARGET_PATTERN = /Format your response exactly like this:.*?\`\`\`Risk scoring guidelines:/s;
+
+/**
+ * Validates path traversal boundaries and file system integrity with cached base checks.
+ * 
+ * @param {string} targetRelativePath - The relative path to the target file.
+ * @returns {string} The fully resolved and validated absolute file path.
+ * @throws {Error} If path traversal or file validation fails.
+ */
+function getValidatedFilePath(targetRelativePath) {
+  const resolvedPath = path.resolve(CWD, targetRelativePath);
+
+  if (!resolvedPath.startsWith(EXPECTED_BASE_DIR) && !resolvedPath.startsWith(ALLOWED_SOURCE_DIR)) {
+    throw new Error('SECURITY_VIOLATION: Access denied to target file path.');
+  }
+
+  let fileStats;
+  try {
+    fileStats = fs.statSync(resolvedPath);
+  } catch {
+    throw new Error(`SECURITY_VIOLATION: Target file does not exist: ${targetRelativePath}`);
+  }
+
+  if (!fileStats.isFile()) {
+    throw new Error('SECURITY_VIOLATION: Target path is not a valid regular file.');
+  }
+
+  return resolvedPath;
+}
+
+/**
+ * Constructs the structured replacement block for the evolution prompt formatting guidelines.
+ * 
+ * @returns {string} The formatted replacement string.
+ */
+function buildReplacementContent() {
+  return REPLACEMENT_CONTENT;
 }
 
 /**
@@ -80,13 +85,11 @@ Risk scoring guidelines:`;
  * @throws {Error} If the injection signature is missing.
  */
 function applyPromptPatch(sourceCode) {
-  const targetPattern = /Format your response exactly like this:.*?\`\`\`Risk scoring guidelines:/s;
-
-  if (!targetPattern.test(sourceCode)) {
+  if (!TARGET_PATTERN.test(sourceCode)) {
     throw new Error('SECURITY_VIOLATION: Target injection signature not found within expected bounds.');
   }
 
-  return sourceCode.replace(targetPattern, buildReplacementContent());
+  return sourceCode.replace(TARGET_PATTERN, REPLACEMENT_CONTENT);
 }
 
 /**
