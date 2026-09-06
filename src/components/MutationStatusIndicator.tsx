@@ -33,15 +33,12 @@ const LABEL_CLASS = 'text-[8px] uppercase tracking-widest text-white select-none
 
 export const MutationStatusIndicator: React.FC<MutationStatusIndicatorProps> = memo(({
   status,
-  className,
+  className = '',
 }) => {
-  const config = MUTATION_STATUS_CONFIGURATIONS[status] ?? MUTATION_STATUS_CONFIGURATIONS.stable;
+  const { dotClassName, label } = MUTATION_STATUS_CONFIGURATIONS[status] ?? MUTATION_STATUS_CONFIGURATIONS.stable;
   
-  const containerClassName = className 
-    ? `${BASE_CONTAINER_CLASS} ${className}` 
-    : BASE_CONTAINER_CLASS;
-
-  const dotClassName = `${BASE_DOT_CLASS} ${config.dotClassName}`;
+  const containerClassName = [BASE_CONTAINER_CLASS, className].filter(Boolean).join(' ');
+  const combinedDotClassName = `${BASE_DOT_CLASS} ${dotClassName}`;
 
   return (
     <div 
@@ -49,9 +46,9 @@ export const MutationStatusIndicator: React.FC<MutationStatusIndicatorProps> = m
       role="status"
       aria-label={`Mutation status: ${status}`}
     >
-      <div className={dotClassName} aria-hidden="true" />
+      <div className={combinedDotClassName} aria-hidden="true" />
       <span className={LABEL_CLASS}>
-        {config.label}
+        {label}
       </span>
     </div>
   );
