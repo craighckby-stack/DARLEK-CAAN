@@ -1,16 +1,22 @@
 # API Gateway Documentation
 
-## Overview
+> **Executive Summary:** Primary ingress gateway for the DARLEK CANN v3.0 system (OMEGA-Emergent architecture), providing real-time diagnostics and agent orchestration hooks.
 
-This module functions as the primary ingress gateway for the DARLEK CANN v3.0 system. Built upon the OMEGA-Emergent architecture, it delivers real-time system diagnostics and dedicated agent orchestration hooks.
+## Quick Navigation
+- [API Endpoints](#api-endpoints)
+- [Integration Requirements](#integration)
+
+---
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api` | Returns system health, performance metrics, and node status. |
-| `POST` | `/api` | Accepts agent-orchestration payloads for swarm synchronization. |
+| `GET` | `/api` | System health, performance metrics, and node status. |
+| `POST` | `/api` | Agent-orchestration payloads for swarm synchronization. |
 
 ## Integration
 
-This system is engineered to interface seamlessly with the `sovereign-kernel` and `unitary-core` repositories. To guarantee proper request routing, ensure all incoming requests include the required `X-Agent-Context` header.
+Engineered for seamless interface with the `sovereign-kernel` and `unitary-core` repositories. 
+
+* **Required Header:** `X-Agent-Context` must be included in all incoming requests to guarantee proper routing.
