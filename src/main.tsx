@@ -4,16 +4,35 @@ import App from './App';
 import './index.css';
 
 /**
- * Initializes and mounts the root React application with strict safety assertions.
+ * Identifier for the DOM element designated as the React application root container.
  */
-const mountApplication = (): void => {
-  const rootElement = document.getElementById('root');
+const ROOT_ELEMENT_ID = 'root';
 
-  if (!(rootElement instanceof HTMLElement)) {
-    throw new Error('Critical Error: Root container element with id "root" was not found or is not a valid HTMLElement.');
+/**
+ * Retrieves and validates the root DOM container element required for application mounting.
+ *
+ * @throws {Error} If the target container element does not exist or fails type verification.
+ */
+const getRootElement = (): HTMLElement => {
+  const container = document.getElementById(ROOT_ELEMENT_ID);
+
+  if (!(container instanceof HTMLElement)) {
+    throw new Error(
+      `[Application Root Error] Container '#${ROOT_ELEMENT_ID}' was not found or is not a valid HTMLElement.`
+    );
   }
 
-  createRoot(rootElement).render(
+  return container;
+};
+
+/**
+ * Initializes the React root and renders the primary application component tree.
+ */
+const mountApplication = (): void => {
+  const rootContainer = getRootElement();
+  const reactRoot = createRoot(rootContainer);
+
+  reactRoot.render(
     <StrictMode>
       <App />
     </StrictMode>
