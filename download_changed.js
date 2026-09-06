@@ -24,8 +24,11 @@ const USER_AGENT = 'EMG-Core-v49-Neural-Code-Optimizer';
 const HTTP_TIMEOUT_MS = 15000;
 const MAX_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB bounds limit for memory safety
 
+// Pre-allocate repository base URL object to prevent repeated instantiations
+const REPOSITORY_BASE_URL_OBJ = new URL(REPOSITORY_BASE_URL);
+
 /**
- * Safely loads and parses the remote blobs inventory with robust validation.
+ * Safely loads and parses the remote blobs inventory with robust validation and memory efficiency.
  * @returns {RemoteBlob[]} Array of validated RemoteBlob objects.
  */
 function loadRemoteBlobs() {
@@ -35,13 +38,16 @@ function loadRemoteBlobs() {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    return parsed.filter(
-      /**
-       * @param {any} item
-       * @returns {item is RemoteBlob}
-       */
-      (item) => item !== null && typeof item === 'object' && typeof item.path === 'string'
-    );
+    const len = parsed.length;
+    /** @type {RemoteBlob[]} */
+    const validItems = [];
+    for (let i = 0; i < len; i++) {
+      const item = parsed[i];
+      if (item !== null && typeof item === 'object' && typeof item.path === 'string') {
+        validItems.push(item);
+      }
+    }
+    return validItems;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('CRITICAL: Failed to read or parse remote_blobs.json:', errorMessage);
@@ -128,10 +134,12 @@ function fetchRemoteContent(url) {
  */
 async function processBlobsSequentially() {
   const remoteBlobs = loadRemoteBlobs();
+  const len = remoteBlobs.length;
   /** @type {RemoteBlob[]} */
   const changedFilesList = [];
 
-  for (const fileObj of remoteBlobs) {
+  for (let i = 0; i < len; i++) {
+    const fileObj = remoteBlobs[i];
     if (!fileObj || typeof fileObj.path !== 'string') {
       continue;
     }
@@ -157,10 +165,7 @@ async function processBlobsSequentially() {
 
       if (fileExists) {
         const localContent = await fsPromises.readFile(sanitizedPath, 'utf8');
-        
-        const repositoryBaseUrl = new URL(REPOSITORY_BASE_URL);
-        const remoteUrl = new URL(sanitizedPath, repositoryBaseUrl).toString();
-
+        const remoteUrl = new URL(sanitizedPath, REPOSITORY_BASE_URL_OBJ).toString();
         const remoteContent = await fetchRemoteContent(remoteUrl);
 
         if (remoteContent !== localContent) {
