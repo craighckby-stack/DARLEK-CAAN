@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, startTransition } from 'react';
+import { useState, useRef, useCallback, useEffect, startTransition, Dispatch, SetStateAction } from 'react';
 import { sanitizeContent, Finding, isSkippableFile } from '@/lib/scanner';
 import JSZip from 'jszip';
 
@@ -22,12 +22,12 @@ export interface UseFolderScannerReturn {
   scanFileList: (fileList: File[]) => Promise<void>;
   stopScan: () => void;
   downloadSanitizedZip: () => Promise<void>;
-  setResults: React.Dispatch<React.SetStateAction<FolderScanFileResult[]>>;
+  setResults: Dispatch<SetStateAction<FolderScanFileResult[]>>;
 }
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
-const TIMER_INTERVAL_MS = 1000; // Reduced state update frequency for timer
-const YIELD_INTERVAL_ITERATIONS = 40; // Decreased thread yielding overhead
+const TIMER_INTERVAL_MS = 1000;
+const YIELD_INTERVAL_ITERATIONS = 40;
 const BINARY_CHECK_LENGTH = 1000;
 
 export function useFolderScanner(): UseFolderScannerReturn {
@@ -40,38 +40,90 @@ export function useFolderScanner(): UseFolderScannerReturn {
   const [filesSkipped, setFilesSkipped] = useState<number>(0);
   const [scanDuration, setScanDuration] = useState<number>(0);
 
-  const startTime = useRef<number>(0);
+  const startTimeRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const abortController = useRef<AbortController | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const clearTimer = useCallback((): void => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (isScanning) {
       timerRef.current = setInterval(() => {
-        if (startTime.current > 0) {
-          setScanDuration(Math.floor((Date.now() - startTime.current) / 1000));
+        if (startTimeRef.current > 0) {
+          setScanDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
         }
       }, TIMER_INTERVAL_MS);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+    } else {
+      clearTimer();
     }
 
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [isScanning]);
+    return clearTimer;
+  }, [isScanning, clearTimer]);
 
   const stopScan = useCallback((): void => {
-    if (abortController.current) {
-      abortController.current.abort();
-      abortController.current = null;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
     setIsScanning(false);
     setStatusMessage('Scan aborted by user.');
   }, []);
+
+  const resetScanState = useCallback((totalFiles: number): void => {
+    setIsScanning(true);
+    setResults([]);
+    setProgress(0);
+    setFilesScanned(0);
+    setFilesSkipped(0);
+    setScanDuration(0);
+    setStatusMessage(`Preparing ${totalFiles} files for local scanning...`);
+    startTimeRef.current = Date.now();
+    abortControllerRef.current = new AbortController();
+  }, []);
+
+  const processFileItem = async (
+    file: File,
+    relativePath: string,
+    accumulatedResults: FolderScanFileResult[]
+  ): Promise<{ scannedIncrement: number; skippedIncrement: number; hasFinding: boolean }> => {
+    if (isSkippableFile(relativePath) || file.size > MAX_FILE_SIZE) {
+      return { scannedIncrement: 0, skippedIncrement: 1, hasFinding: false };
+    }
+
+    try {
+      const textContent = await file.text();
+
+      if (textContent.slice(0, BINARY_CHECK_LENGTH).includes('\0')) {
+        return { scannedIncrement: 0, skippedIncrement: 1, hasFinding: false };
+      }
+
+      const { sanitized, findings } = sanitizeContent(textContent);
+
+      if (findings.length > 0) {
+        accumulatedResults.push({
+          file: relativePath,
+          findings,
+          content: textContent,
+          sanitized,
+          size: file.size,
+        });
+
+        startTransition(() => {
+          setResults([...accumulatedResults]);
+        });
+      }
+
+      return { scannedIncrement: 1, skippedIncrement: 0, hasFinding: findings.length > 0 };
+    } catch (fileError) {
+      console.error(`Failed to read file: ${relativePath}`, fileError);
+      return { scannedIncrement: 0, skippedIncrement: 1, hasFinding: false };
+    }
+  };
 
   const scanFileList = useCallback(async (fileList: File[]): Promise<void> => {
     if (!Array.isArray(fileList) || fileList.length === 0) {
@@ -79,117 +131,79 @@ export function useFolderScanner(): UseFolderScannerReturn {
       return;
     }
 
-    setIsScanning(true);
-    setResults([]);
-    setProgress(0);
-    setFilesScanned(0);
-    setFilesSkipped(0);
-    setScanDuration(0);
-    setStatusMessage(`Preparing ${fileList.length} files for local scanning...`);
-    
-    startTime.current = Date.now();
-    abortController.current = new AbortController();
+    resetScanState(fileList.length);
 
-    const newResults: FolderScanFileResult[] = [];
-    let scanned = 0;
-    let skipped = 0;
+    const accumulatedResults: FolderScanFileResult[] = [];
+    let scannedCount = 0;
+    let skippedCount = 0;
     const totalFiles = fileList.length;
 
     try {
-      for (let i = 0; i < totalFiles; i++) {
-        if (abortController.current?.signal.aborted) {
+      for (let index = 0; index < totalFiles; index++) {
+        if (abortControllerRef.current?.signal.aborted) {
           break;
         }
 
-        const file = fileList[i];
+        const file = fileList[index];
         if (!file) continue;
 
-        const relPath = file.webkitRelativePath || file.name;
-        setCurrentFile(relPath);
+        const relativePath = file.webkitRelativePath || file.name;
+        setCurrentFile(relativePath);
 
-        const progressPercent = Math.round(((i + 1) / totalFiles) * 100);
-
-        if (isSkippableFile(relPath) || file.size > MAX_FILE_SIZE) {
-          skipped++;
-          setFilesSkipped(skipped);
-          setProgress(progressPercent);
-          continue;
-        }
-
-        try {
-          const text = await file.text();
-          
-          if (text.slice(0, BINARY_CHECK_LENGTH).includes('\0')) {
-            skipped++;
-            setFilesSkipped(skipped);
-            setProgress(progressPercent);
-            continue;
-          }
-
-          const { sanitized, findings } = sanitizeContent(text);
-          scanned++;
-          setFilesScanned(scanned);
-
-          if (findings.length > 0) {
-            newResults.push({
-              file: relPath,
-              findings,
-              content: text,
-              sanitized,
-              size: file.size,
-            });
-            // Batch results update via concurrent transition to prevent UI blocking
-            startTransition(() => {
-              setResults([...newResults]);
-            });
-          }
-        } catch (fileErr) {
-          console.error(`Failed to read file: ${relPath}`, fileErr);
-          skipped++;
-          setFilesSkipped(skipped);
-        }
-
+        const progressPercent = Math.round(((index + 1) / totalFiles) * 100);
         setProgress(progressPercent);
 
-        if (i > 0 && i % YIELD_INTERVAL_ITERATIONS === 0) {
+        const { scannedIncrement, skippedIncrement } = await processFileItem(
+          file,
+          relativePath,
+          accumulatedResults
+        );
+
+        scannedCount += scannedIncrement;
+        skippedCount += skippedIncrement;
+
+        if (scannedIncrement > 0) setFilesScanned(scannedCount);
+        if (skippedIncrement > 0) setFilesSkipped(skippedCount);
+
+        if (index > 0 && index % YIELD_INTERVAL_ITERATIONS === 0) {
           await new Promise<void>((resolve) => setTimeout(resolve, 0));
         }
       }
-    } catch (err) {
-      console.error('Critical error during folder scan execution:', err);
+    } catch (error) {
+      console.error('Critical error during folder scan execution:', error);
       setStatusMessage('An unexpected error occurred during the scan.');
     } finally {
       setIsScanning(false);
-      abortController.current = null;
-      const totalFindings = newResults.reduce((acc, r) => acc + r.findings.length, 0);
-      setStatusMessage(`Scan complete. Found ${totalFindings} secrets across ${newResults.length} files.`);
+      abortControllerRef.current = null;
+      const totalFindings = accumulatedResults.reduce((acc, result) => acc + result.findings.length, 0);
+      setStatusMessage(`Scan complete. Found ${totalFindings} secrets across ${accumulatedResults.length} files.`);
     }
-  }, []);
+  }, [resetScanState]);
 
   const downloadSanitizedZip = useCallback(async (): Promise<void> => {
     if (results.length === 0) return;
-    
+
     try {
-      const zip = new JSZip();
-      const resultsLen = results.length;
-      for (let i = 0; i < resultsLen; i++) {
-        const res = results[i];
-        if (res?.file) {
-          zip.file(res.file, res.sanitized);
+      const zipInstance = new JSZip();
+      
+      for (const result of results) {
+        if (result?.file) {
+          zipInstance.file(result.file, result.sanitized);
         }
       }
-      
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const anchorElement = document.createElement('a');
-      anchorElement.href = url;
-      anchorElement.download = `sanitized-project-${Date.now()}.zip`;
-      document.body.appendChild(anchorElement);
-      anchorElement.click();
-      document.body.removeChild(anchorElement);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Failed to generate or download sanitized ZIP archive:', err);
+
+      const zipBlob = await zipInstance.generateAsync({ type: 'blob' });
+      const objectUrl = URL.createObjectURL(zipBlob);
+      const downloadAnchor = document.createElement('a');
+
+      downloadAnchor.href = objectUrl;
+      downloadAnchor.download = `sanitized-project-${Date.now()}.zip`;
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      document.body.removeChild(downloadAnchor);
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Failed to generate or download sanitized ZIP archive:', error);
     }
   }, [results]);
 
