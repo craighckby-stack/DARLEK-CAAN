@@ -51,7 +51,7 @@ const DrawerOverlay = React.memo(function DrawerOverlay({
   return (
     <DrawerPrimitive.Overlay
       data-slot="drawer-overlay"
-      className={className !== undefined ? `${OVERLAY_CLASSES} ${className}` : OVERLAY_CLASSES}
+      className={cn(OVERLAY_CLASSES, className)}
       {...props}
     />
   )
@@ -68,7 +68,7 @@ const DrawerContent = React.memo(function DrawerContent({
       <DrawerOverlay />
       <DrawerPrimitive.Content
         data-slot="drawer-content"
-        className={className !== undefined ? `${CONTENT_CLASSES} ${className}` : CONTENT_CLASSES}
+        className={cn(CONTENT_CLASSES, className)}
         {...props}
       >
         <div className={HANDLE_CLASSES} />
@@ -86,7 +86,7 @@ const DrawerHeader = React.memo(function DrawerHeader({
   return (
     <div
       data-slot="drawer-header"
-      className={className !== undefined ? `${HEADER_CLASSES} ${className}` : HEADER_CLASSES}
+      className={cn(HEADER_CLASSES, className)}
       {...props}
     />
   )
@@ -100,7 +100,7 @@ const DrawerFooter = React.memo(function DrawerFooter({
   return (
     <div
       data-slot="drawer-footer"
-      className={className !== undefined ? `${FOOTER_CLASSES} ${className}` : FOOTER_CLASSES}
+      className={cn(FOOTER_CLASSES, className)}
       {...props}
     />
   )
@@ -114,7 +114,7 @@ const DrawerTitle = React.memo(function DrawerTitle({
   return (
     <DrawerPrimitive.Title
       data-slot="drawer-title"
-      className={className !== undefined ? `${TITLE_CLASSES} ${className}` : TITLE_CLASSES}
+      className={cn(TITLE_CLASSES, className)}
       {...props}
     />
   )
@@ -128,7 +128,7 @@ const DrawerDescription = React.memo(function DrawerDescription({
   return (
     <DrawerPrimitive.Description
       data-slot="drawer-description"
-      className={className !== undefined ? `${DESCRIPTION_CLASSES} ${className}` : DESCRIPTION_CLASSES}
+      className={cn(DESCRIPTION_CLASSES, className)}
       {...props}
     />
   )
