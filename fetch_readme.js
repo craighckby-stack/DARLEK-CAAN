@@ -11,7 +11,7 @@ const https = require('node:https');
 
 const CONFIG = Object.freeze({
   targetUrl: 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/README.md',
-  maxDataSizeBytes: 1024 * 1024, // 1MB bounds check to prevent memory exhaustion / overflow
+  maxDataSizeBytes: 1024 * 1024,
   requestOptions: Object.freeze({
     headers: Object.freeze({
       'User-Agent': 'EMG-Core-v49-Neural-Code-Optimizer'
@@ -31,7 +31,8 @@ function handleResponse(response, request) {
     return;
   }
 
-  let accumulatedData = '';
+  // Pre-allocate chunks array to prevent expensive string concatenation garbage collection overhead
+  const chunks = [];
   let currentDataSize = 0;
 
   response.on('data', (chunk) => {
@@ -41,12 +42,14 @@ function handleResponse(response, request) {
       request.destroy();
       return;
     }
-    accumulatedData += chunk;
+    chunks.push(chunk);
   });
 
   response.on('end', () => {
-    if (typeof accumulatedData === 'string' && accumulatedData.length <= CONFIG.maxDataSizeBytes) {
-      process.stdout.write(accumulatedData + '\n');
+    if (currentDataSize <= CONFIG.maxDataSizeBytes) {
+      // Buffer.concat is significantly faster and consumes less memory than string += appending
+      const finalBuffer = Buffer.concat(chunks, currentDataSize);
+      process.stdout.write(finalBuffer.toString('utf8') + '\n');
     } else {
       console.error('Error: Invalid data payload format or size.');
     }
