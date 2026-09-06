@@ -2,52 +2,56 @@
 
 import { useEffect } from 'react';
 
-const SUPPRESSED_PATTERNS = [
+const SUPPRESSED_MESSAGE_PATTERNS = [
   'hmr-client',
   'Failed to load chunk',
   'turbopack',
   'error.js',
   'global-error.js',
-];
+] as const;
 
-const SUPPRESSED_NAMES = new Set(['ChunkLoadError']);
+const SUPPRESSED_ERROR_NAMES = new Set(['ChunkLoadError']);
+
+interface ErrorObjectLike {
+  message?: unknown;
+  name?: unknown;
+}
+
+/**
+ * Extracts error details from an unknown rejection reason.
+ */
+function extractErrorInfo(reason: unknown): { message?: string; name?: string } {
+  if (typeof reason === 'string') {
+    return { message: reason };
+  }
+
+  if (reason !== null && typeof reason === 'object') {
+    const errorObj = reason as ErrorObjectLike;
+    return {
+      message: typeof errorObj.message === 'string' ? errorObj.message : undefined,
+      name: typeof errorObj.name === 'string' ? errorObj.name : undefined,
+    };
+  }
+
+  return {};
+}
 
 /**
  * Evaluates whether an unhandled promise rejection reason matches suppression criteria.
- * Optimized with direct loop unrolling/traversal to eliminate allocation overhead.
  */
 function shouldSuppressError(reason: unknown): boolean {
-  if (reason === null || reason === undefined) {
+  if (reason == null) {
     return false;
   }
 
-  let message: string | undefined;
-  let name: string | undefined;
+  const { message, name } = extractErrorInfo(reason);
 
-  if (typeof reason === 'string') {
-    message = reason;
-  } else if (typeof reason === 'object') {
-    const err = reason as Record<string, unknown>;
-    if (typeof err.message === 'string') {
-      message = err.message;
-    }
-    if (typeof err.name === 'string') {
-      name = err.name;
-    }
-  }
-
-  if (name !== undefined && SUPPRESSED_NAMES.has(name)) {
+  if (name && SUPPRESSED_ERROR_NAMES.has(name)) {
     return true;
   }
 
-  if (message !== undefined) {
-    const patterns = SUPPRESSED_PATTERNS;
-    const len = patterns.length;
-    for (let i = 0; i < len; i++) {
-      if (message.includes(patterns[i]!)) {
-        return true;
-      }
-    }
+  if (message) {
+    return SUPPRESSED_MESSAGE_PATTERNS.some((pattern) => message.includes(pattern));
   }
 
   return false;
