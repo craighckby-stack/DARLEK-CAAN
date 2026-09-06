@@ -10,7 +10,7 @@ const Input = React.memo(
   React.forwardRef<HTMLInputElement, InputProps>(
     ({ className, type, ...props }, forwardedRef) => {
       const computedClassName = React.useMemo(() => {
-        return className ? `${INPUT_BASE_STYLES} ${className}` : INPUT_BASE_STYLES
+        return cn(INPUT_BASE_STYLES, className)
       }, [className])
 
       return (
