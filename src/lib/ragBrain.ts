@@ -1,34 +1,54 @@
-import { collection, addDoc, getDocs, deleteDoc, doc, writeBatch, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, writeBatch, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
+
+// Pre-computed lookup tables for O(1) binary conversion
+const BINARY_LOOKUP = new Array<string>(256);
+for (let i = 0; i < 256; i++) {
+  BINARY_LOOKUP[i] = i.toString(2).padStart(8, '0');
+}
 
 /**
  * Converts a text string into a continuous stream of 8-bit binary digits.
- * Optimized via pre-allocated arrays and charCodeAt bitwise mapping to eliminate string concatenation overhead.
+ * Optimized via pre-computed lookup tables and zero-allocation charCode caching.
  */
 export function textToBinary(text: string): string {
   if (!text) return '';
   const length = text.length;
-  const binaryArray = new Array<string>(length);
+  const chunks = new Array<string>(length);
   for (let i = 0; i < length; i++) {
-    binaryArray[i] = text.charCodeAt(i).toString(2).padStart(8, '0');
+    chunks[i] = BINARY_LOOKUP[text.charCodeAt(i) & 0xFF];
   }
-  return binaryArray.join('');
+  return chunks.join('');
 }
 
 /**
  * Decodes a continuous stream of 8-bit binary digits back into a text string.
- * Optimized with batch chunk extraction and String.fromCharCode application using safe typed constraints.
+ * Optimized with batch chunk extraction, String.fromCharCode application, and chunk slicing bypasses.
  */
 export function binaryToText(binary: string): string {
   if (!binary) return '';
-  const validLength = binary.length - (binary.length % 8);
+  const length = binary.length;
+  const validLength = length - (length % 8);
   if (validLength <= 0) return '';
 
-  const charCodes = new Uint16Array(validLength / 8);
+  const numChars = validLength >> 3;
+  const charCodes = new Uint16Array(numChars);
+  
   for (let i = 0, j = 0; i < validLength; i += 8, j++) {
-    charCodes[j] = parseInt(binary.slice(i, i + 8), 2);
+    charCodes[j] = parseInt(binary.substring(i, i + 8), 2);
   }
-  return String.fromCharCode(...charCodes);
+
+  // Apply in chunks to avoid call stack size limits with large arrays
+  if (numChars <= 65535) {
+    return String.fromCharCode.apply(null, charCodes as unknown as number[]);
+  }
+
+  let result = '';
+  for (let i = 0; i < numChars; i += 65535) {
+    const chunk = charCodes.subarray(i, i + 65535);
+    result += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  }
+  return result;
 }
 
 export interface BrainChunk {
@@ -84,13 +104,16 @@ export async function getBrainChunks(): Promise<BrainChunk[]> {
     const colRef = collection(db, COLLECTION_NAME);
     const snapshot = await getDocs(colRef);
     
-    const chunks: BrainChunk[] = [];
+    const size = snapshot.size;
+    const chunks = new Array<BrainChunk>(size);
+    let index = 0;
+
     snapshot.forEach((documentSnap: QueryDocumentSnapshot<DocumentData>) => {
       const data = documentSnap.data();
       const binaryCode = typeof data.binaryCode === 'string' ? data.binaryCode : '';
       const codeText = binaryToText(binaryCode);
       
-      chunks.push({
+      chunks[index++] = {
         id: documentSnap.id,
         sourceName: typeof data.sourceName === 'string' ? data.sourceName : 'Unknown Siphon',
         fileName: typeof data.fileName === 'string' ? data.fileName : 'App.tsx',
@@ -98,10 +121,10 @@ export async function getBrainChunks(): Promise<BrainChunk[]> {
         codeText,
         generation: typeof data.generation === 'number' ? data.generation : 0,
         timestamp: typeof data.timestamp === 'string' ? data.timestamp : new Date().toISOString()
-      });
+      };
     });
     
-    return chunks.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    return chunks.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   } catch (error) {
     console.error('[EMG Core] Critical failure during getBrainChunks retrieval:', error);
     return [];
