@@ -10,13 +10,6 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-interface ParsedFirestoreError {
-  operationType?: string;
-  authInfo?: unknown;
-  path?: string;
-  error?: string;
-}
-
 const CHUNK_RELOAD_COOLDOWN_MS = 10000;
 const LAST_CHUNK_RELOAD_KEY = 'last_chunk_reload';
 
@@ -40,9 +33,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   private handleChunkLoadError(error: Error): void {
-    const isChunkError = 
-      error?.message?.includes('Loading chunk') || 
-      error?.name === 'ChunkLoadError';
+    const message = error?.message;
+    const isChunkError = (message && message.includes('Loading chunk')) || error?.name === 'ChunkLoadError';
 
     if (!isChunkError) return;
 
@@ -66,29 +58,25 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   };
 
   private parseErrorDetails(error: Error | null): { errorMessage: string; isFirestoreError: boolean } {
-    let errorMessage = 'An unexpected error occurred.';
-    let isFirestoreError = false;
-
     if (!error?.message) {
-      return { errorMessage, isFirestoreError };
+      return { errorMessage: 'An unexpected error occurred.', isFirestoreError: false };
     }
 
     try {
-      const parsed: ParsedFirestoreError = JSON.parse(error.message);
+      const parsed = JSON.parse(error.message);
       
-      if (parsed.operationType && parsed.authInfo) {
-        isFirestoreError = true;
+      if (parsed?.operationType && parsed?.authInfo) {
         const operation = parsed.operationType.toUpperCase();
         const path = parsed.path || 'unknown';
-        errorMessage = `Firestore ${operation} error at path: ${path}. ${parsed.error || ''}`;
-      } else {
-        errorMessage = error.message;
+        return {
+          errorMessage: `Firestore ${operation} error at path: ${path}. ${parsed.error || ''}`,
+          isFirestoreError: true,
+        };
       }
+      return { errorMessage: error.message, isFirestoreError: false };
     } catch {
-      errorMessage = error.message;
+      return { errorMessage: error.message, isFirestoreError: false };
     }
-
-    return { errorMessage, isFirestoreError };
   }
 
   public render(): ReactNode {
