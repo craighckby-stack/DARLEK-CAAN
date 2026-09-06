@@ -87,59 +87,59 @@ export default function SocketDemo(): ReactElement {
     socketRef.current = socketInstance;
     setSocket(socketInstance);
 
-    const onConnect = () => {
+    const handleConnect = () => {
       setIsConnected(true);
       setConnectionError(null);
     };
 
-    const onDisconnect = () => {
+    const handleDisconnect = () => {
       setIsConnected(false);
     };
 
-    const onConnectError = (err: Error) => {
+    const handleConnectError = (err: Error) => {
       setIsConnected(false);
       setConnectionError(err.message || 'Connection failed');
     };
 
-    const onMessage = (msg: Message) => {
-      setMessages((prev) => [...prev, msg]);
+    const handleIncomingMessage = (msg: Message) => {
+      setMessages((prevMessages) => [...prevMessages, msg]);
     };
 
-    const onUserJoined = (data: { user: User; message: Message }) => {
-      setMessages((prev) => [...prev, data.message]);
-      setUsers((prev) => {
-        if (!prev.some((u) => u.id === data.user.id)) {
-          return [...prev, data.user];
+    const handleUserJoined = (data: { user: User; message: Message }) => {
+      setMessages((prevMessages) => [...prevMessages, data.message]);
+      setUsers((prevUsers) => {
+        if (!prevUsers.some((u) => u.id === data.user.id)) {
+          return [...prevUsers, data.user];
         }
-        return prev;
+        return prevUsers;
       });
     };
 
-    const onUserLeft = (data: { user: User; message: Message }) => {
-      setMessages((prev) => [...prev, data.message]);
-      setUsers((prev) => prev.filter((u) => u.id !== data.user.id));
+    const handleUserLeft = (data: { user: User; message: Message }) => {
+      setMessages((prevMessages) => [...prevMessages, data.message]);
+      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== data.user.id));
     };
 
-    const onUsersList = (data: { users: User[] }) => {
+    const handleUsersList = (data: { users: User[] }) => {
       setUsers(data.users);
     };
 
-    socketInstance.on('connect', onConnect);
-    socketInstance.on('disconnect', onDisconnect);
-    socketInstance.on('connect_error', onConnectError);
-    socketInstance.on('message', onMessage);
-    socketInstance.on('user-joined', onUserJoined);
-    socketInstance.on('user-left', onUserLeft);
-    socketInstance.on('users-list', onUsersList);
+    socketInstance.on('connect', handleConnect);
+    socketInstance.on('disconnect', handleDisconnect);
+    socketInstance.on('connect_error', handleConnectError);
+    socketInstance.on('message', handleIncomingMessage);
+    socketInstance.on('user-joined', handleUserJoined);
+    socketInstance.on('user-left', handleUserLeft);
+    socketInstance.on('users-list', handleUsersList);
 
     return () => {
-      socketInstance.off('connect', onConnect);
-      socketInstance.off('disconnect', onDisconnect);
-      socketInstance.off('connect_error', onConnectError);
-      socketInstance.off('message', onMessage);
-      socketInstance.off('user-joined', onUserJoined);
-      socketInstance.off('user-left', onUserLeft);
-      socketInstance.off('users-list', onUsersList);
+      socketInstance.off('connect', handleConnect);
+      socketInstance.off('disconnect', handleDisconnect);
+      socketInstance.off('connect_error', handleConnectError);
+      socketInstance.off('message', handleIncomingMessage);
+      socketInstance.off('user-joined', handleUserJoined);
+      socketInstance.off('user-left', handleUserLeft);
+      socketInstance.off('users-list', handleUsersList);
       socketInstance.disconnect();
       socketRef.current = null;
     };
