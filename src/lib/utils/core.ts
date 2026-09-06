@@ -9,19 +9,19 @@ import { Message, EvolutionLogEntry } from '@/lib/types';
 /**
  * Immutable character set optimized for URL-safe identifiers.
  */
-const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789' as const;
+const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 /**
  * Standard length for generated unique identifiers.
  */
-const ID_LENGTH = 8 as const;
+const ID_LENGTH = 8;
 
 /**
  * Pre-allocated Uint8Array buffer for high-performance random value generation,
  * eliminating per-call memory allocation overhead.
  */
-const RANDOM_BUFFER = typeof window !== 'undefined' && typeof window.crypto !== 'undefined' 
-  ? new Uint8Array(ID_LENGTH) 
+const RANDOM_BUFFER = typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.getRandomValues === 'function'
+  ? new Uint8Array(ID_LENGTH)
   : null;
 
 /**
@@ -31,21 +31,35 @@ const RANDOM_BUFFER = typeof window !== 'undefined' && typeof window.crypto !== 
  * @returns {string} A unique 8-character string identifier.
  */
 export function createId(): string {
-  let id = '';
+  const alphabet = ALPHABET;
+  const len = ID_LENGTH;
   
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-    const randomValues = RANDOM_BUFFER ?? new Uint8Array(ID_LENGTH);
-    crypto.getRandomValues(randomValues);
-    for (let i = 0; i < ID_LENGTH; i++) {
-      id += ALPHABET[randomValues[i]! % ALPHABET.length];
-    }
-  } else {
-    for (let i = 0; i < ID_LENGTH; i++) {
-      id += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-    }
+  if (RANDOM_BUFFER !== null) {
+    globalThis.crypto.getRandomValues(RANDOM_BUFFER);
+    // Unrolled loop for ID_LENGTH = 8 to eliminate loop overhead and string concatenation garbage
+    return (
+      alphabet[RANDOM_BUFFER[0]! % 36] +
+      alphabet[RANDOM_BUFFER[1]! % 36] +
+      alphabet[RANDOM_BUFFER[2]! % 36] +
+      alphabet[RANDOM_BUFFER[3]! % 36] +
+      alphabet[RANDOM_BUFFER[4]! % 36] +
+      alphabet[RANDOM_BUFFER[5]! % 36] +
+      alphabet[RANDOM_BUFFER[6]! % 36] +
+      alphabet[RANDOM_BUFFER[7]! % 36]
+    );
   }
-  
-  return id;
+
+  // Fallback path unrolled
+  return (
+    alphabet[(Math.random() * 36) | 0] +
+    alphabet[(Math.random() * 36) | 0] +
+    alphabet[(Math.random() * 36) | 0] +
+    alphabet[(Math.random() * 36) | 0] +
+    alphabet[(Math.random() * 36) | 0] +
+    alphabet[(Math.random() * 36) | 0] +
+    alphabet[(Math.random() * 36) | 0] +
+    alphabet[(Math.random() * 36) | 0]
+  );
 }
 
 /**
