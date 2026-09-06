@@ -143,7 +143,7 @@ function FormLabel({
   ...props
 }: React.ComponentProps<typeof LabelPrimitive.Root>) {
   const { error, formItemId } = useFormField()
-  const hasError = !!error
+  const hasError = Boolean(error)
 
   return (
     <Label
@@ -158,7 +158,7 @@ function FormLabel({
 
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
-  const hasError = !!error
+  const hasError = Boolean(error)
 
   const ariaDescribedBy = React.useMemo(
     () => (!hasError ? formDescriptionId : `${formDescriptionId} ${formMessageId}`),
@@ -192,12 +192,12 @@ function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
 function FormMessage({ className, children, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField()
   
-  const body = React.useMemo(
+  const messageBody = React.useMemo(
     () => (error ? String(error?.message ?? "") : children),
     [error, children]
   )
 
-  if (!body) {
+  if (!messageBody) {
     return null
   }
 
@@ -208,7 +208,7 @@ function FormMessage({ className, children, ...props }: React.ComponentProps<"p"
       className={cn("text-destructive text-sm", className)}
       {...props}
     >
-      {body}
+      {messageBody}
     </p>
   )
 }
