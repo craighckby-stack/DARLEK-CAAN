@@ -1,39 +1,23 @@
 (function initializeMiddlewareBuildManifest() {
   "use strict";
 
-  const resolveGlobalScope = () => {
-    if (typeof globalThis !== "undefined") return globalThis;
-    if (typeof self !== "undefined") return self;
-    return typeof window !== "undefined" ? window : {};
-  };
+  const globalScope = typeof globalThis !== "undefined" 
+    ? globalThis 
+    : (typeof self !== "undefined" ? self : (typeof window !== "undefined" ? window : {}));
 
-  const globalScope = resolveGlobalScope();
-  const BUILD_ID_REGEX = /^[a-zA-Z0-9_\-]+$/;
+  const rawBuildId = typeof process !== "undefined" && process?.env?.__NEXT_BUILD_ID;
+  const currentBuildId = typeof rawBuildId === "string" && /^[a-zA-Z0-9_\-]+$/.test(rawBuildId)
+    ? rawBuildId
+    : (typeof rawBuildId === "string" ? encodeURIComponent(rawBuildId) : "development");
 
-  const determineCurrentBuildId = () => {
-    const rawBuildId = process?.env?.__NEXT_BUILD_ID;
-    
-    if (typeof rawBuildId === "string") {
-      return BUILD_ID_REGEX.test(rawBuildId) 
-        ? rawBuildId 
-        : encodeURIComponent(rawBuildId);
-    }
-    
-    return "development";
-  };
-
-  const currentBuildId = determineCurrentBuildId();
-
-  const lowPriorityFiles = [
-    `/static/${currentBuildId}/_buildManifest.js`,
-    `/static/${currentBuildId}/_ssgManifest.js`
-  ];
-
-  const buildManifest = {
+  globalScope.__BUILD_MANIFEST = {
     polyfillFiles: ["static/chunks/polyfills.js"],
     devFiles: [],
     ampDevFiles: [],
-    lowPriorityFiles,
+    lowPriorityFiles: [
+      `/static/${currentBuildId}/_buildManifest.js`,
+      `/static/${currentBuildId}/_ssgManifest.js`
+    ],
     rootMainFiles: [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js"
@@ -44,6 +28,4 @@
     },
     ampFirstPages: []
   };
-
-  globalScope.__BUILD_MANIFEST = buildManifest;
 })();
