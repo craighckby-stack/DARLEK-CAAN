@@ -49,7 +49,7 @@ export const isCriticalFile = (path: string): boolean => {
 
 /**
  * Computes aggregate scan metrics for an array of scanned files with peak memory efficiency,
- * strict type safety, and defensive runtime validation.
+ * strict type safety, and defensive runtime validation using loop unrolling for maximum execution speed.
  *
  * @template T
  * @param {readonly T[]} files - Array of file objects containing an optional size property.
@@ -62,8 +62,34 @@ export const formatScanMetrics = <T extends ScannableFile>(files: readonly T[]):
 
   let totalSize = 0;
   const count = files.length;
+  let i = 0;
 
-  for (let i = 0; i < count; i++) {
+  // 4x Loop unrolling to maximize CPU instruction pipelining and reduce branching overhead
+  const limit = count - 3;
+  while (i < limit) {
+    const f0 = files[i];
+    const f1 = files[i + 1];
+    const f2 = files[i + 2];
+    const f3 = files[i + 3];
+
+    if (f0 !== null && typeof f0 === 'object' && typeof f0.size === 'number' && f0.size > 0 && Number.isFinite(f0.size)) {
+      totalSize += f0.size;
+    }
+    if (f1 !== null && typeof f1 === 'object' && typeof f1.size === 'number' && f1.size > 0 && Number.isFinite(f1.size)) {
+      totalSize += f1.size;
+    }
+    if (f2 !== null && typeof f2 === 'object' && typeof f2.size === 'number' && f2.size > 0 && Number.isFinite(f2.size)) {
+      totalSize += f2.size;
+    }
+    if (f3 !== null && typeof f3 === 'object' && typeof f3.size === 'number' && f3.size > 0 && Number.isFinite(f3.size)) {
+      totalSize += f3.size;
+    }
+
+    i += 4;
+  }
+
+  // Handle remaining tail elements
+  while (i < count) {
     const file = files[i];
     if (file !== null && typeof file === 'object') {
       const size = file.size;
@@ -71,6 +97,7 @@ export const formatScanMetrics = <T extends ScannableFile>(files: readonly T[]):
         totalSize += size;
       }
     }
+    i++;
   }
 
   return {
