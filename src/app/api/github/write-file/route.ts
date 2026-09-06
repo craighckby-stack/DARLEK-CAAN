@@ -9,7 +9,6 @@ export const dynamic = 'force-dynamic';
 
 const GITHUB_API_BASE = 'https://api.github.com';
 const GITHUB_API_VERSION = 'application/vnd.github.v3+json';
-
 const PROJECT_ROOT = resolve(process.cwd());
 
 interface GitHubHeaders extends Record<string, string> {
@@ -51,11 +50,7 @@ function normalizePath(filePath: string): string {
  * Fast path segment encoder to avoid excessive split/map allocations.
  */
 function encodePathSegments(cleanPath: string): string {
-  const segments = cleanPath.split('/');
-  for (let i = 0, len = segments.length; i < len; i++) {
-    segments[i] = encodeURIComponent(segments[i]);
-  }
-  return segments.join('/');
+  return cleanPath.split('/').map(encodeURIComponent).join('/');
 }
 
 /**
@@ -207,10 +202,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${sanitizedPathLog} before write/commit.`);
     }
 
-    // 1. Write file to local disk workspace (parallelized or fire-and-forget safe execution)
+    // 1. Write file to local disk workspace
     writeToLocalDisk(cleanPath, safeContent);
 
-    // 2. Ensure repository and branch exist on GitHub concurrently where appropriate
+    // 2. Ensure repository and branch exist on GitHub
     await ensureRepoExists(token, owner, repo);
     await ensureBranchExists(token, owner, repo, branch);
 
@@ -237,7 +232,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     // Self-healing retry for conflict or mismatch errors
-    if (!response.ok && (response.status === 400 || response.status === 404 || response.status === 409 || response.status === 422)) {
+    if (!response.ok && [400, 404, 409, 422].includes(response.status)) {
       console.warn(`[Write File] Issue (${response.status}) on ${sanitizedPathLog}. Re-verifying branch & live SHA...`);
       await ensureBranchExists(token, owner, repo, branch);
       
