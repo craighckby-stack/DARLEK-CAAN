@@ -17,13 +17,15 @@ const EXCLUDED_DIRECTORIES = Object.freeze([
   '.svn/',
 ]);
 
-const EXCLUDED_FILES_SET = new Set([
-  '.env',
-  '.env.local',
-  'package-lock.json',
-  'yarn.lock',
-  '.DS_Store',
-]);
+const EXCLUDED_FILES_SET = Object.freeze(
+  new Set([
+    '.env',
+    '.env.local',
+    'package-lock.json',
+    'yarn.lock',
+    '.DS_Store',
+  ])
+);
 
 interface GitHubTreeItem {
   path: string;
@@ -37,31 +39,25 @@ interface GitHubTreeResponse {
 }
 
 /**
- * Validates whether a file path resides within an excluded directory or matches excluded filenames using O(1) Set lookups and optimized string checks.
+ * Determines whether a given tree item is a valid file that passes exclusion filters.
  */
 function isValidBlobItem(item: GitHubTreeItem): boolean {
   if (item.type !== 'blob') {
     return false;
   }
 
-  const path = item.path;
+  const { path } = item;
 
-  // Check excluded directories
-  for (let i = 0; i < EXCLUDED_DIRECTORIES.length; i++) {
-    if (path.includes(EXCLUDED_DIRECTORIES[i])) {
+  for (const directory of EXCLUDED_DIRECTORIES) {
+    if (path.includes(directory)) {
       return false;
     }
   }
 
-  // Check excluded files via direct segment extraction without allocations (.split('/') replacement)
   const lastSlashIndex = path.lastIndexOf('/');
   const fileName = lastSlashIndex === -1 ? path : path.substring(lastSlashIndex + 1);
 
-  if (EXCLUDED_FILES_SET.has(fileName)) {
-    return false;
-  }
-
-  return true;
+  return !EXCLUDED_FILES_SET.has(fileName);
 }
 
 /**
@@ -72,12 +68,11 @@ export async function GET(): Promise<NextResponse> {
 }
 
 /**
- * Scans a GitHub repository tree recursively while filtering out ignored files and directories with reduced memory overhead and fast-path allocations.
+ * Scans a GitHub repository tree recursively while filtering out ignored files and directories.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const body: ScanRepoBody = await safeReqJson(req, {} as ScanRepoBody);
-    const { token, owner, repo, branch } = body;
+    const { token, owner, repo, branch }: ScanRepoBody = await safeReqJson(req, {} as ScanRepoBody);
 
     const repositoryTreeUrl = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
 
@@ -106,13 +101,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const treeLength = tree.length;
     const filteredFiles: GitHubFile[] = [];
     let repoTotal = 0;
 
-    // Single-pass stream iteration preventing multiple intermediate array allocations (.filter / .map overhead eliminated)
-    for (let i = 0; i < treeLength; i++) {
-      const item = tree[i];
+    for (const item of tree) {
       if (item.type === 'blob') {
         repoTotal++;
         if (isValidBlobItem(item)) {
