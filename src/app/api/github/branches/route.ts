@@ -45,16 +45,15 @@ function isValidString(value: unknown): value is string {
 
 /**
  * Extracts a readable error message from a failed GitHub API response.
- * Uses a non-blocking stream read pattern to reduce memory allocation overhead.
  */
 async function extractGitHubErrorMessage(response: Response): Promise<string> {
-  const defaultMessage = `GitHub API returned status ${response.status}`;
+  const fallbackMessage = `GitHub API returned status ${response.status}`;
   
   try {
     const errorData = (await response.json()) as { message?: unknown };
-    return typeof errorData?.message === 'string' ? errorData.message : defaultMessage;
+    return typeof errorData?.message === 'string' ? errorData.message : fallbackMessage;
   } catch {
-    return defaultMessage;
+    return fallbackMessage;
   }
 }
 
@@ -71,8 +70,18 @@ function extractErrorStatus(error: unknown): number {
 }
 
 /**
+ * Maps raw GitHub branch objects into clean, sanitized branch definitions.
+ */
+function sanitizeBranch(rawBranch: unknown): SanitizedBranch {
+  const branch = rawBranch as GitHubBranch;
+  return {
+    name: typeof branch?.name === 'string' ? branch.name : '',
+    default: Boolean(branch?.default),
+  };
+}
+
+/**
  * Fetches and sanitizes repository branches from the GitHub API.
- * Optimized with high-performance imperative mapping and pre-allocated structures.
  */
 async function fetchRepositoryBranches(owner: string, repo: string, token: string): Promise<SanitizedBranch[]> {
   const endpoint = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/branches?per_page=100`;
@@ -97,18 +106,7 @@ async function fetchRepositoryBranches(owner: string, repo: string, token: strin
     throw new Error('Invalid response format received from GitHub API', { cause: { status: 502 } });
   }
 
-  const len = rawBranches.length;
-  const sanitized: SanitizedBranch[] = new Array(len);
-  
-  for (let i = 0; i < len; i++) {
-    const branch = rawBranches[i] as GitHubBranch;
-    sanitized[i] = {
-      name: typeof branch?.name === 'string' ? branch.name : '',
-      default: Boolean(branch?.default),
-    };
-  }
-
-  return sanitized;
+  return rawBranches.map(sanitizeBranch);
 }
 
 export async function GET(): Promise<NextResponse<Record<string, string>>> {
