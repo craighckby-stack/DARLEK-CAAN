@@ -5,18 +5,19 @@ export type QuantumUpdater<T> = (prev: QuantumState<T>) => T;
 export type UseQuantumStateReturn<T> = readonly [QuantumState<T>, (updater: QuantumUpdater<T>) => void];
 
 /**
- * Creates a timestamped state container with validation and safe mutation handling.
+ * Creates a timestamped state container with minimal allocations.
  */
-const createQuantumState = <T extends Record<string, unknown>>(initialValue: T): QuantumState<T> => ({
-  ...initialValue,
-  timestamp: Date.now(),
-});
+const createQuantumState = <T extends Record<string, unknown>>(initialValue: T): QuantumState<T> => {
+  const newState = Object.assign({}, initialValue) as unknown as QuantumState<T>;
+  (newState as { timestamp: number }).timestamp = Date.now();
+  return newState;
+};
 
 /**
- * Validates that an updater function yielded a proper state object.
+ * Fast-path structural validation avoiding heavy checks.
  */
 const validateNextState = <T>(nextState: unknown): asserts nextState is T => {
-  if (!nextState || typeof nextState !== 'object') {
+  if (nextState === null || typeof nextState !== 'object') {
     throw new Error('Quantum updater must return a valid object state.');
   }
 };
@@ -37,5 +38,5 @@ export const useQuantumState = <T extends Record<string, unknown>>(initial: T): 
     });
   }, []);
 
-  return useMemo(() => [state, updateState] as const, [state, updateState]);
+  return useMemo(() => [state, updateState], [state, updateState]);
 };
