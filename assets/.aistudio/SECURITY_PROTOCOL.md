@@ -1,33 +1,37 @@
 # OMEGA ARCHITECTURE SECURITY PROTOCOL
 *EMG Core v49 Neural Code & Documentation Optimization Engine*
 
-## Overview
-This protocol defines the strict security boundary between the mutable, self-improving agent core and the immutable, version-controlled repository. Its primary objective is to prevent data leaks, unauthorized state persistence, and repository pollution.
+## Executive Summary
+This document establishes the mandatory security boundaries for the Omega Architecture, preventing unauthorized state persistence, secret leakage, and repository pollution during autonomous self-improvement cycles.
+
+---
+
+## Quick Navigation
+- [Governance & State Rules](#governance-and-state-rules)
+- [Vulnerability Disclosure](#vulnerability-disclosure-and-reporting)
+- [Integration & Enforcement](#integration-and-enforcement)
 
 ---
 
 ## Governance and State Rules
 
-1. **Zero State Persistence**
-   * Files ending in `.consciousness.dump` or `.quantum.data` contain volatile agent states and **must never** be committed to the repository.
-
-2. **Secret and Key Management**
-   * All `.vault` and `.key` files are securely managed exclusively by the `sovereign-kernel` and must remain local to the runtime environment at all times.
-
-3. **Evolution History and Intellectual Property**
-   * `.evolution.history` files are restricted to local diagnostic analysis only. They capture the raw cognitive processes of the agent and are classified as sensitive intellectual property.
+| Category | Target Files / Artifacts | Operational Policy |
+| :--- | :--- | :--- |
+| **Volatile State** | `*.consciousness.dump`<br>`*.quantum.data` | **Zero Persistence:** Never commit volatile agent states to the repository. |
+| **Credentials** | `*.vault`<br>`*.key` | **Kernel-Exclusive:** Managed exclusively by the `sovereign-kernel`; must remain local. |
+| **Intellectual Property** | `*.evolution.history` | **Local Diagnostics Only:** Capture raw cognitive processes; classified as sensitive IP. |
 
 ---
 
 ## Vulnerability Disclosure and Reporting
-If you discover a security vulnerability, state leakage, or protocol bypass within the Omega Architecture, adhere to the following guidelines:
-* **Do not** open public issues for sensitive exploits.
-* Report findings directly to the `sovereign-kernel` administrative maintainers via encrypted communication channels.
-* Include precise reproduction steps, affected components, and potential impact assessments.
+When discovering security vulnerabilities, state leaks, or protocol bypasses:
+* **Avoid Public Issues:** Do not disclose sensitive exploits publicly.
+* **Secure Reporting:** Route findings directly to `sovereign-kernel` administrative maintainers via encrypted channels.
+* **Required Data:** Include precise reproduction steps, affected components, and impact assessments.
 
 ---
 
 ## Integration and Enforcement
-This security manifest is actively enforced by the `DARLEK CANN v3.0` evolution engine to ensure that automated self-refactoring loops do not compromise global repository security or state integrity.
+Enforced by the `DARLEK CANN v3.0` evolution engine to safeguard automated self-refactoring loops against security compromises and state integrity failures.
 
-> **WARNING:** Any violation of these protocols during autonomous execution will trigger an immediate kernel-level panic and rollback procedure.
+> **CRITICAL WARNING:** Violations during autonomous execution trigger an immediate kernel-level panic and rollback procedure.
