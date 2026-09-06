@@ -18,7 +18,6 @@ export interface DebateChamberProps {
   epistemicRuling?: string;
 }
 
-// Sub-component optimized with React.memo to prevent unnecessary layout recalculations and DOM allocations during agent mutations
 interface AgentItemProps {
   agent: DebateAgent & { vote?: AgentVote };
   isActive: boolean;
@@ -26,7 +25,7 @@ interface AgentItemProps {
 }
 
 const AgentItem = React.memo(function AgentItem({ agent, isActive, onToggleAgent }: AgentItemProps) {
-  const handleClick = useCallback(() => {
+  const handleAgentClick = useCallback(() => {
     if (!isActive && onToggleAgent) {
       onToggleAgent(agent.id);
     }
@@ -35,7 +34,6 @@ const AgentItem = React.memo(function AgentItem({ agent, isActive, onToggleAgent
   const isAgentActive = agent.status === 'active';
   const voteType = agent.vote?.vote;
   
-  // Direct variable computation without object allocation loops
   let voteColor = COLORS.gold;
   let voteIcon = '\u25CB';
   let voteLabel = 'ABSTAIN';
@@ -55,8 +53,8 @@ const AgentItem = React.memo(function AgentItem({ agent, isActive, onToggleAgent
 
   return (
     <div
-      onClick={handleClick}
-      className="px-3 py-2 rounded"
+      onClick={handleAgentClick}
+      className="px-3 py-2 rounded transition-colors"
       style={{
         background: '#080808',
         border: `1px solid ${borderStyle}`,
@@ -146,56 +144,59 @@ export default function DebateChamber({
   cognitiveFriction,
   epistemicRuling 
 }: DebateChamberProps) {
-  // Optimized O(N) O(1) hash-lookup map building for votes to replace O(N*M) nested array iterations
   const agentsWithVotes = useMemo(() => {
     if (!votes || votes.length === 0) {
       return agents as (DebateAgent & { vote?: AgentVote })[];
     }
     
     const voteMap = new Map<string, AgentVote>(votes.map(v => [v.agentId, v]));
-    const len = agents.length;
-    const result = new Array(len);
-    for (let i = 0; i < len; i++) {
-      const agent = agents[i];
-      result[i] = {
-        ...agent,
-        vote: voteMap.get(agent.id)
+    const agentCount = agents.length;
+    const enrichedAgents = new Array(agentCount);
+    
+    for (let i = 0; i < agentCount; i++) {
+      const currentAgent = agents[i];
+      enrichedAgents[i] = {
+        ...currentAgent,
+        vote: voteMap.get(currentAgent.id)
       };
     }
-    return result;
+    
+    return enrichedAgents;
   }, [agents, votes]);
 
-  // Handle select all toggle logic safely with unrolled loop logic
   const handleSelectAllClick = useCallback(() => {
     if (!onSelectAll) return;
-    let hasIdle = false;
-    const len = agents.length;
-    for (let i = 0; i < len; i++) {
+    
+    let hasIdleAgent = false;
+    const agentCount = agents.length;
+    
+    for (let i = 0; i < agentCount; i++) {
       if (agents[i].status === 'idle') {
-        hasIdle = true;
+        hasIdleAgent = true;
         break;
       }
     }
-    onSelectAll(hasIdle);
+    
+    onSelectAll(hasIdleAgent);
   }, [onSelectAll, agents]);
 
   const isAllActive = useMemo(() => {
-    const len = agents.length;
-    if (len === 0) return false;
-    for (let i = 0; i < len; i++) {
+    const agentCount = agents.length;
+    if (agentCount === 0) return false;
+    
+    for (let i = 0; i < agentCount; i++) {
       if (agents[i].status !== 'active') return false;
     }
+    
     return true;
   }, [agents]);
 
-  // Determine consensus display color safely via inline conditional map
   const consensusColor = useMemo(() => {
     if (consensus === 'APPROVE') return COLORS.green;
     if (consensus === 'REJECT') return COLORS.dalekRed;
     return COLORS.gold;
   }, [consensus]);
 
-  // Pre-calculated numeric styles
   const consensusCoefficientWidth = useMemo(() => {
     if (consensusCoefficient === undefined) return '0%';
     return `${Math.max(0, Math.min(100, consensusCoefficient * 100))}%`;
@@ -251,7 +252,6 @@ export default function DebateChamber({
         </div>
       </div>
 
-      {/* Agent grid with optimized sub-components */}
       <div className="grid grid-cols-1 gap-2">
         {agentsWithVotes.map((agent) => (
           <AgentItem
@@ -263,7 +263,6 @@ export default function DebateChamber({
         ))}
       </div>
 
-      {/* Dialectical Alignment Indices (Epistemic Debate Engine Upgrade) */}
       {(consensusCoefficient !== undefined || cognitiveFriction !== undefined || epistemicRuling) && (
         <div 
           className="p-3 rounded-lg border border-purple-950/30 bg-[#070007]/60 space-y-2.5"
@@ -315,7 +314,6 @@ export default function DebateChamber({
         </div>
       )}
 
-      {/* Current debate topic */}
       {currentTopic ? (
         <div
           className="debate-topic px-3 py-2 rounded text-center"
