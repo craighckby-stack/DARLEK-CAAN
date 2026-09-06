@@ -581,7 +581,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       cognitiveFriction,
       epistemicRuling,
       structuralProposal,
-      enhancedCode: didEnhance ? currentProposedCode : undefined,
+      enhancedCode: (didEnhance && currentProposedCode.trim() !== originalCode.trim()) ? currentProposedCode : undefined,
       summary: `${approvals}/${votes.length} agents APPROVE. Consensus: ${consensus}.`,
     });
   } catch (error) {

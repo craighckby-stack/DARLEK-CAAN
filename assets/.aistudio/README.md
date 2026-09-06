@@ -1,58 +1,69 @@
 # AI Studio Configuration & Governance
 
-> **Executive Summary**: This document outlines the control plane for the **DARLEK CANN v3.0** evolution engine (`assets/.aistudio/`), covering environment setup, state persistence, security guidelines, and maintenance logs.
-
----
-
-## Quick Navigation
-
-- [Architectural Blueprints](#architectural-blueprints)
-- [Workflow Execution](#workflow-execution)
-- [Security Guidelines & Vulnerability Disclosure](#security-guidelines--vulnerability-disclosure)
-- [System Evolution & Changelog](#system-evolution-changelog--maintenance-notes)
-
----
+## Overview
+This directory serves as the control plane for the DARLEK CANN v3.0 evolution engine. It manages environment-specific configurations, agent state persistence, and security policies for the repository.
 
 ## Architectural Blueprints
+- **State Management**: Agent memory dumps are isolated in `*.memory.json` to prevent state corruption during CI/CD cycles.
+- **Security**: Sensitive environment variables and cryptographic keys are strictly ignored via `.gitignore` to maintain compliance with `psr-governance` standards.
+- **Integration**: This studio configuration is designed to interface with `darlek-cann-v3` and `unitary-core` for multi-dimensional analysis.
 
-| Component              | Target Mechanism                   | Purpose / Policy                                              |
-| :--------------------- | :--------------------------------- | :------------------------------------------------------------ |
-| **State Management**   | `*.memory.json` isolation          | Prevents state corruption during CI/CD execution cycles.      |
-| **Security Compliance**| `.gitignore` enforcement           | Strips sensitive environment variables & keys (`psr-governance`).|
-| **System Integration** | `darlek-cann-v3` & `unitary-core`  | Powers multi-dimensional analysis pipelines.                  |
-
----
-
-## Workflow Execution
-
-1. **Initialization**: Populate `.env.example` with the required schema.
+## Workflow
+1. **Initialization**: Ensure `.env.example` is populated with required schema.
 2. **Execution**: Run agent simulations using the local `assets/.aistudio` context.
-3. **Cleanup**: Execute `npm run clean:artifacts` to purge ephemeral simulation buffers.
+3. **Cleanup**: Use `npm run clean:artifacts` to purge ephemeral simulation buffers.
 
----
 
-## Security Guidelines & Vulnerability Disclosure
 
-### Security Best Practices
 
-- **Credential Isolation**: Never commit `.env` files or hardcode API keys, tokens, or cryptographic material. Utilize `.env.example` as a structural template.
-- **Access Control**: Restrict write access to configuration files and state-persistence pathways to authorized administrative roles and verified CI/CD pipelines.
-- **Memory Integrity**: Regularly audit `*.memory.json` artifacts to prevent inadvertent serialization of sensitive operational parameters or PII.
 
-### Vulnerability Reporting
 
-For security vulnerabilities within the DARLEK CANN v3.0 control plane:
 
-1. **Private Disclosure**: **Do not** open public GitHub issues for sensitive vulnerabilities.
-2. **Direct Contact**: Reach out via private repository advisory or the communication channels outlined in the root `SECURITY.md`.
-3. **Documentation**: Provide clear reproduction steps and impact assessments for rapid patching.
 
----
 
-## System Evolution Changelog & Maintenance Notes
 
-- **Bug Fixes**: Resolved undefined `currentStep` initialization crashes; updated default GitHub repository targets to prevent 404 tree scanning errors.
-- **Repository Siphon**: Configured automated reference architecture fetching from authorized enterprise ecosystems to augment engine context.
-- **Zero-Truncation Mandate**: Resolved over-pruning via strict zero-truncation policies and expanded input buffers to 35,000 characters.
-- **Mutation Memory**: Connected Database Mutation History to Propose/Debate AI pipelines for historical retrieval via `sessionId`.
-- **Architectural Genesis Pass**: Enforced dynamic JSDoc header maintenance and dedicated `evolutionCycle === 1` exclusively to structural header generation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- Fixed undefined currentStep crashes during initialization.
+- Updated default GitHub repository targets to Darlek-Caan-vs-Jesus-Chess on main branch to prevent 404 tree scanning errors.
+
+- Added Automatic Global Repository Siphon, fetching elite reference architectures from Microsoft, IBM, DeepMind, Firebase, Google, and Vercel alongside the user's own repositories to augment the evolution engine's context.
+
+- Fixed an issue where the evolution engine was over-pruning and aggressively truncating code. Implemented a strict zero-truncation mandate and increased input buffers to 35,000 characters.
+
+- Connected the Database Mutation History to the Propose and Debate AI pipelines. The system now retrieves the most recent applied mutations via sessionId and injects them into the enhancer's context, allowing the AI to learn from its past changes instead of guessing.
+
+- Added an Architectural Header Mandate to the AI evolution loop (Propose and Debate Synthesis). The system will now dynamically inject and maintain descriptive architectural header comments at the top of every mutated file to persist logical context and connectivity for future AI enhancement cycles.
+
+- Engineered the Architectural Genesis Pass: The system now dedicates its exact first evolution cycle (evolutionCycle === 1) exclusively to generating JSDoc structural headers across the codebase without modifying logic. Subsequent cycles immediately switch to aggressive deep-enhancement relying on those generated headers.

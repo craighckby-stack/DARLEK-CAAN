@@ -1475,6 +1475,16 @@ export default function Home() {
         }
       }
 
+      if (!mutation.proposedCode || mutation.proposedCode.trim() === mutation.originalContent.trim()) {
+        addCaanMessage(
+          `MUTATION BLOCKED: Proposed code for ${mutation.filePath} has 0 changes. Aborting push to prevent empty "0 file changed" commit on GitHub.`
+        );
+        addLogEntry('REJECT', `Mutation push aborted: 0 diff detected for ${mutation.filePath}`);
+        setIsLoading(false);
+        setPendingMutation(null);
+        return;
+      }
+
       addCaanMessage(`APPLYING MUTATION to ${mutation.filePath}...`);
       addSystemMessage(
         `COHERENCE GATE: Applying mutation [risk ${mutation.riskScore}/10]`
@@ -1695,8 +1705,15 @@ export default function Home() {
           setDebateTopic(
             'Mutation applied. Awaiting next analysis cycle.'
           );
+        } else if (data?.zeroDiff) {
+          addCaanMessage(
+            `COHERENCE GUARD: ${data.error || `File ${mutation.filePath} already matches remote GitHub content. 0-file commit prevented.`}`
+          );
+          addLogEntry('WARNING', `0-diff commit prevented for ${mutation.filePath}`);
+          setPendingMutation(null);
+          setIsLoading(false);
         } else {
-          const errorMsg = data.error || 'Failed to apply mutation to repository';
+          const errorMsg = data?.error || error || 'Failed to apply mutation to repository';
           addCaanMessage(
             `Mutation failed: ${errorMsg}`
           );
@@ -2696,6 +2713,19 @@ export default function Home() {
                 const proposeData = await proposeRes.json();
 
                 if (proposeData.success) {
+                  if (
+                    proposeData.skip ||
+                    !proposeData.proposedCode ||
+                    proposeData.proposedCode.trim() === fileData.content.trim()
+                  ) {
+                    addCaanMessage(
+                      `MUTATION SKIPPED for ${sourceFile.path}: ${proposeData.analysis || 'No changes detected. Skipped to prevent empty 0-file commit.'}`
+                    );
+                    addLogEntry('WARNING', `0-diff proposal skipped for ${sourceFile.path}`);
+                    setIsLoading(false);
+                    return;
+                  }
+
                   const riskScore = Math.min(
                     10,
                     Math.max(1, proposeData.riskScore || 5)
@@ -2969,11 +2999,16 @@ export default function Home() {
               if (!proposeRes.ok) throw new Error('Evolution propose failed');
               const proposeData = await proposeRes.json();
 
-              // Skip non-code files (encrypted, base64, binary)
-              if (proposeData.skip) {
+              // Skip non-code files or 0-diff proposals (to prevent 0-file commits)
+              if (
+                proposeData.skip ||
+                !proposeData.proposedCode ||
+                proposeData.proposedCode.trim() === fileData.content.trim()
+              ) {
                 addCaanMessage(
-                  `[BATCH ${batchProgress + 1}/${batchQueue.length}] SKIP: ${nextFile.path} — ${proposeData.analysis || proposeData.error || 'Non-code file detected.'}`
+                  `[BATCH ${batchProgress + 1}/${batchQueue.length}] SKIP: ${nextFile.path} — ${proposeData.analysis || proposeData.error || '0-diff detected. Skipped to prevent empty commit.'}`
                 );
+                addLogEntry('WARNING', `0-diff proposal skipped in batch for ${nextFile.path}`);
                 setBatchProgress((prev) => prev + 1);
                 setPendingMutation(null);
               } else if (proposeData.success) {

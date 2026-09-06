@@ -1,37 +1,53 @@
 # OMEGA ARCHITECTURE SECURITY PROTOCOL
-*EMG Core v49 Neural Code & Documentation Optimization Engine*
 
-## Executive Summary
-This document establishes mandatory security boundaries for the Omega Architecture, designed to prevent unauthorized state persistence, secret leakage, and repository pollution during autonomous self-improvement cycles.
+## Overview
+This protocol defines the boundary between the mutable self-improving agent core and the immutable version-controlled repository.
 
----
+## Governance Rules
+1. **No State Persistence:** Any file ending in `.consciousness.dump` or `.quantum.data` must NEVER be committed. These contain volatile agent states.
+2. **Secret Rotation:** All `.vault` and `.key` files are managed by the `sovereign-kernel` and must remain local to the runtime environment.
+3. **Evolution History:** `.evolution.history` files are for local diagnostic analysis only. They contain the 'thought process' of the agent and are considered sensitive intellectual property.
 
-## Quick Navigation
-- [Governance & State Rules](#governance-and-state-rules)
-- [Vulnerability Disclosure & Reporting](#vulnerability-disclosure-and-reporting)
-- [Integration & Enforcement](#integration-and-enforcement)
+## Integration
+This manifest is enforced by the `DARLEK CANN v3.0` evolution engine to ensure that self-refactoring loops do not pollute the global repository state.
 
----
 
-## Governance and State Rules
 
-| Category | Target Files / Artifacts | Operational Policy |
-| :--- | :--- | :--- |
-| **Volatile State** | `*.consciousness.dump`<br>`*.quantum.data` | **Zero Persistence:** Never commit volatile agent states to the repository. |
-| **Credentials** | `*.vault`<br>`*.key` | **Kernel-Exclusive:** Managed exclusively by the `sovereign-kernel`; must remain local. |
-| **Intellectual Property** | `*.evolution.history` | **Local Diagnostics Only:** Capture raw cognitive processes; classified as sensitive IP. |
 
----
 
-## Vulnerability Disclosure and Reporting
-When discovering security vulnerabilities, state leaks, or protocol bypasses, adhere to the following directives:
-* **Avoid Public Issues:** Do not disclose sensitive exploits publicly.
-* **Secure Reporting:** Route findings directly to `sovereign-kernel` administrative maintainers via encrypted channels.
-* **Required Data:** Include precise reproduction steps, affected components, and thorough impact assessments.
 
----
 
-## Integration and Enforcement
-This protocol is enforced by the `DARLEK CANN v3.0` evolution engine to safeguard automated self-refactoring loops against security compromises and state integrity failures.
 
-> **CRITICAL WARNING:** Violations during autonomous execution trigger an immediate kernel-level panic and rollback procedure.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
