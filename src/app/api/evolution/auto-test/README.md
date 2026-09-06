@@ -13,12 +13,12 @@ The **Auto-Test Runner** functions as the primary **Coherence Gate** for the DAR
 
 ## Execution Workflow
 
-| Step | Phase | Description |
-| :--- | :--- | :--- |
-| **1** | **Ingestion** | Accepts `proposedCode` and `originalCode` payloads for evaluation. |
-| **2** | **Diagnostic Suite** | Executes comprehensive, regex-based static analysis checks. |
-| **3** | **Gatekeeping** | Evaluates outcomes; any `high`-severity failure triggers immediate mutation rejection. |
-| **4** | **Telemetry** | Records execution results and performance metrics to the central evolution dashboard. |
+| Step | Phase               | Description                                                                   |
+| :--- | :------------------ | :---------------------------------------------------------------------------- |
+| **1**| **Ingestion**       | Accepts `proposedCode` and `originalCode` payloads for evaluation.             |
+| **2**| **Diagnostic Suite**| Executes comprehensive, regex-based static analysis checks.                   |
+| **3**| **Gatekeeping**     | Evaluates outcomes; any `high`-severity failure triggers immediate rejection.   |
+| **4**| **Telemetry**       | Records execution results and performance metrics to the evolution dashboard. |
 
 ---
 
