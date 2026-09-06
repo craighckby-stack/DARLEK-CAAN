@@ -1,6 +1,6 @@
 # DARLEK CANN v3.2 — Evolution Blueprint
 
-> **EMG Core v49 Executive Summary**: The DARLEK CANN v3.2 architecture enforces zero-downtime, idempotent mutations through atomic regex injections and transactional backup provisioning. This document outlines core system architecture, the three-phase execution pipeline, legacy integration schemas, and hardened security protocols.
+> **EMG Core v49 Executive Summary**: The DARLEK CANN v3.2 architecture enforces zero-downtime, idempotent mutations through atomic regular expression (RegEx) injections and transactional backup provisioning. This document outlines the core system architecture, the three-phase execution pipeline, legacy integration schemas, and hardened security protocols.
 
 ---
 
@@ -24,7 +24,7 @@
 
 ## 2. Workflow Execution Pipeline
 
-The execution sequence operated by `updateModule.js` follows three strict operational phases:
+The execution sequence managed by `updateModule.js` adheres to three strict operational phases:
 
 1. **Scan Phase**: Ingests and parses the primary target source file (`src/App.tsx`).
 2. **Validation Phase**: Verifies the presence, syntax, and structural integrity of designated injection boundaries.
