@@ -134,6 +134,16 @@ export default function DashboardPanel({
     [activeFilePath]
   );
 
+  // Pre-slice and map mutation previews to avoid runtime allocation loops during render execution
+  const mutationPreviews = useMemo(() => {
+    const slice = stagedMutations.slice(0, 3);
+    return slice.map((mutation) => ({
+      id: mutation.id,
+      filePath: mutation.filePath,
+      displayPath: mutation.filePath.split('/').pop(),
+    }));
+  }, [stagedMutations]);
+
   return (
     <div className="flex flex-col gap-3 lg:gap-4 lg:h-full overflow-y-auto dalek-scrollbar p-2 custom-scrollbar">
       <StatusBar
@@ -249,11 +259,11 @@ export default function DashboardPanel({
                 Approved and pending deployment:
               </div>
               <div className="space-y-1 pl-1">
-                {stagedMutations.slice(0, 3).map((mutation) => (
+                {mutationPreviews.map((mutation) => (
                   <div key={mutation.id} className="flex items-center gap-2 text-[10px] font-mono text-gray-300">
                     <CheckCircle2 size={11} className="text-[#33ffaa] flex-shrink-0" />
                     <span className="truncate" title={mutation.filePath}>
-                      {mutation.filePath.split('/').pop()}
+                      {mutation.displayPath}
                     </span>
                   </div>
                 ))}
