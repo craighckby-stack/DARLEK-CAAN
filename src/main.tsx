@@ -13,9 +13,7 @@ const mountApplication = (): void => {
     throw new Error('Critical Error: Root container element with id "root" was not found or is not a valid HTMLElement.');
   }
 
-  const root = createRoot(rootElement);
-
-  root.render(
+  createRoot(rootElement).render(
     <StrictMode>
       <App />
     </StrictMode>
