@@ -5,21 +5,17 @@
  * Route Client Reference Manifest Registrar for: /api/brain/route
  */
 (() => {
-  const resolveGlobalTarget = () => {
-    if (typeof globalThis !== "undefined") return globalThis;
-    if (typeof self !== "undefined") return self;
-    if (typeof window !== "undefined") return window;
-    return typeof global !== "undefined" ? global : null;
-  };
+  const globalTarget = 
+    typeof globalThis !== "undefined" ? globalThis :
+    typeof self !== "undefined" ? self :
+    typeof window !== "undefined" ? window :
+    typeof global !== "undefined" ? global : null;
 
-  const globalTarget = resolveGlobalTarget();
-  if (!globalTarget || typeof globalTarget !== "object") return;
+  if (!globalTarget) return;
 
   const manifestStore = globalTarget.__RSC_MANIFEST ??= Object.create(null);
 
-  const ROUTE_KEY = "/api/brain/route";
-
-  manifestStore[ROUTE_KEY] = Object.freeze({
+  manifestStore["/api/brain/route"] = Object.freeze({
     moduleLoading: Object.freeze({
       prefix: "/_next/",
       crossOrigin: null
