@@ -13,21 +13,22 @@
 ---
 
 ## 📋 Table of Contents
+
 * [🌐 Live Web Applications](#-live-web-applications)
 * [💡 Core Capabilities](#-core-capabilities)
 * [📖 Quickstart & Usage Guide](#-quickstart--usage-guide)
-* [🔒 Security & Best Practices](#-security-guidelines--best-practices)
-* [🛡️ Vulnerability Disclosure](#️-vulnerability-reporting--disclosure)
-* [📄 License](#-copyright--license)
+* [🔒 Security Guidelines & Best Practices](#-security-guidelines--best-practices)
+* [🛡️ Vulnerability Reporting & Disclosure](#️-vulnerability-reporting--disclosure)
+* [📄 Copyright & License](#-copyright--license)
 
 ---
 
 ## 🌐 Live Web Applications
 
-| Environment | Access Link |
-| :--- | :--- |
-| **Development Instance** | [Open App](https://ais-dev-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app) |
-| **Shared Preview** | [Open Preview](https://ais-pre-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app) |
+| Environment              | Access Link                                                                                                 |
+| :----------------------- | :---------------------------------------------------------------------------------------------------------- |
+| **Development Instance** | [Open App](https://ais-dev-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app)                      |
+| **Shared Preview**       | [Open Preview](https://ais-pre-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app)                  |
 
 ---
 
@@ -45,22 +46,26 @@
 ## 📖 Quickstart & Usage Guide
 
 ### 1. Authentication & Setup
+
 1. Open the [Live Application](https://ais-dev-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app).
 2. Input your **GitHub Personal Access Token (PAT)** in the configuration panel.
 3. Choose your target repository and active branch.
 
 ### 2. Code Evolution Workflow
+
 1. Navigate the repository tree and select a target file.
 2. Trigger **"Evolve Code"** or **"Propose Mutation"**.
 3. Inspect the AI-generated side-by-side diff and **Multi-LLM Debate** safety metrics.
 4. Click **Approve & Commit** to push changes or **Reject** to discard.
 
 ### 3. Repository Compilation
+
 1. Provide your application blueprint or spec document in the main prompt input.
 2. Specify your target repository name.
 3. Click **Compile & Build** to generate and push the codebase.
 
 ### 4. Batch Processing
+
 1. Enable **Batch Mode** for sequential multi-file analysis.
 2. Configure your **Auto-Approve Risk Threshold** (Low, Medium, or Manual Check) to manage execution autonomy.
 
