@@ -24,45 +24,37 @@ export interface DropdownMenuSubTriggerProps
   readonly inset?: boolean
 }
 
+const STYLES = {
+  content: "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md",
+  item: "focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:!text-destructive [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  checkRadioItem: "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  label: "px-2 py-1.5 text-sm font-medium data-[inset]:pl-8",
+  separator: "bg-border -mx-1 my-1 h-px",
+  shortcut: "text-muted-foreground ml-auto text-xs tracking-widest",
+  subTrigger: "focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[inset]:pl-8",
+  subContent: "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-md border p-1 shadow-lg",
+} as const
+
 const DropdownMenu = React.memo(
   function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
     return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
   }
 )
-
 DropdownMenu.displayName = "DropdownMenu"
 
 const DropdownMenuPortal = React.memo(
   function DropdownMenuPortal(props: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>) {
-    return (
-      <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
-    )
+    return <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
   }
 )
-
 DropdownMenuPortal.displayName = "DropdownMenuPortal"
 
 const DropdownMenuTrigger = React.memo(
   function DropdownMenuTrigger(props: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
-    return (
-      <DropdownMenuPrimitive.Trigger
-        data-slot="dropdown-menu-trigger"
-        {...props}
-      />
-    )
+    return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />
   }
 )
-
 DropdownMenuTrigger.displayName = "DropdownMenuTrigger"
-
-const CONTENT_CLASS_NAMES = "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md"
-const ITEM_CLASS_NAMES = "focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:!text-destructive [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-const CHECK_RADIO_ITEM_CLASS_NAMES = "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-const LABEL_CLASS_NAMES = "px-2 py-1.5 text-sm font-medium data-[inset]:pl-8"
-const SEPARATOR_CLASS_NAMES = "bg-border -mx-1 my-1 h-px"
-const SHORTCUT_CLASS_NAMES = "text-muted-foreground ml-auto text-xs tracking-widest"
-const SUB_TRIGGER_CLASS_NAMES = "focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[inset]:pl-8"
-const SUB_CONTENT_CLASS_NAMES = "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-md border p-1 shadow-lg"
 
 const DropdownMenuContent = React.memo(
   function DropdownMenuContent({
@@ -75,24 +67,20 @@ const DropdownMenuContent = React.memo(
         <DropdownMenuPrimitive.Content
           data-slot="dropdown-menu-content"
           sideOffset={sideOffset}
-          className={cn(CONTENT_CLASS_NAMES, className)}
+          className={cn(STYLES.content, className)}
           {...props}
         />
       </DropdownMenuPrimitive.Portal>
     )
   }
 )
-
 DropdownMenuContent.displayName = "DropdownMenuContent"
 
 const DropdownMenuGroup = React.memo(
   function DropdownMenuGroup(props: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
-    return (
-      <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
-    )
+    return <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
   }
 )
-
 DropdownMenuGroup.displayName = "DropdownMenuGroup"
 
 const DropdownMenuItem = React.memo(
@@ -107,13 +95,12 @@ const DropdownMenuItem = React.memo(
         data-slot="dropdown-menu-item"
         data-inset={inset}
         data-variant={variant}
-        className={cn(ITEM_CLASS_NAMES, className)}
+        className={cn(STYLES.item, className)}
         {...props}
       />
     )
   }
 )
-
 DropdownMenuItem.displayName = "DropdownMenuItem"
 
 const DropdownMenuCheckboxItem = React.memo(
@@ -126,7 +113,7 @@ const DropdownMenuCheckboxItem = React.memo(
     return (
       <DropdownMenuPrimitive.CheckboxItem
         data-slot="dropdown-menu-checkbox-item"
-        className={cn(CHECK_RADIO_ITEM_CLASS_NAMES, className)}
+        className={cn(STYLES.checkRadioItem, className)}
         checked={checked}
         {...props}
       >
@@ -140,20 +127,13 @@ const DropdownMenuCheckboxItem = React.memo(
     )
   }
 )
-
 DropdownMenuCheckboxItem.displayName = "DropdownMenuCheckboxItem"
 
 const DropdownMenuRadioGroup = React.memo(
   function DropdownMenuRadioGroup(props: React.ComponentProps<typeof DropdownMenuPrimitive.RadioGroup>) {
-    return (
-      <DropdownMenuPrimitive.RadioGroup
-        data-slot="dropdown-menu-radio-group"
-        {...props}
-      />
-    )
+    return <DropdownMenuPrimitive.RadioGroup data-slot="dropdown-menu-radio-group" {...props} />
   }
 )
-
 DropdownMenuRadioGroup.displayName = "DropdownMenuRadioGroup"
 
 const DropdownMenuRadioItem = React.memo(
@@ -165,7 +145,7 @@ const DropdownMenuRadioItem = React.memo(
     return (
       <DropdownMenuPrimitive.RadioItem
         data-slot="dropdown-menu-radio-item"
-        className={cn(CHECK_RADIO_ITEM_CLASS_NAMES, className)}
+        className={cn(STYLES.checkRadioItem, className)}
         {...props}
       >
         <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
@@ -178,7 +158,6 @@ const DropdownMenuRadioItem = React.memo(
     )
   }
 )
-
 DropdownMenuRadioItem.displayName = "DropdownMenuRadioItem"
 
 const DropdownMenuLabel = React.memo(
@@ -191,13 +170,12 @@ const DropdownMenuLabel = React.memo(
       <DropdownMenuPrimitive.Label
         data-slot="dropdown-menu-label"
         data-inset={inset}
-        className={cn(LABEL_CLASS_NAMES, className)}
+        className={cn(STYLES.label, className)}
         {...props}
       />
     )
   }
 )
-
 DropdownMenuLabel.displayName = "DropdownMenuLabel"
 
 const DropdownMenuSeparator = React.memo(
@@ -208,13 +186,12 @@ const DropdownMenuSeparator = React.memo(
     return (
       <DropdownMenuPrimitive.Separator
         data-slot="dropdown-menu-separator"
-        className={cn(SEPARATOR_CLASS_NAMES, className)}
+        className={cn(STYLES.separator, className)}
         {...props}
       />
     )
   }
 )
-
 DropdownMenuSeparator.displayName = "DropdownMenuSeparator"
 
 const DropdownMenuShortcut = React.memo(
@@ -225,13 +202,12 @@ const DropdownMenuShortcut = React.memo(
     return (
       <span
         data-slot="dropdown-menu-shortcut"
-        className={cn(SHORTCUT_CLASS_NAMES, className)}
+        className={cn(STYLES.shortcut, className)}
         {...props}
       />
     )
   }
 )
-
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
 
 const DropdownMenuSub = React.memo(
@@ -239,7 +215,6 @@ const DropdownMenuSub = React.memo(
     return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />
   }
 )
-
 DropdownMenuSub.displayName = "DropdownMenuSub"
 
 const DropdownMenuSubTrigger = React.memo(
@@ -253,7 +228,7 @@ const DropdownMenuSubTrigger = React.memo(
       <DropdownMenuPrimitive.SubTrigger
         data-slot="dropdown-menu-sub-trigger"
         data-inset={inset}
-        className={cn(SUB_TRIGGER_CLASS_NAMES, className)}
+        className={cn(STYLES.subTrigger, className)}
         {...props}
       >
         {children}
@@ -262,7 +237,6 @@ const DropdownMenuSubTrigger = React.memo(
     )
   }
 )
-
 DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger"
 
 const DropdownMenuSubContent = React.memo(
@@ -273,13 +247,12 @@ const DropdownMenuSubContent = React.memo(
     return (
       <DropdownMenuPrimitive.SubContent
         data-slot="dropdown-menu-sub-content"
-        className={cn(SUB_CONTENT_CLASS_NAMES, className)}
+        className={cn(STYLES.subContent, className)}
         {...props}
       />
     )
   }
 )
-
 DropdownMenuSubContent.displayName = "DropdownMenuSubContent"
 
 export {
