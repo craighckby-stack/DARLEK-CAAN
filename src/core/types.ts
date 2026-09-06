@@ -18,13 +18,13 @@ export interface QuantumNode<TInput = unknown, TOutput = unknown> {
   readonly state: QuantumNodeState;
   
   /**
-  * Executes the node's core operational logic asynchronously.
-  */
+   * Executes the node's core operational logic asynchronously.
+   */
   execute(input: TInput): Promise<TOutput>;
   
   /**
-  * Safely deconstructs and releases system resources allocated by the node.
-  */
+   * Safely deconstructs and releases system resources allocated by the node.
+   */
   teardown(): void;
 }
 
