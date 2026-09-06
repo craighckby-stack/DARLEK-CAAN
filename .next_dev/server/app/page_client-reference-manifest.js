@@ -1,120 +1,186 @@
 /**
  * EMG Core v49 Neural Code Optimizer Engine
  * File: .next_dev/server/app/page_client-reference-manifest.js
- * Goal: PERFORMANCE - Execution speed, memory footprint reduction, caching, and allocation efficiency.
+ * Optimization Goal: READABILITY - Clean architectural clarity, descriptive naming, modular decomposition, and modern idioms.
  */
-(function initializeRscClientManifest(globalContext) {
+(() => {
   "use strict";
 
+  // ---------------------------------------------------------------------------
+  // Global Environment Resolution
+  // ---------------------------------------------------------------------------
+
+  const resolveGlobalContext = () => {
+    if (typeof globalThis !== "undefined") return globalThis;
+    if (typeof self !== "undefined") return self;
+    if (typeof window !== "undefined") return window;
+    if (typeof global !== "undefined") return global;
+    return typeof Function === "function" ? Function("return this")() : {};
+  };
+
+  const globalContext = resolveGlobalContext();
   if (!globalContext || (typeof globalContext !== "object" && typeof globalContext !== "function")) {
     return;
   }
 
-  const RSC_MANIFEST_KEY = "__RSC_MANIFEST";
-  const ROUTE_MANIFEST_KEY = "/page";
+  // ---------------------------------------------------------------------------
+  // Manifest Constants & Empty Sentinels
+  // ---------------------------------------------------------------------------
 
-  const moduleLoadingConfig = Object.freeze({
+  const RSC_MANIFEST_REGISTRY_KEY = "__RSC_MANIFEST";
+  const ROUTE_IDENTIFIER = "/page";
+
+  const EMPTY_OBJECT = Object.freeze({});
+  const EMPTY_ARRAY = Object.freeze([]);
+
+  // ---------------------------------------------------------------------------
+  // Factory Functions for Manifest Descriptors
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Creates a wildcard module export mapping for Server-Side Rendering (SSR) or RSC contexts.
+   *
+   * @param {string} moduleId - Target bundle module identifier
+   * @param {readonly string[]} [chunks] - Associated script/style chunks
+   * @param {boolean} [isAsync=false] - Flag indicating asynchronous evaluation
+   * @returns {Readonly<{ "*": Readonly<{ id: string, name: string, chunks: readonly string[], async: boolean }> }>}
+   */
+  const createModuleExportDescriptor = (moduleId, chunks = EMPTY_ARRAY, isAsync = false) =>
+    Object.freeze({
+      "*": Object.freeze({
+        id: moduleId,
+        name: "*",
+        chunks,
+        async: isAsync,
+      }),
+    });
+
+  /**
+   * Creates a client module reference descriptor.
+   *
+   * @param {string} browserModuleId - Browser-scoped module identifier
+   * @param {readonly string[]} chunks - Associated bundle chunk paths
+   * @param {boolean} [isAsync=false] - Flag indicating asynchronous evaluation
+   * @returns {Readonly<{ id: string, name: string, chunks: readonly string[], async: boolean }>}
+   */
+  const createClientReferenceDescriptor = (browserModuleId, chunks, isAsync = false) =>
+    Object.freeze({
+      id: browserModuleId,
+      name: "*",
+      chunks,
+      async: isAsync,
+    });
+
+  // ---------------------------------------------------------------------------
+  // Shared Chunk Definitions
+  // ---------------------------------------------------------------------------
+
+  const CHUNKS = Object.freeze({
+    LAYOUT: Object.freeze(["app/layout", "static/chunks/app/layout.js"]),
+    ERROR: Object.freeze(["app/error", "static/chunks/app/error.js"]),
+    NOT_FOUND: Object.freeze(["app/not-found", "static/chunks/app/not-found.js"]),
+    PAGE: Object.freeze(["app/page", "static/chunks/app/page.js"]),
+    INTERNALS: Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"]),
+  });
+
+  // ---------------------------------------------------------------------------
+  // Manifest Configuration & Mappings
+  // ---------------------------------------------------------------------------
+
+  const moduleLoadingConfiguration = Object.freeze({
     prefix: "/_next/",
     crossOrigin: null,
   });
 
-  const emptyObject = Object.freeze({});
-  const emptyArray = Object.freeze([]);
-
-  const createModuleDefinition = (id, chunks = emptyArray, isAsync = false) => Object.freeze({
-    "*": Object.freeze({
-      id,
-      name: "*",
-      chunks,
-      async: isAsync,
-    }),
-  });
-
-  const createClientModuleDefinition = (id, chunks, isAsync = false) => Object.freeze({
-    id,
-    name: "*",
-    chunks,
-    async: isAsync,
-  });
-
   const ssrModuleMappings = Object.freeze({
-    "(app-pages-browser)/./src/components/ui/toaster.tsx": createModuleDefinition("(ssr)/./src/components/ui/toaster.tsx"),
-    "(app-pages-browser)/./src/app/error.tsx": createModuleDefinition("(ssr)/./src/app/error.tsx"),
-    "(app-pages-browser)/./src/app/not-found.tsx": createModuleDefinition("(ssr)/./src/app/not-found.tsx"),
-    "(app-pages-browser)/./src/components/PageClient.tsx": createModuleDefinition("(ssr)/./src/components/PageClient.tsx"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js": createModuleDefinition("(ssr)/./node_modules/next/dist/client/components/client-page.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/client-segment.js": createModuleDefinition("(ssr)/./node_modules/next/dist/client/components/client-segment.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js": createModuleDefinition("(ssr)/./node_modules/next/dist/client/components/error-boundary.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createModuleDefinition("(ssr)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js": createModuleDefinition("(ssr)/./node_modules/next/dist/client/components/layout-router.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js": createModuleDefinition("(ssr)/./node_modules/next/dist/client/components/render-from-template-context.js"),
-    "(app-pages-browser)/./node_modules/next/dist/lib/metadata/metadata-boundary.js": createModuleDefinition("(ssr)/./node_modules/next/dist/lib/metadata/metadata-boundary.js"),
+    "(app-pages-browser)/./src/components/ui/toaster.tsx": createModuleExportDescriptor("(ssr)/./src/components/ui/toaster.tsx"),
+    "(app-pages-browser)/./src/app/error.tsx": createModuleExportDescriptor("(ssr)/./src/app/error.tsx"),
+    "(app-pages-browser)/./src/app/not-found.tsx": createModuleExportDescriptor("(ssr)/./src/app/not-found.tsx"),
+    "(app-pages-browser)/./src/components/PageClient.tsx": createModuleExportDescriptor("(ssr)/./src/components/PageClient.tsx"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js": createModuleExportDescriptor("(ssr)/./node_modules/next/dist/client/components/client-page.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/client-segment.js": createModuleExportDescriptor("(ssr)/./node_modules/next/dist/client/components/client-segment.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js": createModuleExportDescriptor("(ssr)/./node_modules/next/dist/client/components/error-boundary.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createModuleExportDescriptor("(ssr)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js": createModuleExportDescriptor("(ssr)/./node_modules/next/dist/client/components/layout-router.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js": createModuleExportDescriptor("(ssr)/./node_modules/next/dist/client/components/render-from-template-context.js"),
+    "(app-pages-browser)/./node_modules/next/dist/lib/metadata/metadata-boundary.js": createModuleExportDescriptor("(ssr)/./node_modules/next/dist/lib/metadata/metadata-boundary.js"),
+  });
+
+  const rscModuleMappings = Object.freeze({
+    "(app-pages-browser)/./src/app/globals.css": createModuleExportDescriptor("(rsc)/./src/app/globals.css"),
+    "(app-pages-browser)/./src/components/ui/toaster.tsx": createModuleExportDescriptor("(rsc)/./src/components/ui/toaster.tsx"),
+    "(app-pages-browser)/./src/app/error.tsx": createModuleExportDescriptor("(rsc)/./src/app/error.tsx"),
+    "(app-pages-browser)/./src/app/not-found.tsx": createModuleExportDescriptor("(rsc)/./src/app/not-found.tsx"),
+    "(app-pages-browser)/./src/components/PageClient.tsx": createModuleExportDescriptor("(rsc)/./src/components/PageClient.tsx"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js": createModuleExportDescriptor("(rsc)/./node_modules/next/dist/client/components/client-page.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/client-segment.js": createModuleExportDescriptor("(rsc)/./node_modules/next/dist/client/components/client-segment.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js": createModuleExportDescriptor("(rsc)/./node_modules/next/dist/client/components/error-boundary.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createModuleExportDescriptor("(rsc)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js": createModuleExportDescriptor("(rsc)/./node_modules/next/dist/client/components/layout-router.js"),
+    "(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js": createModuleExportDescriptor("(rsc)/./node_modules/next/dist/client/components/render-from-template-context.js"),
+    "(app-pages-browser)/./node_modules/next/dist/lib/metadata/metadata-boundary.js": createModuleExportDescriptor("(rsc)/./node_modules/next/dist/lib/metadata/metadata-boundary.js"),
   });
 
   const clientModulesMap = Object.freeze({
-    "/app/applet/src/app/globals.css": createClientModuleDefinition("(app-pages-browser)/./src/app/globals.css", Object.freeze(["app/layout", "static/chunks/app/layout.js"])),
-    "/app/applet/src/components/ui/toaster.tsx": createClientModuleDefinition("(app-pages-browser)/./src/components/ui/toaster.tsx", Object.freeze(["app/layout", "static/chunks/app/layout.js"])),
-    "/app/applet/src/app/error.tsx": createClientModuleDefinition("(app-pages-browser)/./src/app/error.tsx", Object.freeze(["app/error", "static/chunks/app/error.js"])),
-    "/app/applet/src/app/not-found.tsx": createClientModuleDefinition("(app-pages-browser)/./src/app/not-found.tsx", Object.freeze(["app/not-found", "static/chunks/app/not-found.js"])),
-    "/app/applet/src/components/PageClient.tsx": createClientModuleDefinition("(app-pages-browser)/./src/components/PageClient.tsx", Object.freeze(["app/page", "static/chunks/app/page.js"])),
-    "/app/applet/node_modules/next/dist/client/components/client-page.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-page.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/esm/client/components/client-page.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-page.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/client/components/client-segment.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-segment.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/esm/client/components/client-segment.js": createClientModuleDefinition("(app-pages-browser)/./src/components/client-segment.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/client/components/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/error-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/esm/client/components/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/error-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/http-access-fallback/error-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/components/http-access-fallback/error-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/client/components/layout-router.js": createClientModuleDefinition("(app-pages-browser)/./src/components/layout-router.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/esm/client/components/layout-router.js": createClientModuleDefinition("(app-pages-browser)/./src/components/layout-router.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/client/components/render-from-template-context.js": createClientModuleDefinition("(app-pages-browser)/./src/components/render-from-template-context.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/esm/client/components/render-from-template-context.js": createClientModuleDefinition("(app-pages-browser)/./src/components/render-from-template-context.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/lib/metadata/metadata-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/lib/metadata/metadata-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
-    "/app/applet/node_modules/next/dist/esm/lib/metadata/metadata-boundary.js": createClientModuleDefinition("(app-pages-browser)/./src/lib/metadata/metadata-boundary.js", Object.freeze(["app-pages-internals", "static/chunks/app-pages-internals.js"])),
+    // Application Modules
+    "/app/applet/src/app/globals.css": createClientReferenceDescriptor("(app-pages-browser)/./src/app/globals.css", CHUNKS.LAYOUT),
+    "/app/applet/src/components/ui/toaster.tsx": createClientReferenceDescriptor("(app-pages-browser)/./src/components/ui/toaster.tsx", CHUNKS.LAYOUT),
+    "/app/applet/src/app/error.tsx": createClientReferenceDescriptor("(app-pages-browser)/./src/app/error.tsx", CHUNKS.ERROR),
+    "/app/applet/src/app/not-found.tsx": createClientReferenceDescriptor("(app-pages-browser)/./src/app/not-found.tsx", CHUNKS.NOT_FOUND),
+    "/app/applet/src/components/PageClient.tsx": createClientReferenceDescriptor("(app-pages-browser)/./src/components/PageClient.tsx", CHUNKS.PAGE),
+
+    // Next.js Runtime Client Internals
+    "/app/applet/node_modules/next/dist/client/components/client-page.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/client-page.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/esm/client/components/client-page.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/client-page.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/client/components/client-segment.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/client-segment.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/esm/client/components/client-segment.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/client-segment.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/client/components/error-boundary.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/error-boundary.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/esm/client/components/error-boundary.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/error-boundary.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/http-access-fallback/error-boundary.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/http-access-fallback/error-boundary.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/client/components/layout-router.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/layout-router.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/esm/client/components/layout-router.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/layout-router.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/client/components/render-from-template-context.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/render-from-template-context.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/esm/client/components/render-from-template-context.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/render-from-template-context.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/lib/metadata/metadata-boundary.js": createClientReferenceDescriptor("(app-pages-browser)/./src/lib/metadata/metadata-boundary.js", CHUNKS.INTERNALS),
+    "/app/applet/node_modules/next/dist/esm/lib/metadata/metadata-boundary.js": createClientReferenceDescriptor("(app-pages-browser)/./src/lib/metadata/metadata-boundary.js", CHUNKS.INTERNALS),
   });
 
   const entryCSSFilesMap = Object.freeze({
-    "/app/applet/src/": emptyArray,
+    "/app/applet/src/": EMPTY_ARRAY,
     "/app/applet/src/app/layout": Object.freeze([
       Object.freeze({
         inlined: false,
         path: "static/css/app/layout.css",
-      })
+      }),
     ]),
-    "/app/applet/src/app/error": emptyArray,
-    "/app/applet/src/app/not-found": emptyArray,
-    "/app/applet/src/app/page": emptyArray,
+    "/app/applet/src/app/error": EMPTY_ARRAY,
+    "/app/applet/src/app/not-found": EMPTY_ARRAY,
+    "/app/applet/src/app/page": EMPTY_ARRAY,
   });
 
-  const rscModuleMappings = Object.freeze({
-    "(app-pages-browser)/./src/app/globals.css": createModuleDefinition("(rsc)/./src/app/globals.css"),
-    "(app-pages-browser)/./src/components/ui/toaster.tsx": createModuleDefinition("(rsc)/./src/components/ui/toaster.tsx"),
-    "(app-pages-browser)/./src/app/error.tsx": createModuleDefinition("(rsc)/./src/app/error.tsx"),
-    "(app-pages-browser)/./src/app/not-found.tsx": createModuleDefinition("(rsc)/./src/app/not-found.tsx"),
-    "(app-pages-browser)/./src/components/PageClient.tsx": createModuleDefinition("(rsc)/./src/components/PageClient.tsx"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js": createModuleDefinition("(rsc)/./node_modules/next/dist/client/components/client-page.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/client-segment.js": createModuleDefinition("(rsc)/./node_modules/next/dist/client/components/client-segment.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js": createModuleDefinition("(rsc)/./node_modules/next/dist/client/components/error-boundary.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createModuleDefinition("(rsc)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js": createModuleDefinition("(rsc)/./node_modules/next/dist/client/components/layout-router.js"),
-    "(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js": createModuleDefinition("(rsc)/./node_modules/next/dist/client/components/render-from-template-context.js"),
-    "(app-pages-browser)/./node_modules/next/dist/lib/metadata/metadata-boundary.js": createModuleDefinition("(rsc)/./node_modules/next/dist/lib/metadata/metadata-boundary.js"),
-  });
+  // ---------------------------------------------------------------------------
+  // Client Reference Manifest Aggregation
+  // ---------------------------------------------------------------------------
 
-  const clientReferenceManifestPayload = Object.freeze({
-    moduleLoading: moduleLoadingConfig,
+  const pageClientReferenceManifest = Object.freeze({
+    moduleLoading: moduleLoadingConfiguration,
     ssrModuleMapping: ssrModuleMappings,
-    edgeSSRModuleMapping: emptyObject,
+    edgeSSRModuleMapping: EMPTY_OBJECT,
     clientModules: clientModulesMap,
     entryCSSFiles: entryCSSFilesMap,
     rscModuleMapping: rscModuleMappings,
-    edgeRscModuleMapping: emptyObject,
+    edgeRscModuleMapping: EMPTY_OBJECT,
   });
 
-  let rscManifestRegistry = globalContext[RSC_MANIFEST_KEY];
+  // ---------------------------------------------------------------------------
+  // Global Manifest Registration
+  // ---------------------------------------------------------------------------
+
+  let rscManifestRegistry = globalContext[RSC_MANIFEST_REGISTRY_KEY];
   if (!rscManifestRegistry || typeof rscManifestRegistry !== "object") {
     rscManifestRegistry = Object.create(null);
-    Object.defineProperty(globalContext, RSC_MANIFEST_KEY, {
+    Object.defineProperty(globalContext, RSC_MANIFEST_REGISTRY_KEY, {
       value: rscManifestRegistry,
       writable: true,
       enumerable: true,
@@ -122,19 +188,10 @@
     });
   }
 
-  Object.defineProperty(rscManifestRegistry, ROUTE_MANIFEST_KEY, {
-    value: clientReferenceManifestPayload,
+  Object.defineProperty(rscManifestRegistry, ROUTE_IDENTIFIER, {
+    value: pageClientReferenceManifest,
     writable: true,
     enumerable: true,
     configurable: true,
   });
-
-})(
-  (() => {
-    if (typeof globalThis !== "undefined") return globalThis;
-    if (typeof self !== "undefined") return self;
-    if (typeof window !== "undefined") return window;
-    if (typeof global !== "undefined") return global;
-    return typeof Function === "function" ? Function("return this")() : {};
-  })()
-);
+})();
