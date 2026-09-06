@@ -17,6 +17,11 @@ const CONFIG = Object.freeze({
   REPLACEMENT_STRING: 'siphonedCodeContext}\\`\\`\\`${fileContent',
 });
 
+// Cache resolved base directory to minimize path allocation overhead
+const BASE_DIR = path.resolve(process.cwd());
+const TARGET_PATH = path.resolve(BASE_DIR, CONFIG.RELATIVE_TARGET_PATH);
+const NORMALIZED_BASE = path.resolve(BASE_DIR);
+
 /**
  * Validates target path security to ensure it resides strictly within the base directory.
  *
@@ -25,26 +30,27 @@ const CONFIG = Object.freeze({
  * @throws {Error} If path traversal or boundary violations are detected.
  */
 function assertPathSecurity(baseDir, targetPath) {
-  const normalizedBase = path.resolve(baseDir);
   const normalizedTarget = path.resolve(targetPath);
 
-  if (!normalizedTarget.startsWith(normalizedBase) || !path.isAbsolute(normalizedTarget)) {
+  if (!normalizedTarget.startsWith(NORMALIZED_BASE) || !path.isAbsolute(normalizedTarget)) {
     throw new Error('[EMG Core v49 Security Violation]: Path traversal attempt detected.');
   }
 }
 
 /**
- * Validates file existence, type status, and size constraints.
+ * Validates file existence, type status, and size constraints efficiently.
  *
  * @param {string} targetPath - The absolute path of the file to inspect.
  * @throws {Error} If the target is missing, not a file, or exceeds size limits.
  */
 function validateFileConstraints(targetPath) {
-  if (!fs.existsSync(targetPath)) {
-    throw new Error(`Target path does not exist: ${targetPath}`);
+  let stats;
+  try {
+    stats = fs.statSync(targetPath);
+  } catch {
+    throw new Error(`Target path does not exist or is inaccessible: ${targetPath}`);
   }
 
-  const stats = fs.statSync(targetPath);
   if (!stats.isFile()) {
     throw new Error(`Target path is not a valid file: ${targetPath}`);
   }
@@ -61,19 +67,16 @@ function validateFileConstraints(targetPath) {
  * @returns {void}
  */
 function applyEvolutionFix() {
-  const baseDir = path.resolve(process.cwd());
-  const targetPath = path.resolve(baseDir, CONFIG.RELATIVE_TARGET_PATH);
-
-  assertPathSecurity(baseDir, targetPath);
+  assertPathSecurity(BASE_DIR, TARGET_PATH);
 
   try {
-    validateFileConstraints(targetPath);
+    validateFileConstraints(TARGET_PATH);
 
-    const code = fs.readFileSync(targetPath, { encoding: 'utf8', flag: 'r' });
+    const code = fs.readFileSync(TARGET_PATH, { encoding: 'utf8', flag: 'r' });
     const updatedCode = code.replace(CONFIG.SEARCH_PATTERN, CONFIG.REPLACEMENT_STRING);
 
     if (updatedCode !== code) {
-      fs.writeFileSync(targetPath, updatedCode, { encoding: 'utf8', flag: 'w', mode: 0o600 });
+      fs.writeFileSync(TARGET_PATH, updatedCode, { encoding: 'utf8', flag: 'w', mode: 0o600 });
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
