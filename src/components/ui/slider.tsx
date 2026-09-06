@@ -57,7 +57,7 @@ const Slider = React.memo(
     }, [activeValues])
 
     const rootClassName = React.useMemo(
-      () => (className ? `${ROOT_BASE_CLASS} ${className}` : ROOT_BASE_CLASS),
+      () => cn(ROOT_BASE_CLASS, className),
       [className]
     )
 
