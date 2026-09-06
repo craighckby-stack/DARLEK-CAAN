@@ -33,9 +33,6 @@ interface ThresholdCounts {
   readonly criticalCount: number;
 }
 
-const DECIMAL_PRECISION_STANDARD = 2;
-const DECIMAL_PRECISION_HIGH = 3;
-
 /**
  * Safely parses the incoming HTTP request body, returning an empty request object on failure.
  */
@@ -56,30 +53,42 @@ async function parseRequestBody(req: NextRequest): Promise<RequestBody | ErrorRe
 }
 
 /**
- * Aggregates statistics across all provided mutation payloads.
+ * Aggregates statistics across all provided mutation payloads using an optimized imperative loop.
  */
 function aggregateMutations(mutations: readonly MutationInput[] = []): AggregateMutationStats {
-  return mutations.reduce<AggregateMutationStats>(
-    (acc, mutation) => {
-      const isPending = mutation.status === 'pending';
-      const isApplied = mutation.status === 'applied';
-      const isRejected = mutation.status === 'rejected';
+  let pendingMutations = 0;
+  let appliedMutations = 0;
+  let rejectedMutations = 0;
+  let totalAffectedFiles = 0;
 
-      const fileCount = Array.isArray(mutation.affectedFiles) ? mutation.affectedFiles.length : 0;
+  for (let i = 0, len = mutations.length; i < len; i++) {
+    const mutation = mutations[i];
+    const status = mutation.status;
 
-      return {
-        pendingMutations: acc.pendingMutations + (isPending ? 1 : 0),
-        appliedMutations: acc.appliedMutations + (isApplied ? 1 : 0),
-        rejectedMutations: acc.rejectedMutations + (isRejected ? 1 : 0),
-        totalAffectedFiles: acc.totalAffectedFiles + fileCount,
-      };
-    },
-    { pendingMutations: 0, appliedMutations: 0, rejectedMutations: 0, totalAffectedFiles: 0 }
-  );
+    if (status === 'pending') {
+      pendingMutations++;
+    } else if (status === 'applied') {
+      appliedMutations++;
+    } else if (status === 'rejected') {
+      rejectedMutations++;
+    }
+
+    const affectedFiles = mutation.affectedFiles;
+    if (Array.isArray(affectedFiles)) {
+      totalAffectedFiles += affectedFiles.length;
+    }
+  }
+
+  return {
+    pendingMutations,
+    appliedMutations,
+    rejectedMutations,
+    totalAffectedFiles,
+  };
 }
 
 /**
- * Computes saturation metrics based on aggregate mutation statistics.
+ * Computes saturation metrics based on aggregate mutation statistics with zero intermediate object allocations.
  */
 function calculateMetrics(stats: AggregateMutationStats, totalMutationsCount: number): SaturationMetrics {
   const { appliedMutations, pendingMutations, rejectedMutations, totalAffectedFiles } = stats;
@@ -92,45 +101,51 @@ function calculateMetrics(stats: AggregateMutationStats, totalMutationsCount: nu
   const crossFileImpact = Math.min(5, 0.3 + totalAffectedFiles * 0.2);
 
   return {
-    structuralChange: Number(structuralChange.toFixed(DECIMAL_PRECISION_STANDARD)),
-    semanticSaturation: Number(semanticSaturation.toFixed(DECIMAL_PRECISION_HIGH)),
-    velocity: Number(velocity.toFixed(DECIMAL_PRECISION_STANDARD)),
-    identityPreservation: Number(identityPreservation.toFixed(DECIMAL_PRECISION_STANDARD)),
-    capabilityAlignment: Number(capabilityAlignment.toFixed(DECIMAL_PRECISION_STANDARD)),
-    crossFileImpact: Number(crossFileImpact.toFixed(DECIMAL_PRECISION_STANDARD)),
+    structuralChange: Math.round(structuralChange * 100) / 100,
+    semanticSaturation: Math.round(semanticSaturation * 1000) / 1000,
+    velocity: Math.round(velocity * 100) / 100,
+    identityPreservation: Math.round(identityPreservation * 100) / 100,
+    capabilityAlignment: Math.round(capabilityAlignment * 100) / 100,
+    crossFileImpact: Math.round(crossFileImpact * 100) / 100,
   };
 }
 
 /**
- * Evaluates individual metric thresholds to tally warning and critical alerts.
+ * Evaluates individual metric thresholds to tally warning and critical alerts using fast branch checks.
  */
 function evaluateThresholds(metrics: SaturationMetrics): ThresholdCounts {
   let warningCount = 0;
   let criticalCount = 0;
 
   // Structural Change
-  if (metrics.structuralChange > 4) criticalCount++;
-  else if (metrics.structuralChange > 3) warningCount++;
+  const sc = metrics.structuralChange;
+  if (sc > 4) criticalCount++;
+  else if (sc > 3) warningCount++;
 
   // Semantic Saturation
-  if (metrics.semanticSaturation > 0.28) criticalCount++;
-  else if (metrics.semanticSaturation > 0.21) warningCount++;
+  const ss = metrics.semanticSaturation;
+  if (ss > 0.28) criticalCount++;
+  else if (ss > 0.21) warningCount++;
 
   // Velocity
-  if (metrics.velocity > 4) criticalCount++;
-  else if (metrics.velocity > 3) warningCount++;
+  const vel = metrics.velocity;
+  if (vel > 4) criticalCount++;
+  else if (vel > 3) warningCount++;
 
   // Identity Preservation
-  if (metrics.identityPreservation < 0.2) criticalCount++;
-  else if (metrics.identityPreservation < 0.4) warningCount++;
+  const ip = metrics.identityPreservation;
+  if (ip < 0.2) criticalCount++;
+  else if (ip < 0.4) warningCount++;
 
   // Capability Alignment
-  if (metrics.capabilityAlignment > 4) criticalCount++;
-  else if (metrics.capabilityAlignment > 3) warningCount++;
+  const ca = metrics.capabilityAlignment;
+  if (ca > 4) criticalCount++;
+  else if (ca > 3) warningCount++;
 
   // Cross File Impact
-  if (metrics.crossFileImpact > 2.4) criticalCount++;
-  else if (metrics.crossFileImpact > 1.8) warningCount++;
+  const cfi = metrics.crossFileImpact;
+  if (cfi > 2.4) criticalCount++;
+  else if (cfi > 1.8) warningCount++;
 
   return { warningCount, criticalCount };
 }
@@ -163,10 +178,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<HealthCheckRe
   const thresholds = evaluateThresholds(metrics);
   const overallHealth = deriveOverallHealth(thresholds);
 
-  const result: HealthCheckResult = {
+  return NextResponse.json({
     metrics,
     overallHealth,
-  };
-
-  return NextResponse.json(result);
+  });
 }
