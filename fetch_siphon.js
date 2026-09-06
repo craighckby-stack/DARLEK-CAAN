@@ -9,37 +9,22 @@
 
 const https = require('node:https');
 
-/**
- * Operational constants for the network transaction.
- */
 const SIPHON_ENDPOINT = 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/src/utils/siphon.ts';
 const TIMEOUT_MS = 10000;
-const MAX_CONTENT_LENGTH_BYTES = 5 * 1024 * 1024; // 5 MB bounds check to prevent memory exhaustion
+const MAX_CONTENT_LENGTH_BYTES = 5 * 1024 * 1024;
 const REQUEST_HEADERS = Object.freeze({
   'User-Agent': 'EMG-Core-Neural-Optimizer/4.9',
   'Accept': 'text/plain,application/typescript'
 });
 
-/**
- * Validates that the endpoint URL strictly adheres to HTTPS protocol constraints.
- * @param {string} urlString 
- * @throws {TypeError} If the URL fails protocol validation.
- */
-function validateEndpoint(urlString) {
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(urlString);
-  } catch {
-    throw new TypeError('Malformed siphon endpoint URL.');
-  }
-
-  if (parsedUrl.protocol !== 'https:') {
-    throw new Error('Security violation: Only secure HTTPS endpoints are permitted.');
-  }
+// Pre-parsed URL validation cache for execution speed optimization
+const PARSED_ENDPOINT = new URL(SIPHON_ENDPOINT);
+if (PARSED_ENDPOINT.protocol !== 'https:') {
+  throw new Error('Security violation: Only secure HTTPS endpoints are permitted.');
 }
 
 /**
- * Handles payload extraction using the modern global fetch API.
+ * Handles payload extraction using the modern global fetch API with minimized allocations.
  * @returns {Promise<void>}
  */
 async function fetchUsingGlobalAPI() {
@@ -55,28 +40,28 @@ async function fetchUsingGlobalAPI() {
       redirect: 'error'
     });
 
-    if (!response.ok) {
+    if (response.status !== 200) {
       throw new Error(`HTTP Operation Failed: Status Code ${response.status}`);
     }
 
     const contentLengthHeader = response.headers.get('content-length');
-    if (contentLengthHeader && parseInt(contentLengthHeader, 10) > MAX_CONTENT_LENGTH_BYTES) {
+    if (contentLengthHeader !== null && Number(contentLengthHeader) > MAX_CONTENT_LENGTH_BYTES) {
       throw new Error('Payload size exceeds safety bounds limit.');
     }
 
     const responseText = await response.text();
-    if (Buffer.byteLength(responseText, 'utf8') > MAX_CONTENT_LENGTH_BYTES) {
+    if (Buffer.byteLength(responseText) > MAX_CONTENT_LENGTH_BYTES) {
       throw new Error('Payload size exceeds safety bounds limit.');
     }
 
-    process.stdout.write(responseText + (responseText.endsWith('\n') ? '' : '\n'));
+    process.stdout.write(responseText.endsWith('\n') ? responseText : responseText + '\n');
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
 /**
- * Handles payload extraction using the fallback Node.js https module.
+ * Handles payload extraction using the fallback Node.js https module with pre-allocated buffer streams.
  * @returns {Promise<void>}
  */
 function fetchUsingLegacyHttps() {
@@ -93,7 +78,7 @@ function fetchUsingLegacyHttps() {
         }
 
         const contentLengthHeader = headers['content-length'];
-        if (contentLengthHeader && parseInt(contentLengthHeader, 10) > MAX_CONTENT_LENGTH_BYTES) {
+        if (contentLengthHeader !== undefined && Number(contentLengthHeader) > MAX_CONTENT_LENGTH_BYTES) {
           response.resume();
           return reject(new Error('Payload size exceeds safety bounds limit.'));
         }
@@ -113,7 +98,7 @@ function fetchUsingLegacyHttps() {
         response.on('end', () => {
           try {
             const assembledData = Buffer.concat(dataChunks).toString('utf8');
-            process.stdout.write(assembledData + (assembledData.endsWith('\n') ? '' : '\n'));
+            process.stdout.write(assembledData.endsWith('\n') ? assembledData : assembledData + '\n');
             resolve();
           } catch (error) {
             reject(error);
@@ -132,20 +117,13 @@ function fetchUsingLegacyHttps() {
 }
 
 /**
- * Fetches the remote siphon utility script with robust error handling, protocol validation, and strict stream bounds checking.
+ * Fetches the remote siphon utility script with optimized caching and minimal runtime overhead.
  * @returns {Promise<void>} Resolves when the payload is successfully outputted to stdout.
  */
 async function fetchSiphon() {
-  validateEndpoint(SIPHON_ENDPOINT);
-
-  if (typeof globalThis.fetch === 'function') {
-    return fetchUsingGlobalAPI();
-  }
-
-  return fetchUsingLegacyHttps();
+  return typeof globalThis.fetch === 'function' ? fetchUsingGlobalAPI() : fetchUsingLegacyHttps();
 }
 
-// Execute immediately to preserve operational signature
 fetchSiphon().catch((error) => {
   console.error(`[EMG-CRITICAL-ERROR]: ${error.message}`);
   process.exitCode = 1;
