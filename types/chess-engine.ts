@@ -4,6 +4,13 @@
  * Optimized by EMG Core v49 Neural Code and Documentation Optimizer Engine
  */
 
+// ============================================================================
+// CORE CHESS DOMAIN TYPES
+// ============================================================================
+
+/**
+ * Zero-runtime cost enum for internal numeric piece representation.
+ */
 export const enum PieceTypeEnum {
   Pawn = 0,
   Rook = 1,
@@ -13,33 +20,42 @@ export const enum PieceTypeEnum {
   King = 5,
 }
 
+/** Standard algebraic piece characters: p (pawn), r (rook), n (knight), b (bishop), q (queen), k (king). */
 export type PieceType = 'p' | 'r' | 'n' | 'b' | 'q' | 'k';
+
+/** Piece and player color allegiance indicator. */
 export type PieceColor = 'w' | 'b';
 
-// Brand type utilizing unique symbol for absolute structural nominal typing safety
+// Symbol marker utilized for nominal branding of algebraic chess squares.
 declare const SquareBrand: unique symbol;
-export type Square = string & { readonly [SquareBrand]: 'Square' };
-
-// Pre-allocated lookup cache for validation speedup (O(1) lookup instead of RegExp execution)
-const VALID_SQUARES: ReadonlySet<string> = (() => {
-  const set = new Set<string>();
-  const files = 'abcdefgh';
-  const ranks = '12345678';
-  for (let f = 0; f < 8; f++) {
-    for (let r = 0; r < 8; r++) {
-      set.add(files[f] + ranks[r]);
-    }
-  }
-  return set;
-})();
 
 /**
- * High-performance O(1) type guard replacing RegExp execution overhead with direct set lookups.
+ * Branded nominal type ensuring runtime string instances are verified algebraic squares (e.g., 'e4', 'a1').
+ */
+export type Square = string & { readonly [SquareBrand]: 'Square' };
+
+// Constant coordinate vectors for standard chess board matrix initialization
+const CHESS_FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
+const CHESS_RANKS = ['1', '2', '3', '4', '5', '6', '7', '8'] as const;
+
+/** Pre-computed immutable lookup table containing all 64 valid algebraic squares. */
+const VALID_SQUARES: ReadonlySet<string> = new Set<string>(
+  CHESS_FILES.flatMap((file) => CHESS_RANKS.map((rank) => `${file}${rank}`))
+);
+
+/**
+ * High-performance O(1) type-guard validating standard algebraic square notation.
+ *
+ * @param value - The input string coordinate to evaluate.
+ * @returns Boolean type predicate narrowing value to `Square`.
  */
 export function isValidSquare(value: string): value is Square {
   return VALID_SQUARES.has(value);
 }
 
+/**
+ * Represents an individual piece instance on the board, including state modifications.
+ */
 export interface ChessPiece {
   readonly id: string;
   readonly type: PieceType;
@@ -49,6 +65,9 @@ export interface ChessPiece {
   readonly isRedeemed?: boolean;
 }
 
+/**
+ * Immutable snapshot of the overall board configuration and game clock states.
+ */
 export interface BoardState {
   readonly pieces: Readonly<Record<string, ChessPiece>>;
   readonly turn: PieceColor;
@@ -60,6 +79,13 @@ export interface BoardState {
   };
 }
 
+// ============================================================================
+// HEURISTIC & EVALUATION TYPES
+// ============================================================================
+
+/**
+ * Composite heuristic score breaking down engine state evaluation factors.
+ */
 export interface HeuristicEvaluation {
   readonly score: number;
   readonly materialScore: number;
@@ -68,13 +94,21 @@ export interface HeuristicEvaluation {
   readonly chaosNoise?: number;
 }
 
-export type InterventionType = 
-  | 'VAPORIZE' 
-  | 'SPAWN_DRONE' 
-  | 'TELEPORT' 
-  | 'CELESTIAL_RESURRECTION' 
+// ============================================================================
+// INTERVENTION & GOVERNANCE TYPES
+// ============================================================================
+
+/** Operations capable of mutating standard game laws. */
+export type InterventionType =
+  | 'VAPORIZE'
+  | 'SPAWN_DRONE'
+  | 'TELEPORT'
+  | 'CELESTIAL_RESURRECTION'
   | 'SACRED_REDEMPTION';
 
+/**
+ * Audit record describing a rule-bending state mutation event.
+ */
 export interface InterventionEvent {
   readonly id: string;
   readonly type: InterventionType;
@@ -90,6 +124,9 @@ export interface InterventionEvent {
   readonly isReverted: boolean;
 }
 
+/**
+ * Real-time monitoring metrics for stability and alignment telemetry.
+ */
 export interface GovernanceMetrics {
   readonly securityStateEntropy: number;
   readonly antifragilityIndex: number;
@@ -99,6 +136,13 @@ export interface GovernanceMetrics {
   };
 }
 
+// ============================================================================
+// ENGINE CONFIGURATION & UTILITY TYPES
+// ============================================================================
+
+/**
+ * Configuration parameters for engine decision engines and non-deterministic behavior multipliers.
+ */
 export interface EngineConfig {
   readonly dalekChaosCoefficient: number;
   readonly jesusCommunityMultiplier: number;
@@ -107,6 +151,9 @@ export interface EngineConfig {
   readonly useLLMFallback: boolean;
 }
 
+/**
+ * Lifecycle handler interface for subscription cleanup patterns.
+ */
 export interface SubscriptionTeardown {
   readonly unsubscribe: () => void;
 }
