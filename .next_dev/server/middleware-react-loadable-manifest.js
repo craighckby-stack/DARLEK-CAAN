@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"components/PageClient.tsx -> @/components/MainPage\":{\"id\":\"components/PageClient.tsx -> @/components/MainPage\",\"files\":[\"static/chunks/_app-pages-browser_src_components_MainPage_tsx.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST='{"components/PageClient.tsx -> @/components/MainPage":{"id":"components/PageClient.tsx -> @/components/MainPage","files":["static/chunks/_app-pages-browser_src_components_MainPage_tsx.js"]}}';
