@@ -6,9 +6,9 @@
 
 ## Quick Navigation
 * [Data Governance](#data-governance)
-  * [State Persistence](#quantum--state-persistence)
-  * [Evolution Logs](#self-refactoring--evolution-logs)
-  * [Secrets Management](#secrets-management)
+  * [State Persistence](#data-governance)
+  * [Evolution Logs](#data-governance)
+  * [Secrets Management](#data-governance)
 * [Vulnerability Reporting](#vulnerability-reporting--disclosure)
 * [Compliance & Standards](#compliance--standards)
 
