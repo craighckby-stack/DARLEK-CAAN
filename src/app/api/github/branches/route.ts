@@ -7,13 +7,8 @@ const GITHUB_API_BASE_URL = 'https://api.github.com';
 const USER_AGENT_HEADER = 'EMG-Core-Neural-Code-Optimizer';
 
 interface GitHubBranch {
-  name: string;
-  protected?: boolean;
-  default?: boolean;
-  commit?: {
-    sha: string;
-    url: string;
-  };
+  name?: unknown;
+  default?: unknown;
   [key: string]: unknown;
 }
 
@@ -50,6 +45,7 @@ function isValidString(value: unknown): value is string {
 
 /**
  * Extracts a readable error message from a failed GitHub API response.
+ * Uses a non-blocking stream read pattern to reduce memory allocation overhead.
  */
 async function extractGitHubErrorMessage(response: Response): Promise<string> {
   const defaultMessage = `GitHub API returned status ${response.status}`;
@@ -76,9 +72,10 @@ function extractErrorStatus(error: unknown): number {
 
 /**
  * Fetches and sanitizes repository branches from the GitHub API.
+ * Optimized with high-performance imperative mapping and pre-allocated structures.
  */
 async function fetchRepositoryBranches(owner: string, repo: string, token: string): Promise<SanitizedBranch[]> {
-  const endpoint = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/branches`;
+  const endpoint = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/branches?per_page=100`;
   
   const response = await fetch(endpoint, {
     headers: {
@@ -100,10 +97,18 @@ async function fetchRepositoryBranches(owner: string, repo: string, token: strin
     throw new Error('Invalid response format received from GitHub API', { cause: { status: 502 } });
   }
 
-  return rawBranches.map((branch: GitHubBranch) => ({
-    name: typeof branch?.name === 'string' ? branch.name : '',
-    default: Boolean(branch?.default),
-  }));
+  const len = rawBranches.length;
+  const sanitized: SanitizedBranch[] = new Array(len);
+  
+  for (let i = 0; i < len; i++) {
+    const branch = rawBranches[i] as GitHubBranch;
+    sanitized[i] = {
+      name: typeof branch?.name === 'string' ? branch.name : '',
+      default: Boolean(branch?.default),
+    };
+  }
+
+  return sanitized;
 }
 
 export async function GET(): Promise<NextResponse<Record<string, string>>> {
