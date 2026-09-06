@@ -26,16 +26,19 @@ interface SanitizedRepository {
   isGlobalSiphon: boolean;
 }
 
+interface GitHubSearchResponse {
+  items?: GitHubRepoRaw[];
+}
+
 const GITHUB_API_BASE = 'https://api.github.com';
-const GITHUB_API_HEADERS = (token: string): HeadersInit => ({
+const POPULAR_ORGS_QUERY = 'user:microsoft+user:google+user:ibm+user:firebase+user:deepmind+user:vercel+user:facebook';
+
+const createGitHubHeaders = (token: string): HeadersInit => ({
   'Authorization': `Bearer ${token}`,
   'Accept': 'application/vnd.github.v3+json',
 });
 
-const POPULAR_ORGS_QUERY = 'user:microsoft+user:google+user:ibm+user:firebase+user:deepmind+user:vercel+user:facebook';
-
-// Pre-allocate map mapping for inline transformation and deduplication to avoid intermediate array allocations.
-function mapRepositoryData(rawRepo: GitHubRepoRaw, isGlobalSiphon: boolean): SanitizedRepository {
+function sanitizeRepository(rawRepo: GitHubRepoRaw, isGlobalSiphon: boolean): SanitizedRepository {
   return {
     id: rawRepo.id,
     name: rawRepo.name,
@@ -51,16 +54,38 @@ function mapRepositoryData(rawRepo: GitHubRepoRaw, isGlobalSiphon: boolean): San
 
 async function fetchUserRepositories(token: string): Promise<Response> {
   return fetch(`${GITHUB_API_BASE}/user/repos?per_page=50&sort=updated`, {
-    headers: GITHUB_API_HEADERS(token),
+    headers: createGitHubHeaders(token),
     cache: 'no-store',
   });
 }
 
 async function fetchGlobalSiphonRepositories(token: string): Promise<Response> {
   return fetch(`${GITHUB_API_BASE}/search/repositories?q=${POPULAR_ORGS_QUERY}&sort=stars&order=desc&per_page=50`, {
-    headers: GITHUB_API_HEADERS(token),
+    headers: createGitHubHeaders(token),
     cache: 'no-store',
   });
+}
+
+async function processRepositoryResponse(
+  response: Response,
+  repositoryMap: Map<number, SanitizedRepository>,
+  isGlobalSiphon: boolean,
+  warningLabel: string
+): Promise<void> {
+  if (!response.ok) {
+    response.body?.cancel();
+    console.warn(`Failed to load ${warningLabel}:`, response.status);
+    return;
+  }
+
+  const data = await response.json();
+  const rawRepos: GitHubRepoRaw[] = Array.isArray(data) ? data : (data as GitHubSearchResponse).items ?? [];
+
+  for (const repo of rawRepos) {
+    if (!isGlobalSiphon || !repositoryMap.has(repo.id)) {
+      repositoryMap.set(repo.id, sanitizeRepository(repo, isGlobalSiphon));
+    }
+  }
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -88,38 +113,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Use a Map directly for O(1) insertion deduplication, minimizing object allocations.
-    const repoMap = new Map<number, SanitizedRepository>();
+    const repositoryMap = new Map<number, SanitizedRepository>();
 
-    if (userResponse.ok) {
-      const userReposData = (await userResponse.json()) as GitHubRepoRaw[];
-      const len = userReposData.length;
-      for (let i = 0; i < len; i++) {
-        const repo = userReposData[i];
-        repoMap.set(repo.id, mapRepositoryData(repo, false));
-      }
-    } else {
-      userResponse.body?.cancel();
-      console.warn('Failed to load user repos:', userResponse.status);
-    }
+    await processRepositoryResponse(userResponse, repositoryMap, false, 'user repos');
+    await processRepositoryResponse(searchResponse, repositoryMap, true, 'global siphon repos');
 
-    if (searchResponse.ok) {
-      const searchData = await searchResponse.json();
-      const searchReposItems = (searchData.items || []) as GitHubRepoRaw[];
-      const len = searchReposItems.length;
-      for (let i = 0; i < len; i++) {
-        const repo = searchReposItems[i];
-        // Only set if not already present or prioritize user repos cleanly
-        if (!repoMap.has(repo.id)) {
-          repoMap.set(repo.id, mapRepositoryData(repo, true));
-        }
-      }
-    } else {
-      searchResponse.body?.cancel();
-      console.warn('Failed to load global siphon repos:', searchResponse.status);
-    }
-
-    return NextResponse.json({ success: true, repos: Array.from(repoMap.values()) });
+    return NextResponse.json({ success: true, repos: Array.from(repositoryMap.values()) });
   } catch (error) {
     console.error('User repos list error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
