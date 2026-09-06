@@ -11,46 +11,49 @@ const TARGET_FILE_PATH = path.join('src', 'utils', 'agi-engine.ts');
 
 /**
  * Configuration mapping of regex patterns to their deterministic replacements.
+ * Object.freeze provides protection and hints to V8 for inline caching optimization.
  */
 const RANDOMNESS_REPLACEMENTS = Object.freeze([
   {
-    name: 'Random ID Generation',
     pattern: /Math\.random\(\)\.toString\(36\)\.substring\([^)]*\)/g,
     replacement: 'Date.now().toString(36)',
   },
   {
-    name: 'Random Coordinate Array',
     pattern: /Array\.from\(\{ length: 3 \}, \(\) => Math\.random\(\)\)/g,
     replacement: '[0.42, 0.88, 0.15]',
   },
   {
-    name: 'Random Candidate Selection',
     pattern: /safeCandidates\[Math\.floor\(Math\.random\(\) \* safeCandidates\.length\)\]/g,
     replacement: 'safeCandidates[0]',
   },
   {
-    name: 'Random Verification Hash',
     pattern: /'0x' \+ Math\.random\(\)\.toString\(16\)\.substring\([^)]*\)\.toUpperCase\(\)/g,
     replacement: "'0x' + Date.now().toString(16).toUpperCase()",
   },
 ]);
 
 /**
- * Applies a sequence of pattern replacements to a source code string.
+ * Applies a sequence of pattern replacements to a source code string via an optimized imperative loop.
  * 
  * @param {string} sourceCode - The raw source code to transform.
- * @param {Array<{pattern: RegExp, replacement: string}>} replacements - The mapping of patterns.
+ * @param {ReadonlyArray<{pattern: RegExp, replacement: string}>} replacements - The mapping of patterns.
  * @returns {string} The updated, deterministic source code.
  */
 function applyReplacements(sourceCode, replacements) {
-  return replacements.reduce(
-    (currentCode, { pattern, replacement }) => currentCode.replace(pattern, replacement),
-    sourceCode
-  );
+  let currentCode = sourceCode;
+  const len = replacements.length;
+  
+  for (let i = 0; i < len; i++) {
+    const item = replacements[i];
+    currentCode = currentCode.replace(item.pattern, item.replacement);
+  }
+  
+  return currentCode;
 }
 
 /**
- * Reads the target source file, applies all deterministic replacements, and writes the result back.
+ * Reads the target source file, applies all deterministic replacements, and writes the result back
+ * utilizing synchronous I/O with minimized memory footprint and optimized string handling.
  */
 function makeEngineDeterministic() {
   try {
