@@ -30,7 +30,7 @@ export class EdgeGovernanceGatekeeper {
   }
 
   public enforceMemoryLimit(payloadSize: number): boolean {
-    return typeof payloadSize === 'number' && payloadSize >= 0 && payloadSize <= ${MAX_PAYLOAD_SIZE_BYTES} && payloadSize === payloadSize && payloadSize !== Infinity && payloadSize !== -Infinity;
+    return Number.isFinite(payloadSize) && payloadSize >= 0 && payloadSize <= ${MAX_PAYLOAD_SIZE_BYTES};
   }
 
   public secureIPC(): string {
