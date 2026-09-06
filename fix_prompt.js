@@ -51,6 +51,7 @@ Format your response exactly like this:
  * Validates path security boundaries to prevent directory traversal vulnerabilities.
  * @param {string} targetPath - The absolute path to validate.
  * @param {string} basePath - The allowed root boundary path.
+ * @throws {Error} If the target path falls outside the allowed base directory.
  */
 function assertSecurePath(targetPath, basePath) {
   if (!targetPath.startsWith(basePath)) {
@@ -60,7 +61,8 @@ function assertSecurePath(targetPath, basePath) {
 
 /**
  * Validates file content integrity and sizing boundaries.
- * @param {any} content - The file content to validate.
+ * @param {string} content - The file content to validate.
+ * @throws {Error} If content type is invalid or exceeds safety limits.
  */
 function assertValidFileContent(content) {
   if (typeof content !== 'string' || content.length > CONFIG.MAX_FILE_SIZE_BYTES) {
