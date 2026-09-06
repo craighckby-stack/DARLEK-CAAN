@@ -4,6 +4,22 @@
 
 ---
 
+## Executive Summary
+
+The **Evolution Protocol** (Dalek Caan v3.1) manages runtime DOM injection and UI component updates via an idempotent marker system. This document outlines architectural integration parameters, execution workflows, security compliance requirements, vulnerability disclosure policies, and a reference TypeScript implementation to ensure high rendering efficiency and robust system integrity.
+
+---
+
+## Table of Contents
+1. [Architectural Blueprint](#architectural-blueprint)
+2. [Integration Schema](#integration-schema)
+3. [Execution Workflow](#execution-workflow)
+4. [Security Best Practices & Compliance](#security-best-practices--compliance)
+5. [Vulnerability Disclosure & Reporting](#vulnerability-disclosure--reporting)
+6. [Implementation Blueprint](#implementation-blueprint)
+
+---
+
 ## Architectural Blueprint
 
 The **Evolution Protocol** serves as the primary injection vector for **Dalek Caan UI components**. Utilizing an advanced idempotent marker system, this module ensures that dynamic runtime UI updates maintain high rendering efficiency. By enforcing strict marker boundaries, the system prevents duplicate Document Object Model (DOM) node generation and actively mitigates potential memory leaks across continuous rendering cycles.
