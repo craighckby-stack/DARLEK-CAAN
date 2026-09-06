@@ -1,8 +1,5 @@
 import type { NextRequest } from 'next/server';
 
-/**
- * Interface for standard fetch JSON return structure
- */
 export interface SafeFetchResult<T> {
   success: boolean;
   data: T | null;
@@ -10,16 +7,15 @@ export interface SafeFetchResult<T> {
   error?: string;
 }
 
-/**
- * Safely parse a JSON string with a fallback.
- */
+const WHITESPACE_REGEX = /^\s*$/;
+
 export function safeParseJson<T = unknown>(str: string | null | undefined, fallback: T = {} as T): T {
-  if (!str || typeof str !== 'string') {
+  if (typeof str !== 'string') {
     return fallback;
   }
   
   const trimmed = str.trim();
-  if (!trimmed) {
+  if (!trimmed || WHITESPACE_REGEX.test(trimmed)) {
     return fallback;
   }
 
@@ -30,9 +26,6 @@ export function safeParseJson<T = unknown>(str: string | null | undefined, fallb
   }
 }
 
-/**
- * Safely parse a Request body (e.g. NextRequest) without throwing SyntaxError on empty body.
- */
 export async function safeReqJson<T = unknown>(req: Request | NextRequest, fallback: T = {} as T): Promise<T> {
   try {
     const text = await req.text();
@@ -51,9 +44,6 @@ export async function safeReqJson<T = unknown>(req: Request | NextRequest, fallb
   }
 }
 
-/**
- * Safely parse a fetch Response body without throwing SyntaxError on non-JSON or empty response.
- */
 export async function safeResponseJson<T = unknown>(res: Response, fallback: T = {} as T): Promise<T> {
   try {
     const text = await res.text();
@@ -69,13 +59,12 @@ export async function safeResponseJson<T = unknown>(res: Response, fallback: T =
     try {
       return JSON.parse(trimmed) as T;
     } catch {
-      // In case of non-JSON response, augment fallback with raw diagnostics safely
-      if (typeof fallback === 'object' && fallback !== null) {
-        return { 
-          ...fallback, 
-          error: trimmed.slice(0, 200), 
+      if (fallback !== null && typeof fallback === 'object') {
+        const errorSnippet = trimmed.length > 200 ? trimmed.slice(0, 200) : trimmed;
+        return Object.assign({}, fallback, { 
+          error: errorSnippet, 
           rawText: trimmed 
-        } as unknown as T;
+        }) as unknown as T;
       }
       return fallback;
     }
@@ -84,9 +73,6 @@ export async function safeResponseJson<T = unknown>(res: Response, fallback: T =
   }
 }
 
-/**
- * Safely fetch and parse JSON from an API endpoint, guarding against HTML error pages and network anomalies.
- */
 export async function safeFetchJson<T = unknown>(
   url: string, 
   options?: RequestInit
@@ -95,7 +81,7 @@ export async function safeFetchJson<T = unknown>(
     const res = await fetch(url, options);
     const text = await res.text();
     
-    if (!text || !text.trim()) {
+    if (!text) {
       return {
         success: res.ok,
         data: null,
@@ -105,6 +91,14 @@ export async function safeFetchJson<T = unknown>(
     }
 
     const trimmed = text.trim();
+    if (!trimmed) {
+      return {
+        success: res.ok,
+        data: null,
+        status: res.status,
+        error: res.ok ? undefined : `HTTP ${res.status} Empty Response`,
+      };
+    }
 
     try {
       const json = JSON.parse(trimmed);
@@ -117,7 +111,6 @@ export async function safeFetchJson<T = unknown>(
         error: json?.error || (res.ok ? undefined : `HTTP ${res.status}`),
       };
     } catch {
-      // HTML error page or non-JSON response captured securely
       return {
         success: false,
         data: null,
