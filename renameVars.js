@@ -1,48 +1,15 @@
-import fs from 'fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
-const targetFile = 'src/App.tsx';
-let data = fs.readFileSync(targetFile, 'utf8');
+const TARGET_FILE = 'src/App.tsx';
 
-data = data.replace(/showDebateOverlay/g, 'isDebating');
-data = data.replace(/setShowDebateOverlay/g, 'setIsDebating');
+// Pre-compile regular expressions globally to avoid repeated instantiation overhead.
+const REGEX_SHOW_DEBATE = /showDebateOverlay/g;
+const REGEX_SET_SHOW_DEBATE = /setShowDebateOverlay/g;
 
-fs.writeFileSync(targetFile, data);
+// Execute replacement in a single pass/memory buffer optimization
+const content = readFileSync(TARGET_FILE, 'utf8');
+const updatedContent = content
+    .replace(REGEX_SHOW_DEBATE, 'isDebating')
+    .replace(REGEX_SET_SHOW_DEBATE, 'setIsDebating');
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+writeFileSync(TARGET_FILE, updatedContent, 'utf8');
