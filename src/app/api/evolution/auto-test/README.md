@@ -24,14 +24,16 @@ The verification pipeline processes code mutations through four deterministic st
 
 ```typescript
 // Example invocation signature for the Auto-Test Runner pipeline
-interface TestPayload {
-  originalCode: string;
-  proposedCode: string;
-  metadata: {
-    generationId: string;
-    timestamp: number;
+export interface TestPayload {
+  readonly originalCode: string;
+  readonly proposedCode: string;
+  readonly metadata: {
+    readonly generationId: string;
+    readonly timestamp: number;
   };
 }
+
+export declare function runAutoTestPipeline(payload: TestPayload): Promise<boolean>;
 ```
 
 ---
