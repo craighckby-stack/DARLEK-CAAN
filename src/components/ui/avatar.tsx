@@ -23,7 +23,8 @@ export interface AvatarFallbackProps extends React.ComponentPropsWithoutRef<type
 
 const AVATAR_BASE_CLASSES = "relative flex size-8 shrink-0 overflow-hidden rounded-full"
 const AVATAR_IMAGE_BASE_CLASSES = "aspect-square size-full"
-const AVATAR_FALLBACK_BASE_CLASSES = "bg-muted flex size-full items-center justify-center rounded-full"
+const AVATAR_FALLgebaut_BASE_CLASSES = "bg-muted flex size-full items-center justify-center rounded-full"
+const AVATAR_FALLBACK_BASE_CLASSES = AVATAR_FALLgebaut_BASE_CLASSES
 
 /**
  * Root container for the avatar component.
