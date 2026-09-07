@@ -24,14 +24,18 @@
   const EMPTY_CHUNKS = Object.freeze([]);
 
   /**
-   * Resolves the ambient global scope container across diverse JS environments.
+   * Resolves the ambient global scope container across diverse JS environments safely.
    * @returns {typeof globalThis | null}
    */
   const resolveGlobalScope = () => {
-    if (typeof globalThis !== "undefined") return globalThis;
-    if (typeof self !== "undefined") return self;
-    if (typeof window !== "undefined") return window;
-    if (typeof global !== "undefined") return global;
+    try {
+      if (typeof globalThis !== "undefined") return globalThis;
+      if (typeof self !== "undefined") return self;
+      if (typeof window !== "undefined") return window;
+      if (typeof global !== "undefined") return global;
+    } catch {
+      // Fallback if environment access throws security/reference errors
+    }
     return null;
   };
 
@@ -207,6 +211,10 @@
   const globalScope = resolveGlobalScope();
   if (!globalScope) return;
 
-  const manifestStore = (globalScope.__RSC_MANIFEST ??= Object.create(null));
-  manifestStore[ROUTE_IDENTIFIER] = clientReferenceManifest;
+  try {
+    const manifestStore = (globalScope.__RSC_MANIFEST ??= Object.create(null));
+    manifestStore[ROUTE_IDENTIFIER] = clientReferenceManifest;
+  } catch {
+    // Fail silently to prevent runtime interruptions in restricted contexts
+  }
 })();
