@@ -1,18 +1,27 @@
 /**
  * File Path: "src/middleware/SecurityMiddleware.ts"
- * Darlek Caan
- * Darlek Caan: Enhanced Readability, Architectural Clarity, and Modern Idioms.
+ * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * Sovereign Overhaul: Performance, Type-Safety, Memory Efficiency, and Error Handling.
  */
 
 /**
  * SecurityMiddleware enforces the OMEGA ARCHITECTURE SECURITY PROTOCOL
- * to prevent volatile state leakage into repository revisions.
+ * to prevent volatile state leakage into repository revisions with maximum throughput.
  */
 export class SecurityMiddleware {
   private static readonly FORBIDDEN_EXTENSIONS: readonly string[] = Object.freeze([
     '.consciousness.dump',
     '.quantum.data',
   ]);
+
+  private static readonly EXTENSION_SET: ReadonlySet<string> = Object.freeze(
+    new Set(SecurityMiddleware.FORBIDDEN_EXTENSIONS)
+  );
+
+  private static readonly ENDINGS_REGEX: RegExp = new RegExp(
+    `(${SecurityMiddleware.FORBIDDEN_EXTENSIONS.map((ext) => ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|K')})$`,
+    'u'
+  );
 
   /**
    * Validates staged files against the OMEGA ARCHITECTURE SECURITY PROTOCOL.
@@ -21,18 +30,23 @@ export class SecurityMiddleware {
    * @returns `true` if all files pass security constraints, `false` if violations are found.
    */
   public static validateCommit(stagedFiles: readonly string[]): boolean {
-    if (!Array.isArray(stagedFiles) || stagedFiles.length === 0) {
+    try {
+      if (!Array.isArray(stagedFiles) || stagedFiles.length === 0) {
+        return true;
+      }
+
+      const violations = SecurityMiddleware.findForbiddenFiles(stagedFiles);
+
+      if (violations.length > 0) {
+        console.error('SECURITY_VIOLATION_CODE_0x00: Forbidden files detected:', violations);
+        return false;
+      }
+
       return true;
-    }
-
-    const violations = SecurityMiddleware.findForbiddenFiles(stagedFiles);
-
-    if (violations.length > 0) {
-      console.error('SECURITY_VIOLATION_CODE_0x00: Forbidden files detected:', violations);
+    } catch (error: unknown) {
+      console.error('SECURITY_MIDDLEWARE_CRITICAL_FAILURE:', error);
       return false;
     }
-
-    return true;
   }
 
   /**
@@ -42,9 +56,17 @@ export class SecurityMiddleware {
    * @returns Array of file paths matching forbidden extensions.
    */
   private static findForbiddenFiles(filePaths: readonly string[]): string[] {
-    return filePaths.filter(
-      (filePath) => typeof filePath === 'string' && SecurityMiddleware.hasForbiddenExtension(filePath)
-    );
+    const violations: string[] = [];
+    const len = filePaths.length;
+    
+    for (let i = 0; i < len; i++) {
+      const filePath = filePaths[i];
+      if (typeof filePath === 'string' && SecurityMiddleware.hasForbiddenExtension(filePath)) {
+        violations.push(filePath);
+      }
+    }
+
+    return violations;
   }
 
   /**
@@ -54,8 +76,12 @@ export class SecurityMiddleware {
    * @returns `true` if the file has a forbidden extension; otherwise `false`.
    */
   private static hasForbiddenExtension(filePath: string): boolean {
-    return SecurityMiddleware.FORBIDDEN_EXTENSIONS.some((extension) =>
-      filePath.endsWith(extension)
-    );
+    const len = SecurityMiddleware.FORBIDDEN_EXTENSIONS.length;
+    for (let i = 0; i < len; i++) {
+      if (filePath.endsWith(SecurityMiddleware.FORBIDDEN_EXTENSIONS[i])) {
+        return true;
+      }
+    }
+    return false;
   }
 }
