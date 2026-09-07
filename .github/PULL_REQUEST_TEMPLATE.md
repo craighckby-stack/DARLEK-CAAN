@@ -3,7 +3,7 @@
 # Engine: EMG Core v49 Neural Code and Documentation Optimizer Engine
 # Role: Enforces strict quality gates, architectural compliance, automated verification, and security controls.
 # Integration: Aligns PR submissions with Zero-Leak Sandbox, Dynamic Consensus Weighting (DCW), Diagnostic Engine, and Security Assurance Framework.
-# Version: 3.1.0-PERFORMANCE-OPTIMIZED
+# Version: 3.2.0-COMPREHENSIVE-OPTIMIZED
 -->
 
 ## ⚡ Executive Summary
@@ -100,7 +100,7 @@
 - [ ] **Input Sanitization:** Enforces strict schema validation and sanitization across all external and user boundaries.
 - [ ] **Least Privilege:** Enforces strict identity, role, and context-bound authorization constraints.
 - [ ] **Dependency Hygiene:** Produces clean audit output (`npm audit`, `pip-audit`, or `cargo audit`) with zero high/critical alerts.
-- [ ] **Data Encryption:** Encrypts PII and sensitive internal system state at rest (AES-GCM / ChaCha20) and in transit (TLS 1.3).
+- [ ] **Data Encryption:** Encrypts PII and sensitive internal system state at rest (`AES-GCM` / `ChaCha20`) and in transit (`TLS 1.3`).
 
 ### 4.2 Threat Model Assessment
 
