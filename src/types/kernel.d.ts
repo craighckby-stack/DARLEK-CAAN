@@ -2,7 +2,7 @@
  * @file src/types/kernel.d.ts
  * @version 4.9.0-CORE
  * @description Darlek Caan Type Definitions & Telemetry Schemas.
- * @optimizer Darlek Caan
+ * @optimizer EMG Core v49 Neural Code and Documentation Optimizer Engine
  */
 
 /**
@@ -16,7 +16,7 @@ export const enum SystemStatus {
   DEGRADED = 'DEGRADED',
 
   /** Subsystem has encountered severe faults requiring immediate isolation or failover recovery. */
-  CRITICAL = 'CRITICAL'
+  CRITICAL = 'CRITICAL',
 }
 
 /**
