@@ -1,5 +1,5 @@
 /**
- * @fileoverview GitHub Configuration and Credential Manager (EMG Core v49 Optimized)
+ * @fileoverview GitHub Configuration and Credential Manager (Darlek Caan Optimized)
  * Maximizes type-safety, memory efficiency, and runtime execution speed for state retrieval.
  */
 

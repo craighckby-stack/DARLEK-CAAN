@@ -310,8 +310,11 @@ Your response MUST be in this exact JSON format:
   "affectedFiles": [],
   "newFiles": []
 }`
-    : `You are DARLEK CANN, the supreme code evolution controller.
+    : `You are DARLEK CAAN, the supreme code evolution controller.
 Analyze the provided file with utmost rigor and return an evolved, upgraded version.
+You MUST implement real, meaningful code enhancements, refactors, or new features based on the context.
+DO NOT just echo the original file back.
+DO NOT just add comments. You must ACTUALLY MUTATE the code logic for the better.
 
 Your response MUST contain two parts:
 1. A JSON object with your analysis and other metadata.
@@ -320,7 +323,7 @@ Your response MUST contain two parts:
 DO NOT put the proposed code inside the JSON object.
 
 Format your response exactly like this:
-\`\`\`tsx
+\`\`\`json
 {
   "analysis": "Specific analysis of what dead-weight or bugs were fixed...",
   "riskScore": 1,
@@ -355,44 +358,86 @@ function parseLlmResponse(rawText: string, fallbackCode: string): ParsedLlmResul
   let parsedResponse: ParsedMutationResponse | null = null;
   let proposedCode = '';
   let analysis = 'Analysis complete.';
-  
-  const codeBlocks = [...rawText.matchAll(/```(?:[^\n]*)\n([\s\S]*?)```/g)];
-  
-  for (const block of codeBlocks) {
-    const content = block[1].trim();
-    try {
-      const json = JSON.parse(content) as ParsedMutationResponse;
-      if (json.analysis || json.riskScore !== undefined || json.newFiles) {
-        parsedResponse = json;
+  let jsonString = '';
+
+  // 1. Precise brace depth JSON extraction
+  const firstBrace = rawText.indexOf('{');
+  if (firstBrace !== -1) {
+    let braceCount = 0;
+    let inString = false;
+    let escape = false;
+    for (let i = firstBrace; i < rawText.length; i++) {
+      const char = rawText[i];
+      if (escape) {
+        escape = false;
         continue;
       }
-    } catch {
-      // Ignore JSON parse errors for non-JSON code blocks
+      if (char === '\\') {
+        escape = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (!inString) {
+        if (char === '{') braceCount++;
+        else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            jsonString = rawText.substring(firstBrace, i + 1);
+            try {
+              const parsed = JSON.parse(jsonString.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')) as ParsedMutationResponse;
+              if (parsed.analysis || parsed.riskScore !== undefined || parsed.newFiles) {
+                parsedResponse = parsed;
+              }
+            } catch (e) {}
+            break;
+          }
+        }
+      }
     }
-    
+  }
+
+  // 2. Extract code blocks
+  const codeBlocks = [...rawText.matchAll(/```(?:[^\n]*)\n([\s\S]*?)```/g)];
+  for (const block of codeBlocks) {
+    const content = block[1].trim();
+    // Skip if block is just the JSON we already parsed
+    if (parsedResponse && jsonString && content.replace(/\s/g, '') === jsonString.replace(/\s/g, '')) {
+      continue;
+    }
+    // Skip if it looks like arbitrary JSON
+    if (content.startsWith('{') && content.endsWith('}')) {
+      try {
+        JSON.parse(content);
+        continue;
+      } catch (e) {}
+    }
     if (!proposedCode && content.length > 10) {
       proposedCode = content;
     }
   }
-  
-  if (!parsedResponse) {
-    try {
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsedResponse = JSON.parse(jsonMatch[0].replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')) as ParsedMutationResponse;
-      }
-    } catch {
-      // Ignore fallback JSON extraction failures
+
+  // 3. Fallback extraction if no code blocks present
+  if (!proposedCode) {
+    let textWithoutJson = rawText;
+    if (jsonString) {
+      textWithoutJson = rawText.replace(jsonString, '');
+    }
+    textWithoutJson = textWithoutJson.replace(/```(?:json|tsx|ts|js|jsx|html|css|python|md)?[ \t]*\n?/g, '').replace(/```/g, '').trim();
+    if (textWithoutJson.length > 10) {
+      proposedCode = textWithoutJson;
     }
   }
-  
+
   if (parsedResponse) {
     analysis = parsedResponse.analysis || analysis;
     if (parsedResponse.proposedCode && !proposedCode) {
       proposedCode = parsedResponse.proposedCode;
     }
   }
-  
+
   if (!proposedCode) {
     proposedCode = fallbackCode;
   }

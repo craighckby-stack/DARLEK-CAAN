@@ -4,7 +4,7 @@ import { safeReqJson } from '@/lib/safe-json';
 export const dynamic = 'force-dynamic';
 
 const GITHUB_API_BASE_URL = 'https://api.github.com';
-const USER_AGENT_HEADER = 'EMG-Core-Neural-Code-Optimizer';
+const USER_AGENT_HEADER = 'Darlek Caan-Neural-Code-Optimizer';
 
 interface GitHubBranch {
   name?: unknown;
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<SuccessRespon
     const errorMessage = error instanceof Error ? error.message : 'Unknown execution error';
     const status = extractErrorStatus(error);
 
-    console.error('[EMG Core v49] Branch list retrieval error:', error);
+    console.error('[Darlek Caan] Branch list retrieval error:', error);
     
     return NextResponse.json({ error: errorMessage }, { status });
   }

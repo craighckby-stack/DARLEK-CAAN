@@ -38,7 +38,7 @@ export const useSystemOrchestrator = (state: SystemState): UseSystemOrchestrator
         setIsReady(false);
         setLatency(0);
       }
-      console.error('EMG Core v49: Handshake execution failure', error);
+      console.error('Darlek Caan: Handshake execution failure', error);
     }
 
     return () => {

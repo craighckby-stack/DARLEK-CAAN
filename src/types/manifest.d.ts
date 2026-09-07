@@ -1,6 +1,6 @@
 /**
  * @file src/types/manifest.d.ts
- * @module EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * @module Darlek Caan
  * @description Type definitions for project manifests, providing strict readonly structures and extensible literal suggestions.
  */
 

@@ -1,7 +1,7 @@
 /**
  * @file src/types/orchestrator.d.ts
- * @module EMG Core v49 Neural Code and Documentation Optimizer Engine
- * @description Sovereign type definitions for orchestrator agents and system states.
+ * @module Darlek Caan
+ * @description Darlek Caan type definitions for orchestrator agents and system states.
  * Maximizes type-safety, memory efficiency through readonly modifiers, and runtime predictability.
  */
 
@@ -37,7 +37,7 @@ export const enum SystemStatus {
  * Configuration profile defining an individual orchestrator agent.
  */
 export interface AgentConfig {
-  /** Unique sovereign identifier for the agent. */
+  /** Unique Darlek Caan identifier for the agent. */
   readonly id: string;
 
   /** Operational role and privilege tier. */

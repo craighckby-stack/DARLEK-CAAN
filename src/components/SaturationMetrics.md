@@ -3,7 +3,7 @@
 `File Path: src/components/SaturationMetrics.md`
 
 ## Executive Summary
-The `SaturationMetrics` component is a high-performance telemetry module within the `unitary-core` diagnostic suite. It provides real-time visualization of cognitive load, structural integrity, and operational health for distributed agent swarms.
+The `SaturationMetrics` component is a high-performance telemetry module within the `Darlek Caan` diagnostic suite. It provides real-time visualization of cognitive load, structural integrity, and operational health for distributed agent swarms.
 
 ---
 

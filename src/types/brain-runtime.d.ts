@@ -1,7 +1,7 @@
 /**
  * @file src/types/brain-runtime.d.ts
  * @module Types/BrainRuntime
- * @description Sovereign-tier type definitions for the Brain Runtime core module.
+ * @description Darlek Caan type definitions for the Brain Runtime core module.
  * Structured for maximum readability, clean architectural separation, and strict type safety.
  */
 
@@ -64,7 +64,7 @@ export interface RuntimeConfig {
   /** Fully qualified endpoint URL of the target database service. */
   readonly databaseURL: string;
 
-  /** Unique project identifier within the sovereign cluster. */
+  /** Unique project identifier within the Darlek Caan cluster. */
   readonly projectId: string;
 
   /** Target execution environment context. Defaults to runtime default if omitted. */

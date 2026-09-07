@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, type ChangeEvent, type KeyboardEvent } from 'react';
-import { Send, Loader2, GitBranch, RefreshCw, Paperclip, File, X } from 'lucide-react';
+import { Send, Loader2, GitBranch, RefreshCw, Paperclip, File, X, Languages } from 'lucide-react';
 import type { Message, SystemState, BranchInfo } from '@/lib/types';
 import { SETUP_STEPS, COLORS } from '@/lib/constants';
+import { ALL_SUPPORTED_LANGUAGES, changeDisplayLanguage, getCurrentLanguage } from '@/lib/languages';
 import ChatMessage from './ChatMessage';
 
 interface AttachedFile {
@@ -39,6 +40,11 @@ export default function ChatPanel({
   const [input, setInput] = useState<string>('');
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('english');
+
+  useEffect(() => {
+    setSelectedLanguage(getCurrentLanguage());
+  }, []);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -382,6 +388,79 @@ export default function ChatPanel({
               CONTINUE
             </button>
           )}
+        </div>
+      );
+    }
+
+    if (stepId === 'language') {
+      return (
+        <div className="space-y-3 p-4 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Languages size={14} style={{ color: COLORS.cyan }} />
+              <span
+                style={{
+                  fontFamily: 'var(--font-orbitron), sans-serif',
+                  fontSize: '10px',
+                  letterSpacing: '0.1em',
+                  color: COLORS.cyan,
+                }}
+              >
+                INTERFACE DISPLAY LANGUAGE
+              </span>
+            </div>
+            <span
+              style={{
+                fontFamily: 'var(--font-orbitron), sans-serif',
+                fontSize: '8px',
+                letterSpacing: '0.08em',
+                color: COLORS.cyan,
+                background: 'rgba(0, 255, 204, 0.1)',
+                border: '1px solid rgba(0, 255, 204, 0.2)',
+                padding: '1px 6px',
+                borderRadius: '2px',
+              }}
+            >
+              130+ WORLD LOCALES
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            <select
+              value={selectedLanguage}
+              onChange={(e) => {
+                const lang = e.target.value;
+                setSelectedLanguage(lang);
+                changeDisplayLanguage(lang);
+              }}
+              className="dalek-input w-full px-3 py-2 text-xs cursor-pointer bg-black text-gray-200 border border-neutral-800 rounded font-mono"
+            >
+              <optgroup label="POPULAR LANGUAGES">
+                {ALL_SUPPORTED_LANGUAGES.slice(0, 20).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name} {l.nativeName && l.nativeName !== l.name ? `(${l.nativeName})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="ALL WORLD LANGUAGES (130+)">
+                {ALL_SUPPORTED_LANGUAGES.slice(20).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name} {l.nativeName && l.nativeName !== l.name ? `(${l.nativeName})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <div className="text-[9px] text-gray-500 font-mono text-center pt-0.5">
+              Translation by xnx3/translate
+            </div>
+          </div>
+
+          <button
+            onClick={() => onSendMessage(`language: ${selectedLanguage}`)}
+            className="dalek-btn dalek-btn-primary px-4 py-2 text-xs w-full cursor-pointer"
+          >
+            CONFIRM LANGUAGE & CONTINUE
+          </button>
         </div>
       );
     }

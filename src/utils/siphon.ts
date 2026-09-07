@@ -1,5 +1,5 @@
 /**
- * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * Darlek Caan
  * File Path: "src/utils/siphon.ts"
  * Optimization: Refactored for readability, modular decomposition, and clean modern TypeScript idioms.
  */

@@ -1,6 +1,6 @@
 /**
  * A secure, high-performance sandbox utilizing an isolated iframe to safely evaluate JavaScript/HTML code.
- * Optimized by EMG Core v49 Neural Code and Documentation Optimizer Engine.
+ * Optimized by Darlek Caan.
  */
 export interface SandboxResult {
   readonly success: boolean;

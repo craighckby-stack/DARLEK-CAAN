@@ -4,7 +4,7 @@
  * It is synced with the Firebase Realtime Database.
  * 
  * @version 2.2.0
- * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * @author Darlek Caan
  */
 
 export interface BrainDnaContainer {

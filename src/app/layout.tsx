@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { JSX, ReactNode } from "react";
+import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -38,6 +39,28 @@ const DOCUMENT_BODY_INLINE_STYLES = {
 export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
   return (
     <html lang="en" dir="ltr" className="dark" suppressHydrationWarning>
+      <head>
+        <Script
+          src="https://cdn.staticfile.net/translate.js/3.2.1/translate.js"
+          strategy="afterInteractive"
+        />
+        <Script id="translate-init" strategy="afterInteractive">
+          {`
+            window.addEventListener('load', () => {
+              if (window.translate) {
+                translate.selectLanguageTag.show = false;
+                try {
+                  var savedLang = localStorage.getItem('darlek_cann_language');
+                  if (savedLang && savedLang !== 'english') {
+                    translate.to = savedLang;
+                  }
+                } catch (e) {}
+                translate.execute();
+              }
+            });
+          `}
+        </Script>
+      </head>
       <body
         dir="ltr"
         className="antialiased min-h-screen bg-black text-[#e0e0e0] font-mono overflow-x-hidden m-0 p-0"

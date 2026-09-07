@@ -6,7 +6,11 @@ import { safeReqJson } from '@/lib/safe-json';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return NextResponse.json({ status: 'online', service: 'TEST_CONNECTION_API' });
+  return NextResponse.json({ 
+    status: 'online', 
+    service: 'TEST_CONNECTION_API',
+    hasServerGeminiKey: !!process.env.GEMINI_API_KEY 
+  });
 }
 
 export async function POST(req: NextRequest) {

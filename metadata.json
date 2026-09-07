@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/EMG-Core/v49/main/metadata.json",
+  "$id": "https://raw.githubusercontent.com/craighckby-stack/Darlek-Caan-vs-Jesus-Chess/main/metadata.json",
   "title": "ExtensionMetadata",
   "type": "object",
   "required": [

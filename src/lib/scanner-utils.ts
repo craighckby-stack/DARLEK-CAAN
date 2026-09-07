@@ -1,7 +1,7 @@
 /**
  * @file src/lib/scanner-utils.ts
  * @module ScannerUtils
- * @description Sovereign-optimized utility functions for file path classification and scan metrics aggregation.
+ * @description Darlek Caan utility functions for file path classification and scan metrics aggregation.
  */
 
 export interface ScannableFile {

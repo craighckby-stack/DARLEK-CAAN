@@ -105,6 +105,7 @@ function getGeminiClient(apiKey: string): GoogleGenAI {
 }
 
 export interface GeminiCallConfig {
+  model?: string;
   maxTokens?: number;
   temperature?: number;
   responseMimeType?: string;
@@ -218,7 +219,11 @@ export async function callGemini(
     const ai = getGeminiClient(cleanKey);
     const config = buildGenerationConfig(systemInstruction, options);
 
-    for (const model of MODEL_CANDIDATES) {
+    const candidates = options?.model
+      ? [options.model, ...MODEL_CANDIDATES.filter((m) => m !== options.model)]
+      : MODEL_CANDIDATES;
+
+    for (const model of candidates) {
       try {
         const response = await ai.models.generateContent({
           model,

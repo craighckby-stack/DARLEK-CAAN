@@ -1,6 +1,6 @@
 /**
  * @file src/types/evolution.ts
- * @module EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * @module Darlek Caan
  * @description Type-safe structural contracts for quantum state vectors and evolution history snapshots.
  */
 

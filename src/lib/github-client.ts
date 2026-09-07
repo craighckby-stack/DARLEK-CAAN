@@ -1,6 +1,6 @@
 /**
  * @file src/lib/github-client.ts
- * @version v49.2.0-EMG-SOVEREIGN
+ * @version v49.2.0
  * @description Readable, modular, and modern GitHub API client utilizing pristine idioms and clear architectural boundaries.
  */
 
@@ -43,10 +43,10 @@ function prepareRequestHeaders(token: string, customHeaders?: Record<string, str
 export const GitHubClient: GitHubClientInterface = {
   async request(token: string, url: string, options: GitHubRequestOptions = {}): Promise<Response> {
     if (!token) {
-      throw new TypeError('EMG-CORE-ERR: Authentication token is required for GitHubClient requests.');
+      throw new TypeError('Darlek Caan-ERR: Authentication token is required for GitHubClient requests.');
     }
     if (!url) {
-      throw new TypeError('EMG-CORE-ERR: Target URL path is required for GitHubClient requests.');
+      throw new TypeError('Darlek Caan-ERR: Target URL path is required for GitHubClient requests.');
     }
 
     const endpoint = buildGitHubEndpoint(url);
@@ -61,7 +61,7 @@ export const GitHubClient: GitHubClientInterface = {
       return await fetch(endpoint, sanitizedOptions);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`[EMG-CORE] GitHubClient network failure for endpoint "${endpoint}": ${errorMessage}`);
+      throw new Error(`[Darlek Caan] GitHubClient network failure for endpoint "${endpoint}": ${errorMessage}`);
     }
   },
 };

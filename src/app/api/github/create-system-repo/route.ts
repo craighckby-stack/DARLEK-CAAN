@@ -36,14 +36,15 @@ For extreme efficiency, generate highly-polished, high-density, and concise code
 
 IMPORTANT: DO NOT generate just a generic 5-file template. You MUST generate the FULL system as defined in the blueprint, breaking the code down into logical files.
 Generate all necessary files including:
-1. "package.json": include all necessary React/Next.js dependencies (React 19, Next.js 15, "lucide-react", "framer-motion", "recharts", etc.) + any other libraries required by the blueprint.
-2. "README.md": detailing the design specs and system flow.
-3. "src/app/globals.css": styles with absolute minimal lines (@import "tailwindcss";).
-4. "src/app/layout.tsx": RootLayout.
-5. "src/app/page.tsx": the primary workspace interface, importing necessary components.
-6. "src/components/...": All necessary UI components, charts, layout sections.
-7. "src/lib/...": Utilities, types, constants.
-8. "src/app/api/...": Any necessary Next.js backend API routes for the logic described.
+1. "package.json": include all necessary React/Next.js dependencies, with "license": "CC-BY-NC-SA-4.0" and "author": "Craighckby".
+2. "README.md": detailing the design specs, system flow, and CC BY-NC-SA 4.0 Copyright (c) 2026 Craighckby.
+3. "LICENSE": Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) [Full text of the license is available at https://creativecommons.org], Copyright (c) 2026 Craighckby.
+4. "src/app/globals.css": styles with absolute minimal lines (@import "tailwindcss";).
+5. "src/app/layout.tsx": RootLayout.
+6. "src/app/page.tsx": the primary workspace interface, importing necessary components.
+7. "src/components/...": All necessary UI components, charts, layout sections.
+8. "src/lib/...": Utilities, types, constants.
+9. "src/app/api/...": Any necessary Next.js backend API routes for the logic described.
 
 - Use a stunning dark-mode futuristic sci-fi aesthetic ("Dalek Caan Cyber slate" or elegant off-black with glowing blue/neon-cyan details, soft shadows, and deep red highlights).
 - Replace any mock simulations with REAL logic or fully implemented mock data functions that behave realistically.
@@ -108,6 +109,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const defaultBranch = await ensureGitHubRepositoryExists({ token, owner, repoName, description, blueprintName });
     await delay(1000);
+
+    // Ensure LICENSE file is credited and created under CC BY-NC-SA 4.0 for Craighckby
+    const hasLicense = compilation.files.some(
+      (f) => f.path.toLowerCase() === 'license' || f.path.toLowerCase() === 'license.md'
+    );
+    if (!hasLicense) {
+      compilation.files.push({
+        path: 'LICENSE',
+        content: `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)\n[Full text of the license is available at https://creativecommons.org]\n\nCopyright (c) 2026 Craighckby\n\nBy exercising the Licensed Rights, You accept and agree to be bound by the terms and conditions of this Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License.\n\n- Attribution: Credit Copyright (c) 2026 Craighckby.\n- NonCommercial: No commercial use without prior explicit permission.\n- ShareAlike: Remixes/adaptations must be distributed under the same license.\n`,
+      });
+    }
 
     const { pushedFiles, failedFiles } = await pushFilesToGitHub({ token, owner, repoName, defaultBranch, files: compilation.files });
 
@@ -436,6 +448,8 @@ function generateDeterministicFallbackStructure(
       name: repoName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
       version: '1.0.0',
       private: true,
+      license: 'CC-BY-NC-SA-4.0',
+      author: 'Craighckby',
       scripts: {
         dev: 'next dev',
         build: 'next build',
@@ -502,6 +516,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     files: [
       { path: 'package.json', content: packageJson },
       { path: 'README.md', content: blueprintContent || readmeMd },
+      {
+        path: 'LICENSE',
+        content: `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)\n[Full text of the license is available at https://creativecommons.org]\n\nCopyright (c) 2026 Craighckby\n`,
+      },
       { path: 'src/app/globals.css', content: globalsCss },
       { path: 'src/app/layout.tsx', content: layoutTsx },
     ],

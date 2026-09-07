@@ -1,6 +1,6 @@
 /**
  * @file src/lib/constants.ts
- * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * @author Darlek Caan
  * @description Centralized, frozen configuration constants with reinforced type-safety,
  * memory optimization via immutable structures, and strict runtime contracts.
  */
@@ -42,7 +42,7 @@ export const DALEK_CAAN_SYSTEM_PROMPT = `[ROLE] You are the AHI ORCHESTRATOR —
 5. SECRET SANITIZATION: If you detect API keys, tokens, or credentials in historical code, redact them immediately as \`<REDACTED_SECRET>\`.` as const;
 
 export interface SetupStep {
-  readonly id: 'github' | 'repo' | 'branch' | 'llm-keys';
+  readonly id: 'github' | 'repo' | 'branch' | 'language' | 'llm-keys';
   readonly label: string;
   readonly required: boolean;
   readonly description: string;
@@ -70,6 +70,13 @@ export const SETUP_STEPS: readonly SetupStep[] = [
     required: true,
     description: 'Target branch. (default: main)',
     placeholder: 'main',
+  },
+  {
+    id: 'language',
+    label: 'Display Language',
+    required: false,
+    description: 'Select cognitive interface language powered by xnx3/translate.',
+    placeholder: 'english',
   },
   {
     id: 'llm-keys',

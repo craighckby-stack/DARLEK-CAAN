@@ -1,6 +1,6 @@
 /**
  * @file src/lib/utils/core.ts
- * @module EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * @module Darlek Caan
  * @description Core utility suite providing cryptographically secure identifier generation,
  * robust input validation, and strongly-typed domain entity factories.
  */

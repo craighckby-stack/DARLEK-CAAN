@@ -89,5 +89,13 @@
 
 ## 📄 Copyright & License
 
-**Copyright © 2026 craighckby-stack.** All rights reserved.  
+**Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**  
+[Full text of the license is available at https://creativecommons.org]
+
+**Copyright (c) 2026 Craighckby.** All rights reserved.  
 Maintained under the [craighckby-stack/Darlek-Caan-vs-Jesus-Chess](https://github.com/craighckby-stack/Darlek-Caan-vs-Jesus-Chess) repository.
+
+### Key License Provisions:
+* **Attribution (BY)**: You must give appropriate credit to **Craighckby**, provide a link to the license, and indicate if changes were made.
+* **NonCommercial (NC)**: You may not use the material for commercial purposes without prior explicit permission.
+* **ShareAlike (SA)**: If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.

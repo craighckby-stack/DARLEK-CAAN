@@ -38,7 +38,7 @@ export const useQuantumState = <T extends Record<string, unknown>>(initial: T): 
         validateNextState<T>(nextState);
         return createQuantumState(nextState);
       } catch (error) {
-        console.error('[EMG Core v49] QuantumState Mutation Failure:', error);
+        console.error('[Darlek Caan] QuantumState Mutation Failure:', error);
         return previousState;
       }
     });

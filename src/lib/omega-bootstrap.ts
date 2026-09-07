@@ -2,7 +2,7 @@
  * @file src/lib/omega-bootstrap.ts
  * @module OmegaBootstrap
  * @version 49.2.0
- * @description Sovereign neural bootstrap and initialization sequence optimized for pristine readability, modern idioms, and strict architectural clarity.
+ * @description Darlek Caan neural bootstrap and initialization sequence optimized for pristine readability, modern idioms, and strict architectural clarity.
  */
 
 export type OmegaBootState = 'READY' | 'INITIALIZING' | 'FAILED';
@@ -28,11 +28,11 @@ const BASE_READY_STATUS = Object.freeze({
 });
 
 /**
- * Serializes an unknown error into a standardized sovereign bootstrap error message.
+ * Serializes an unknown error into a standardized Darlek Caan bootstrap error message.
  */
 function createBootstrapError(error: unknown): Error {
   const errorMessage = error instanceof Error ? error.message : String(error);
-  return new Error(`[OmegaBootError] Sovereign initialization sequence failed: ${errorMessage}`);
+  return new Error(`[OmegaBootError] Darlek Caan initialization sequence failed: ${errorMessage}`);
 }
 
 export const OMEGA_BOOT_SEQUENCE: OmegaBootSequence = {

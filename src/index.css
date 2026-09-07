@@ -1,14 +1,3 @@
-@@@SUMMARY
-Refactored stylesheet architecture with semantic CSS custom properties, logical layer grouping, and pristine documentation blocks for enhanced maintainability.
-@@@START
-/**
- * ============================================================================
- * EMG Core v49 - Optimized Stylesheet Architecture
- * File Path: src/index.css
- * Focus: Readability, Modern Idioms, Clean Architectural Clarity
- * ============================================================================
- */
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400&display=swap');
 @import "tailwindcss";
 
@@ -78,4 +67,3 @@ Refactored stylesheet architecture with semantic CSS custom properties, logical 
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
-@@@

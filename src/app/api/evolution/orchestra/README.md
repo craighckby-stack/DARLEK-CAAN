@@ -24,7 +24,7 @@ The engine manages synthetic reasoning through two primary execution modes:
 ## Integration
 
 - **LLM Provider**: Leverages `lib/llm-provider` to ensure robust multi-model fallback and high availability.
-- **Agent Swarms**: Architected for seamless integration with `sovereign-kernel` agent swarms.
+- **Agent Swarms**: Architected for seamless integration with `Darlek Caan` agent swarms.
 
 ---
 

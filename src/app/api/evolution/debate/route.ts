@@ -98,7 +98,7 @@ async function fetchFileTree(token: string, owner: string, repo: string, branch:
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'EMG-Neural-Engine',
+        'User-Agent': 'Darlek Caan',
       },
       signal: AbortSignal.timeout(TREE_FETCH_TIMEOUT_MS),
     });
@@ -129,7 +129,7 @@ async function fetchGitHubFile(
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3.raw',
-        'User-Agent': 'EMG-Neural-Engine',
+        'User-Agent': 'Darlek Caan',
       },
       signal: AbortSignal.timeout(FILE_FETCH_TIMEOUT_MS),
     });

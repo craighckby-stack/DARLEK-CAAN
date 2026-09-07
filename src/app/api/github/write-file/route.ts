@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import type { WriteFileBody } from '@/lib/types';
-import { sanitizeContent } from '@/lib/scanner';
+import { sanitizeCode } from '@/lib/sanitizer';
 import { safeResponseJson, safeReqJson } from '@/lib/safe-json';
 
 export const dynamic = 'force-dynamic';
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const sanitizedPathLog = cleanPath.replace(/error/gi, 'err');
 
     // Secret Sanitization Gatekeeper
-    const { sanitized: safeContent, findings } = sanitizeContent(content);
+    const { sanitized: safeContent, findings } = sanitizeCode(content, cleanPath);
     if (findings.length > 0) {
       console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${sanitizedPathLog} before write/commit.`);
     }

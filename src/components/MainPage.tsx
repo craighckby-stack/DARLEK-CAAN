@@ -19,13 +19,18 @@ import type {
   AgentVote,
   RejectionMemory,
   BranchInfo,
+  GeminiModelId,
+  SaturationAlert,
 } from '@/lib/types';
 import { SETUP_STEPS, COLORS, INTRO_MESSAGES, DEFAULT_DEBATE_AGENTS } from '@/lib/constants';
-import { Shield, Zap, MessageSquare, Activity, Sliders, Target, FileCode, Settings, X, WifiOff, RefreshCw, Bug, AlertTriangle, CheckCircle2, Check, Copy, Loader2 } from 'lucide-react';
+import { ALL_SUPPORTED_LANGUAGES, changeDisplayLanguage, getCurrentLanguage } from '@/lib/languages';
+import { SaturationModal } from '@/components/SaturationModal';
+import { Shield, Zap, MessageSquare, Activity, Sliders, Target, FileCode, Settings, X, WifiOff, RefreshCw, Bug, AlertTriangle, CheckCircle2, Check, Copy, Loader2, Languages, Eye, EyeOff, Sparkles, Cpu, Gauge, Ban, Plus, Trash2, Key, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { safeApiFetch } from '@/lib/api-client';
+import { validateSourceCode, ValidationResult } from '@/lib/validator';
 
 export interface FailedSave {
   id: string;
@@ -203,9 +208,23 @@ export default function Home() {
   const [ownerInput, setOwnerInput] = useState('craighckby-stack');
   const [repoInput, setRepoInput] = useState('DARLEK-CAAN-Cognitive-Engine');
   const [branchInput, setBranchInput] = useState('main');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('english');
   const [setupError, setSetupError] = useState<string | null>(null);
   const [setupTesting, setSetupTesting] = useState(false);
   const [creatingNewRepo, setCreatingNewRepo] = useState(false);
+
+  // ── API & Model Configuration states ──
+  const [geminiKeyInput, setGeminiKeyInput] = useState('');
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<GeminiModelId>('gemini-3.7-flash');
+  const [hasServerGeminiKey, setHasServerGeminiKey] = useState(false);
+
+  // ── Saturation Logic & Equilibrium states ──
+  const [autoPauseOnSaturation, setAutoPauseOnSaturation] = useState(true);
+  const [autoSkipSaturated, setAutoSkipSaturated] = useState(true);
+  const [blacklistedFiles, setBlacklistedFiles] = useState<string[]>([]);
+  const [manualBlacklistInput, setManualBlacklistInput] = useState('');
+  const [saturationAlert, setSaturationAlert] = useState<SaturationAlert | null>(null);
   
   // ── Create File Modal state ──
   const [createFileModal, setCreateFileModal] = useState<{ isOpen: boolean; path: string; content: string }>({ isOpen: false, path: '', content: '// New file' });
@@ -376,6 +395,53 @@ export default function Home() {
           if (parsed && typeof parsed === 'object') setPendingMutation(parsed);
         } catch {}
       }
+
+      const savedLanguage = localStorage.getItem('darlek_cann_language');
+      if (savedLanguage) {
+        setSelectedLanguage(savedLanguage);
+      }
+
+      const savedGeminiKey = localStorage.getItem('darlek_cann_gemini_key');
+      if (savedGeminiKey) {
+        setGeminiKeyInput(savedGeminiKey);
+        setSystemState((prev) => ({
+          ...prev,
+          apiKeys: { ...prev.apiKeys, gemini: savedGeminiKey }
+        }));
+      }
+
+      const savedModel = localStorage.getItem('darlek_cann_selected_model');
+      if (savedModel) {
+        setSelectedModel(savedModel as GeminiModelId);
+      }
+
+      const savedAutoPauseSat = localStorage.getItem('darlek_cann_auto_pause_saturation');
+      if (savedAutoPauseSat !== null) {
+        setAutoPauseOnSaturation(savedAutoPauseSat === 'true');
+      }
+
+      const savedAutoSkipSat = localStorage.getItem('darlek_cann_auto_skip_saturation');
+      if (savedAutoSkipSat !== null) {
+        setAutoSkipSaturated(savedAutoSkipSat === 'true');
+      }
+
+      const savedBlacklist = localStorage.getItem('darlek_cann_blacklisted_files');
+      if (savedBlacklist) {
+        try {
+          const bl = JSON.parse(savedBlacklist);
+          if (Array.isArray(bl)) setBlacklistedFiles(bl);
+        } catch {}
+      }
+
+      // Check server API status for Gemini key injection
+      fetch('/api/setup/test-connection')
+        .then((r) => r.json())
+        .then((d) => {
+          if (d?.hasServerGeminiKey) {
+            setHasServerGeminiKey(true);
+          }
+        })
+        .catch(() => {});
 
       const savedCenterView = localStorage.getItem('darlek_cann_center_view');
       if (savedCenterView === 'files' || savedCenterView === 'cognitive' || savedCenterView === 'scanner') {
@@ -570,6 +636,7 @@ export default function Home() {
           setMutationsApplied((prev) => prev + 1);
           setHistoryRefreshTrigger((prev) => prev + 1);
           setPendingMutation(null);
+          setDebateActive(false);
           setFailedSave(null);
           localStorage.removeItem('darlek_cann_failed_save');
           setIsDebugSaveModalOpen(false);
@@ -1234,9 +1301,23 @@ export default function Home() {
           setSelectedFileIndex(-1);
           setSystemState((prev) => ({
             ...prev,
+            apiKeys: {
+              ...prev.apiKeys,
+              github: tokenInput.trim(),
+              gemini: geminiKeyInput.trim() || prev.apiKeys.gemini,
+            },
             evolutionCycle: prev.evolutionCycle + 1,
             setupComplete: true
           }));
+
+          if (geminiKeyInput.trim()) {
+            localStorage.setItem('darlek_cann_gemini_key', geminiKeyInput.trim());
+          }
+          localStorage.setItem('darlek_cann_selected_model', selectedModel);
+          localStorage.setItem('darlek_cann_auto_pause_saturation', String(autoPauseOnSaturation));
+          localStorage.setItem('darlek_cann_auto_skip_saturation', String(autoSkipSaturated));
+          localStorage.setItem('darlek_cann_blacklisted_files', JSON.stringify(blacklistedFiles));
+
           addLogEntry('SCAN', `Scanned ${ownerInput.trim()}/${repoInput.trim()} — ${scanData.total} files.`);
 
           // Grab ALL text/code/config/raw/readme files (exclude only binary media/compiled targets)
@@ -1482,6 +1563,7 @@ export default function Home() {
         addLogEntry('REJECT', `Mutation push aborted: 0 diff detected for ${mutation.filePath}`);
         setIsLoading(false);
         setPendingMutation(null);
+          setDebateActive(false);
         return;
       }
 
@@ -1563,6 +1645,7 @@ export default function Home() {
           setMutationsApplied((prev) => prev + 1);
           setHistoryRefreshTrigger((prev) => prev + 1);
           setPendingMutation(null);
+          setDebateActive(false);
           setDebateVotes([]);
           setDebateConsensus('');
           setDebateConsensusCoefficient(null);
@@ -1711,6 +1794,7 @@ export default function Home() {
           );
           addLogEntry('WARNING', `0-diff commit prevented for ${mutation.filePath}`);
           setPendingMutation(null);
+          setDebateActive(false);
           setIsLoading(false);
         } else {
           const errorMsg = data?.error || error || 'Failed to apply mutation to repository';
@@ -1749,6 +1833,7 @@ export default function Home() {
             ),
           });
           setPendingMutation(null);
+          setDebateActive(false);
           setDebateVotes([]);
           setDebateConsensus('');
         }
@@ -1790,6 +1875,7 @@ export default function Home() {
           ),
         });
         setPendingMutation(null);
+          setDebateActive(false);
         setDebateVotes([]);
         setDebateConsensus('');
       } finally {
@@ -1820,6 +1906,7 @@ export default function Home() {
         setRejectionMemory((prev) => [rejection, ...prev].slice(0, 20));
         setHistoryRefreshTrigger((prev) => prev + 1);
         setPendingMutation(null);
+          setDebateActive(false);
         setDebateVotes([]);
         setDebateConsensus('');
         addCaanMessage(
@@ -1890,6 +1977,7 @@ export default function Home() {
         setRejectionMemory((prev) => [rejection, ...prev].slice(0, 20));
         setHistoryRefreshTrigger((prev) => prev + 1);
         setPendingMutation(null);
+          setDebateActive(false);
         setDebateVotes([]);
         setDebateConsensus('');
         
@@ -1920,6 +2008,7 @@ export default function Home() {
 
             setHistoryRefreshTrigger((prev) => prev + 1);
             setPendingMutation(null);
+          setDebateActive(false);
             setDebateVotes([]);
             setDebateConsensus('');
 
@@ -2089,6 +2178,7 @@ export default function Home() {
           setBatchProgress(0);
           if (pendingMutation) {
             setPendingMutation(null);
+          setDebateActive(false);
             setDebateVotes([]);
             setDebateConsensus('');
           }
@@ -2180,6 +2270,16 @@ export default function Home() {
           }));
           addCaanMessage(`Branch: ${branch}.`);
           addLogEntry('APPROVE', `Branch: ${branch}`);
+          advanceSetup((currentState?.currentStep || 0) + 1);
+        } else if (step.id === 'language') {
+          const match = content.match(/lang(?:uage)?:\s*(.+)/i);
+          const langChoice = match ? match[1].trim() : content.trim();
+          if (langChoice) {
+            setSelectedLanguage(langChoice);
+            changeDisplayLanguage(langChoice);
+            addCaanMessage(`Language calibrated: ${langChoice}.`);
+            addLogEntry('APPROVE', `Language configured: ${langChoice}`);
+          }
           advanceSetup((currentState?.currentStep || 0) + 1);
         } else if (step.id === 'llm-keys') {
           const trimmed = content.trim().toLowerCase();
@@ -2605,6 +2705,7 @@ export default function Home() {
           }
           if (pendingMutation && overrideFileIndex !== undefined) {
             setPendingMutation(null);
+          setDebateActive(false);
           }
           // Use selected file, or auto-pick first code file
           let sourceFile: GitHubFile | undefined;
@@ -2657,6 +2758,15 @@ export default function Home() {
             addSystemMessage(
               'COHERENCE GATE: Scanning mutation parameters...'
             );
+
+            if (blacklistedFiles.includes(sourceFile.path)) {
+              addCaanMessage(
+                `[SATURATION SKIP] ${sourceFile.path} is blacklisted (peak architectural equilibrium reached with 0 diffs). Skipping.`
+              );
+              addLogEntry('INFO', `[SATURATION SKIP] ${sourceFile.path} in blacklist.`);
+              setIsLoading(false);
+              return;
+            }
 
             try {
               const fileController = new AbortController();
@@ -2719,12 +2829,43 @@ export default function Home() {
                     proposeData.proposedCode.trim() === fileData.content.trim()
                   ) {
                     addCaanMessage(
-                      `MUTATION SKIPPED for ${sourceFile.path}: ${proposeData.analysis || 'No changes detected. Skipped to prevent empty 0-file commit.'}`
+                      `[NO-OP] Code saturation reached for [${sourceFile.path}]: AI determined file achieves peak architectural equilibrium (0 diffs). Commit skipped.`
                     );
-                    addLogEntry('WARNING', `0-diff proposal skipped for ${sourceFile.path}`);
+                    addLogEntry('INFO', `[NO-OP] Code saturation reached for [${sourceFile.path}] (0 diffs).`);
+                    if (autoSkipSaturated) {
+                      setBlacklistedFiles((prev) => {
+                        if (prev.includes(sourceFile.path)) return prev;
+                        const updated = [...prev, sourceFile.path];
+                        localStorage.setItem('darlek_cann_blacklisted_files', JSON.stringify(updated));
+                        return updated;
+                      });
+                    }
+                    if (autoPauseOnSaturation) {
+                      setBatchMode(false);
+                    }
+                    setSaturationAlert({
+                      path: sourceFile.path,
+                      content: fileData.content,
+                      summary: proposeData.analysis || 'AI optimization engine determined this file achieves maximum architectural efficiency (0 diffs).',
+                      timestamp: new Date().toLocaleTimeString(),
+                    });
                     setIsLoading(false);
                     return;
                   }
+
+                  // === Code-Enhancer AST Validation ===
+                  const validationResult = await validateSourceCode(proposeData.proposedCode, sourceFile.path);
+                  if (validationResult.autoHealed && validationResult.healedCode) {
+                    proposeData.proposedCode = validationResult.healedCode;
+                  }
+                  if (!validationResult.valid) {
+                    const errorMsg = validationResult.errors.map(e => `Line ${e.line}: ${e.message}`).join(' | ');
+                    addCaanMessage(`MUTATION REJECTED for ${sourceFile.path}: AST Validation failed. Errors: ${errorMsg}`);
+                    addLogEntry('ERROR', `AST Validation failed for ${sourceFile.path}: ${errorMsg}`);
+                    setIsLoading(false);
+                    return;
+                  }
+                  // ====================================
 
                   const riskScore = Math.min(
                     10,
@@ -2938,6 +3079,15 @@ export default function Home() {
             return;
           }
 
+          if (blacklistedFiles.includes(nextFile.path)) {
+            addCaanMessage(
+              `[BATCH ${batchProgress + 1}/${batchQueue.length}] SATURATION SKIP: ${nextFile.path} is blacklisted (peak architectural equilibrium reached with 0 diffs). Skipping.`
+            );
+            addLogEntry('INFO', `[SATURATION SKIP] ${nextFile.path} in blacklist.`);
+            setBatchProgress((prev) => prev + 1);
+            return;
+          }
+
           setIsLoading(true);
           addCaanMessage(
             `[BATCH ${batchProgress + 1}/${batchQueue.length}] Analyzing ${nextFile.path}...`
@@ -3006,12 +3156,48 @@ export default function Home() {
                 proposeData.proposedCode.trim() === fileData.content.trim()
               ) {
                 addCaanMessage(
-                  `[BATCH ${batchProgress + 1}/${batchQueue.length}] SKIP: ${nextFile.path} — ${proposeData.analysis || proposeData.error || '0-diff detected. Skipped to prevent empty commit.'}`
+                  `[BATCH ${batchProgress + 1}/${batchQueue.length}] [NO-OP] Code saturation reached for [${nextFile.path}]: Peak architectural equilibrium reached (0 diffs). Skipped.`
                 );
-                addLogEntry('WARNING', `0-diff proposal skipped in batch for ${nextFile.path}`);
+                addLogEntry('INFO', `[NO-OP] Code saturation reached in batch for ${nextFile.path}`);
+                if (autoSkipSaturated) {
+                  setBlacklistedFiles((prev) => {
+                    if (prev.includes(nextFile.path)) return prev;
+                    const updated = [...prev, nextFile.path];
+                    localStorage.setItem('darlek_cann_blacklisted_files', JSON.stringify(updated));
+                    return updated;
+                  });
+                }
+                if (autoPauseOnSaturation) {
+                  setBatchMode(false);
+                  addCaanMessage('Auto-Pause on Saturation engaged: Autonomous batch paused.');
+                }
+                setSaturationAlert({
+                  path: nextFile.path,
+                  content: fileData.content,
+                  summary: proposeData.analysis || 'File reached peak architectural equilibrium in autonomous batch cycle (0 diffs).',
+                  timestamp: new Date().toLocaleTimeString(),
+                });
                 setBatchProgress((prev) => prev + 1);
                 setPendingMutation(null);
+                setDebateActive(false);
               } else if (proposeData.success) {
+                // === Code-Enhancer AST Validation ===
+                const validationResult = await validateSourceCode(proposeData.proposedCode, nextFile.path);
+                if (validationResult.autoHealed && validationResult.healedCode) {
+                  proposeData.proposedCode = validationResult.healedCode;
+                }
+                if (!validationResult.valid) {
+                  const errorMsg = validationResult.errors.map(e => `Line ${e.line}: ${e.message}`).join(' | ');
+                  addCaanMessage(`[BATCH ${batchProgress + 1}/${batchQueue.length}] SKIP: ${nextFile.path} — AST Validation failed. Errors: ${errorMsg}`);
+                  addLogEntry('ERROR', `AST Validation failed for ${nextFile.path}: ${errorMsg}`);
+                  setBatchProgress((prev) => prev + 1);
+                  setPendingMutation(null);
+                  setDebateActive(false);
+                  setIsLoading(false);
+                  return;
+                }
+                // ====================================
+
                 const riskScore = Math.min(
                   10,
                   Math.max(1, proposeData.riskScore || 5)
@@ -3120,6 +3306,7 @@ export default function Home() {
                        `[Batch] Exceeded risk limits for ${nextFile.path}: ${riskScore}/10 (max: ${autoApproveRisk})`
                      );
                      setPendingMutation(null);
+          setDebateActive(false);
                    }
                 }
               } else {
@@ -3132,6 +3319,7 @@ export default function Home() {
                 );
                 setBatchProgress((prev) => prev + 1);
                 setPendingMutation(null);
+          setDebateActive(false);
               }
             } else {
               addCaanMessage(
@@ -3775,6 +3963,7 @@ export default function Home() {
           setScannedFiles(DEFAULT_PRELOADED_FILES);
           setSelectedFileIndex(-1);
           setPendingMutation(null);
+          setDebateActive(false);
           setDebateVotes([]);
           setDebateConsensus('');
           setDebateTopic('');
@@ -4079,7 +4268,7 @@ export default function Home() {
   if (!systemState.setupComplete) {
     return (
       <div
-        className="min-h-screen w-screen overflow-hidden relative flex items-center justify-center scanline-overlay grid-overlay vignette radial-bg px-4 py-8"
+        className="min-h-screen w-full overflow-hidden relative flex items-center justify-center scanline-overlay grid-overlay vignette radial-bg px-4 py-8"
         style={{ background: COLORS.pureBlack }}
       >
         <motion.div
@@ -4156,6 +4345,106 @@ export default function Home() {
                     className="text-[#00ffcc] hover:underline cursor-pointer bg-transparent border-0 outline-none p-0 inline-flex items-center gap-1 font-bold tracking-wider"
                   >
                     ⟳ SYNC REPOSITORIES
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* AI Model Selection & Auto-Injection Status */}
+            <div className="p-3.5 bg-[#0a0202] border border-red-900/30 rounded-lg space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[9px] font-mono font-bold text-gray-300 uppercase flex items-center gap-1.5 tracking-wider">
+                  <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>AI Cognitive Model</span>
+                </label>
+                {hasServerGeminiKey ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[8.5px] font-mono text-emerald-400 font-bold">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Key Auto-Injected
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[8.5px] font-mono text-cyan-300 font-bold">
+                    <Sparkles className="w-3 h-3 text-cyan-400" /> Ready
+                  </span>
+                )}
+              </div>
+              <select
+                id="setup-model-select"
+                value={selectedModel}
+                onChange={(e) => {
+                  const val = e.target.value as GeminiModelId;
+                  setSelectedModel(val);
+                  localStorage.setItem('darlek_cann_selected_model', val);
+                }}
+                className="w-full bg-[#060000] border border-red-900/30 rounded p-2 text-xs text-red-100 outline-none focus:border-red-500/60 transition-colors font-mono cursor-pointer"
+              >
+                <option value="gemini-3.7-flash" className="bg-[#0a0202] text-white">
+                  ⚡ Gemini 3.7 Flash — State-of-the-Art (Fast, High Quality)
+                </option>
+                <option value="gemini-3.6-flash" className="bg-[#0a0202] text-white">
+                  💨 Gemini 3.6 Flash — Fast, High Efficiency Generation
+                </option>
+                <option value="gemini-flash-lite-latest" className="bg-[#0a0202] text-white">
+                  🪶 Gemini Flash Lite — Ultra Lightweight & High Throughput
+                </option>
+                <option value="gemini-2.5-flash" className="bg-[#0a0202] text-white">
+                  🚀 Gemini 2.5 Flash — Stable High-Velocity Generation
+                </option>
+                <option value="gemini-3.1-pro-preview" className="bg-[#0a0202] text-white">
+                  🧠 Gemini 3.1 Pro — Deep Complex Architecture Reasoning
+                </option>
+              </select>
+              <p className="text-[9px] text-gray-500 font-mono leading-relaxed">
+                Requests are automatically proxied via the full-stack server with secure server-side environment key injection.
+              </p>
+            </div>
+
+            {/* Custom Gemini Key Override (Optional) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[9px] font-mono font-bold text-gray-400 uppercase flex items-center gap-1.5 tracking-wider">
+                  <Sparkles className="w-3 h-3 text-cyan-400" /> Custom API Key (Override)
+                </label>
+                <span className="text-[8px] text-gray-500 font-mono">
+                  {hasServerGeminiKey ? 'Optional (Env Key Active)' : 'Optional'}
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  id="setup-gemini-key-input"
+                  type={showGeminiKey ? 'text' : 'password'}
+                  placeholder={hasServerGeminiKey ? 'Using auto-injected environment key...' : 'AIzaSy... (optional custom key)'}
+                  value={geminiKeyInput}
+                  onChange={(e) => {
+                    setGeminiKeyInput(e.target.value);
+                    if (e.target.value) {
+                      localStorage.setItem('darlek_cann_gemini_key', e.target.value);
+                    } else {
+                      localStorage.removeItem('darlek_cann_gemini_key');
+                    }
+                  }}
+                  className="w-full pl-9 pr-9 py-2 text-xs text-red-100 bg-[#060000] border border-red-900/20 rounded font-mono focus:border-red-500/60 focus:ring-1 focus:ring-red-500/30 focus:outline-none transition-all duration-200"
+                />
+                <div className="absolute left-3 top-2.5 text-red-800">
+                  <Key size={12} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGeminiKey(!showGeminiKey)}
+                  className="absolute right-2.5 top-2 text-gray-500 hover:text-white transition-colors cursor-pointer p-0.5"
+                  title={showGeminiKey ? "Hide key" : "Show key"}
+                >
+                  {showGeminiKey ? <EyeOff size={13} /> : <Eye size={13} />}
+                </button>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-[8px] text-gray-500 font-mono">
+                <span>Optional custom key to override the server's default environment key.</span>
+                {geminiKeyInput.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => testConnection('gemini', geminiKeyInput.trim())}
+                    className="text-cyan-400 hover:underline cursor-pointer bg-transparent border-0 outline-none p-0 inline-flex items-center gap-1 font-bold"
+                  >
+                    TEST KEY
                   </button>
                 )}
               </div>
@@ -4240,6 +4529,227 @@ export default function Home() {
                   onChange={(e) => setBranchInput(e.target.value)}
                   className="w-full px-3 py-2 text-xs text-gray-200 bg-[#060000] border border-red-900/20 rounded font-mono focus:border-red-500/60 focus:outline-none transition-all duration-200"
                 />
+              </div>
+            </div>
+
+            {/* System Interface Language / Translation Dropdown */}
+            <div className="bg-[#0c0202] border border-red-900/30 p-3.5 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[9px] tracking-wider text-gray-300 font-sans uppercase font-bold flex items-center gap-1.5">
+                  <Languages size={13} className="text-cyan-400" />
+                  <span>INTERFACE DISPLAY LANGUAGE</span>
+                </label>
+                <span className="text-[8px] text-cyan-400 font-mono tracking-wider font-semibold">
+                  {selectedLanguage ? selectedLanguage.toUpperCase() : 'ENGLISH'}
+                </span>
+              </div>
+              <div className="relative">
+                <select
+                  id="setup-language-dropdown"
+                  value={selectedLanguage}
+                  onChange={(e) => {
+                    const newLang = e.target.value;
+                    setSelectedLanguage(newLang);
+                    changeDisplayLanguage(newLang);
+                  }}
+                  className="w-full px-3 py-2 text-xs text-gray-200 bg-[#060000] border border-red-900/30 rounded font-mono focus:border-cyan-500/60 focus:outline-none transition-all duration-200 cursor-pointer"
+                >
+                  <optgroup label="POPULAR LANGUAGES">
+                    {ALL_SUPPORTED_LANGUAGES.slice(0, 20).map((lang) => (
+                      <option key={lang.id} value={lang.id}>
+                        {lang.name} {lang.nativeName && lang.nativeName !== lang.name ? `(${lang.nativeName})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="ALL WORLD LANGUAGES (130+)">
+                    {ALL_SUPPORTED_LANGUAGES.slice(20).map((lang) => (
+                      <option key={lang.id} value={lang.id}>
+                        {lang.name} {lang.nativeName && lang.nativeName !== lang.name ? `(${lang.nativeName})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+              <div className="flex items-center justify-between text-[8px] text-gray-500 font-mono pt-0.5">
+                <span>Select interface language to translate cognitive controls.</span>
+              </div>
+            </div>
+
+            {/* Neural Saturation & Equilibrium Logic */}
+            <div className="bg-[#0c0202] border border-red-900/30 p-3.5 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[9px] tracking-wider text-gray-300 font-sans uppercase font-bold flex items-center gap-1.5">
+                  <ShieldAlert size={13} className="text-amber-400" />
+                  <span>NEURAL SATURATION & EQUILIBRIUM ENGINE</span>
+                </label>
+                <span className={`text-[8px] font-mono px-2 py-0.5 rounded font-bold border ${
+                  saturationLevel >= 75
+                    ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                    : saturationLevel >= 50
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                }`}>
+                  {saturationLevel >= 75 ? 'CRITICAL EQUILIBRIUM' : saturationLevel >= 50 ? 'ELEVATED' : 'NOMINAL'} ({saturationLevel}%)
+                </span>
+              </div>
+
+              {/* Saturation Threshold Slider */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[8px] font-mono text-gray-400">
+                  <span>Saturation Sensitivity Threshold</span>
+                  <span>{saturationLevel}%</span>
+                </div>
+                <input
+                  id="setup-saturation-slider"
+                  type="range"
+                  min="5"
+                  max="100"
+                  step="5"
+                  value={saturationLevel}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setSaturationLevel(val);
+                    const saved = localStorage.getItem('darlek_cann_controls');
+                    try {
+                      const parsed = saved ? JSON.parse(saved) : {};
+                      parsed.saturationLevel = val;
+                      localStorage.setItem('darlek_cann_controls', JSON.stringify(parsed));
+                    } catch {}
+                  }}
+                  className="w-full accent-amber-500 cursor-pointer h-1.5 bg-neutral-900 rounded"
+                />
+                <div className="flex justify-between text-[7px] font-mono text-gray-600">
+                  <span>AGGRESSIVE (5%)</span>
+                  <span>BALANCED (50%)</span>
+                  <span>CONSERVATIVE (100%)</span>
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div className="flex items-center justify-between p-2 rounded bg-[#050000] border border-red-950/50">
+                  <label htmlFor="setup-auto-pause-sat" className="text-[8px] text-gray-300 font-mono cursor-pointer select-none pr-2">
+                    Auto-Pause on 0-Diff Saturation
+                  </label>
+                  <input
+                    id="setup-auto-pause-sat"
+                    type="checkbox"
+                    checked={autoPauseOnSaturation}
+                    onChange={(e) => {
+                      setAutoPauseOnSaturation(e.target.checked);
+                      localStorage.setItem('darlek_cann_auto_pause_saturation', String(e.target.checked));
+                    }}
+                    className="w-3.5 h-3.5 rounded accent-amber-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded bg-[#050000] border border-red-950/50">
+                  <label htmlFor="setup-auto-skip-sat" className="text-[8px] text-gray-300 font-mono cursor-pointer select-none pr-2">
+                    Auto-Blacklist Saturated Files
+                  </label>
+                  <input
+                    id="setup-auto-skip-sat"
+                    type="checkbox"
+                    checked={autoSkipSaturated}
+                    onChange={(e) => {
+                      setAutoSkipSaturated(e.target.checked);
+                      localStorage.setItem('darlek_cann_auto_skip_saturation', String(e.target.checked));
+                    }}
+                    className="w-3.5 h-3.5 rounded accent-amber-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Blacklisted / Saturated Files List & Manual Adder */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[8px] font-mono text-gray-400 font-bold tracking-wider uppercase flex items-center gap-1">
+                    <Ban size={10} className="text-amber-400" />
+                    <span>Blacklisted Saturated Files ({blacklistedFiles.length})</span>
+                  </span>
+                  {blacklistedFiles.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBlacklistedFiles([]);
+                        localStorage.removeItem('darlek_cann_blacklisted_files');
+                      }}
+                      className="text-[8px] font-mono text-red-400 hover:text-red-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 size={9} />
+                      <span>Clear All</span>
+                    </button>
+                  )}
+                </div>
+
+                {blacklistedFiles.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1.5 bg-[#050000] border border-red-950/40 rounded">
+                    {blacklistedFiles.map((file) => (
+                      <span
+                        key={file}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[8px] font-mono text-amber-300"
+                      >
+                        <span className="truncate max-w-[140px]">{file}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = blacklistedFiles.filter((f) => f !== file);
+                            setBlacklistedFiles(updated);
+                            localStorage.setItem('darlek_cann_blacklisted_files', JSON.stringify(updated));
+                          }}
+                          className="hover:text-white cursor-pointer text-amber-500 ml-0.5"
+                        >
+                          <X size={9} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[8px] text-gray-600 font-mono italic">
+                    No files currently blacklisted. Saturated files producing 0 diffs will be listed here.
+                  </p>
+                )}
+
+                {/* Add Manual Path */}
+                <div className="flex gap-1.5 pt-0.5">
+                  <input
+                    type="text"
+                    placeholder="e.g. src/legacy/util.ts"
+                    value={manualBlacklistInput}
+                    onChange={(e) => setManualBlacklistInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && manualBlacklistInput.trim()) {
+                        e.preventDefault();
+                        const p = manualBlacklistInput.trim();
+                        if (!blacklistedFiles.includes(p)) {
+                          const updated = [...blacklistedFiles, p];
+                          setBlacklistedFiles(updated);
+                          localStorage.setItem('darlek_cann_blacklisted_files', JSON.stringify(updated));
+                        }
+                        setManualBlacklistInput('');
+                      }
+                    }}
+                    className="flex-1 px-2 py-1 text-[9px] text-gray-300 bg-[#060000] border border-neutral-900 rounded font-mono focus:border-amber-500/50 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (manualBlacklistInput.trim()) {
+                        const p = manualBlacklistInput.trim();
+                        if (!blacklistedFiles.includes(p)) {
+                          const updated = [...blacklistedFiles, p];
+                          setBlacklistedFiles(updated);
+                          localStorage.setItem('darlek_cann_blacklisted_files', JSON.stringify(updated));
+                        }
+                        setManualBlacklistInput('');
+                      }
+                    }}
+                    className="px-2.5 py-1 text-[8px] font-mono font-bold bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-amber-300 rounded flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus size={10} />
+                    <span>Add</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -4341,7 +4851,7 @@ export default function Home() {
 
   return (
     <div
-      className="h-screen w-screen overflow-hidden relative flex flex-col scanline-overlay grid-overlay vignette"
+      className="h-screen w-full overflow-hidden relative flex flex-col scanline-overlay grid-overlay vignette"
       style={{ background: COLORS.pureBlack }}
     >
       {/* ── Reboot overlay ── */}
@@ -4689,7 +5199,6 @@ export default function Home() {
               id="reconfigure-button"
               onClick={() => {
                 setSystemState((prev) => ({ ...prev, setupComplete: false }));
-                addLogEntry('SYSTEM', 'Configuring repository connection credentials.');
               }}
               className="flex items-center gap-1 px-2 py-1 rounded border border-[#00ffcc]/30 hover:border-[#00ffcc] bg-cyan-950/20 text-cyan-400 hover:text-white cursor-pointer transition-colors text-[8px]"
               title="Change Personal Access Token, profile owner, target repo, or branch"
@@ -4703,6 +5212,10 @@ export default function Home() {
               <span className="sm:hidden font-semibold">CONFIG</span>
             </button>
           )}
+
+          {/* Hidden translate container hook */}
+          <div id="translate" className="hidden" />
+
           <div className="flex items-center gap-1.5">
             <div
               className={`w-2 h-2 rounded-full ${systemState.setupComplete ? 'pulse-cyan' : 'pulse-red'}`}
@@ -5467,6 +5980,31 @@ export default function Home() {
       <div className="px-4 sm:px-6">
         <TemporalParadoxLog logEntries={logEntries} rejectionMemory={rejectionMemory} />
       </div>
+
+      {/* ── Neural Saturation Alert Modal ── */}
+      <SaturationModal
+        alert={saturationAlert}
+        onClose={() => setSaturationAlert(null)}
+        onAddToBlacklist={(filePath) => {
+          if (!blacklistedFiles.includes(filePath)) {
+            const updated = [...blacklistedFiles, filePath];
+            setBlacklistedFiles(updated);
+            localStorage.setItem('darlek_cann_blacklisted_files', JSON.stringify(updated));
+          }
+          setSaturationAlert(null);
+          toast({
+            title: 'FILE BLACKLISTED',
+            description: `${filePath} added to saturation blacklist.`,
+          });
+        }}
+        onKeepInRotation={() => {
+          setSaturationAlert(null);
+          toast({
+            title: 'FILE RETAINED',
+            description: 'Retained in candidate pool for future passes.',
+          });
+        }}
+      />
 
       {/* ── Footer ── */}
       <footer

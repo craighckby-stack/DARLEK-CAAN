@@ -1,7 +1,7 @@
 /**
  * @file src/types/omega.d.ts
  * @version 4.9.1-core-opt
- * @description Sovereign Neural Code Optimized Type Definitions for resilient task execution and deterministic outcomes.
+ * @description Darlek Caan Neural Code Optimized Type Definitions for resilient task execution and deterministic outcomes.
  */
 
 /**

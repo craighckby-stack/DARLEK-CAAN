@@ -73,7 +73,7 @@ export async function saveBrainChunk(
   generation: number
 ): Promise<string> {
   if (!sourceName || !fileName || codeText === undefined || generation < 0) {
-    throw new Error('[EMG Core] Invalid arguments supplied to saveBrainChunk.');
+    throw new Error('[Darlek Caan] Invalid arguments supplied to saveBrainChunk.');
   }
 
   try {
@@ -90,7 +90,7 @@ export async function saveBrainChunk(
     
     return docRef.id;
   } catch (error) {
-    console.error('[EMG Core] Critical failure during saveBrainChunk persistence:', error);
+    console.error('[Darlek Caan] Critical failure during saveBrainChunk persistence:', error);
     throw error;
   }
 }
@@ -126,7 +126,7 @@ export async function getBrainChunks(): Promise<BrainChunk[]> {
     
     return chunks.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   } catch (error) {
-    console.error('[EMG Core] Critical failure during getBrainChunks retrieval:', error);
+    console.error('[Darlek Caan] Critical failure during getBrainChunks retrieval:', error);
     return [];
   }
 }
@@ -150,7 +150,7 @@ export async function clearBrainChunks(): Promise<void> {
     
     await batch.commit();
   } catch (error) {
-    console.error('[EMG Core] Critical failure during clearBrainChunks batch execution:', error);
+    console.error('[Darlek Caan] Critical failure during clearBrainChunks batch execution:', error);
     throw error;
   }
 }

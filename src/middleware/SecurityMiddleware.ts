@@ -1,7 +1,7 @@
 /**
  * File Path: "src/middleware/SecurityMiddleware.ts"
- * EMG Core v49 Neural Code and Documentation Optimizer Engine
- * Sovereign Overhaul: Enhanced Readability, Architectural Clarity, and Modern Idioms.
+ * Darlek Caan
+ * Darlek Caan: Enhanced Readability, Architectural Clarity, and Modern Idioms.
  */
 
 /**

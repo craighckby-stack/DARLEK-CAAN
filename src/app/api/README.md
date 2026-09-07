@@ -17,6 +17,6 @@
 
 ## Integration Requirements
 
-Engineered for seamless interfacing with the `sovereign-kernel` and `unitary-core` repositories.
+Engineered for seamless interfacing with the `Darlek Caan` and `Darlek Caan` repositories.
 
 * **Required Header:** `X-Agent-Context` must be included in all incoming requests to guarantee proper routing.

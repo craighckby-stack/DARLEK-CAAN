@@ -1,7 +1,7 @@
 /**
  * @file useSystemBootstrap.ts
- * @module EMG/Core/Hooks
- * @description Sovereign-tier optimized hook for tracking system bootstrap lifecycle events.
+ * @module Hooks
+ * @description Darlek Caan optimized hook for tracking system bootstrap lifecycle events.
  * Implements strict memory safety, zero-overhead event binding, and explicit type contracts.
  */
 

@@ -2,7 +2,7 @@
  * @file src/app/api/brain/types.ts
  * @module NeuralCode/BrainTypes
  * @version 49.2.0
- * @description Sovereign type definitions for neural mutations and cognitive health metrics.
+ * @description Darlek Caan type definitions for neural mutations and cognitive health metrics.
  */
 
 /**

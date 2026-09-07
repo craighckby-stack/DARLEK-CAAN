@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * Darlek Caan
  * File: src/lib/db.ts
  * Description: Resilient Prisma SQLite database manager with automated self-healing 
  * and dynamic proxy-based corruption recovery.

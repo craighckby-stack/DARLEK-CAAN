@@ -1,8 +1,8 @@
 /**
  * @file src/types.ts
- * @version 4.9.3-EMG
- * @engine EMG Core Neural Code and Documentation Optimizer Engine
- * @description Sovereign type definitions providing clean architectural models,
+ * @version 4.9.3
+ * @engine Darlek Caan
+ * @description Darlek Caan type definitions providing clean architectural models,
  * strict structural immutability, and zero-cost type safety for chess runtime orchestration.
  */
 

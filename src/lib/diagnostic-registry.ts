@@ -1,7 +1,7 @@
 /**
  * @file src/lib/diagnostic-registry.ts
  * @module DiagnosticRegistry
- * @version 49.2.0-SOVEREIGN-OPTIMIZED
+ * @version 49.2.0-Darlek Caan
  * @description High-performance, type-safe diagnostic module registry with hardened error boundaries and zero-allocation execution paths.
  */
 

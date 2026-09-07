@@ -6,6 +6,7 @@ import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import SnippetScanner from '@/components/SnippetScanner';
 import FolderScanner from '@/components/FolderScanner';
+import { useToast } from '@/hooks/use-toast';
 
 interface GithubScannerProps {
   token?: string;
@@ -16,6 +17,7 @@ interface GithubScannerProps {
 }
 
 export default function GithubScanner({ token: initialToken, owner: initialOwner, repo: initialRepo, branch: initialBranch, onFileClick }: GithubScannerProps) {
+  const { toast } = useToast();
   const { results, isScanning, progress, currentFile, statusMessage, startScan, stopScan, filesScanned, filesSkipped, scanDuration } = useGithubScanner();
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState('All');
@@ -53,7 +55,11 @@ export default function GithubScanner({ token: initialToken, owner: initialOwner
     const t = (customToken !== undefined ? customToken : activeToken).trim();
 
     if (!o || !r) {
-      alert("Please provide both a GitHub Owner/Organization and Repository name to scan.");
+      toast({
+        title: "Configuration Required",
+        description: "Please provide both a GitHub Owner/Organization and Repository name to scan.",
+        variant: "destructive",
+      });
       return;
     }
     startScan(t, o, r, b);
@@ -218,7 +224,11 @@ echo "git push origin --force --all"
 
   const commitSanitizedFile = async () => {
     if (!activeFinding || !activeFinding.sanitized || !activeToken) {
-      alert("GitHub token is required to commit fixes.");
+      toast({
+        title: "Token Required",
+        description: "GitHub token is required to commit fixes.",
+        variant: "destructive",
+      });
       return;
     }
     setIsCommitting(true);
@@ -244,10 +254,17 @@ echo "git push origin --force --all"
         throw new Error(data.error || 'Commit failed');
       }
 
-      alert(`Successfully committed sanitized file to GitHub (${activeOwner}/${activeRepo}@${activeBranch || 'main'})!\nCommit SHA: ${data.commitSha?.slice(0, 7) || 'success'}`);
+      toast({
+        title: "Commit Successful",
+        description: `Successfully committed sanitized file to GitHub (${activeOwner}/${activeRepo}@${activeBranch || 'main'}). Commit SHA: ${data.commitSha?.slice(0, 7) || 'success'}`,
+      });
       setActiveFinding(null);
     } catch (e: any) {
-      alert(`Commit error: ${e.message}`);
+      toast({
+        title: "Commit Error",
+        description: e.message,
+        variant: "destructive",
+      });
     } finally {
       setIsCommitting(false);
     }

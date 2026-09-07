@@ -1,6 +1,6 @@
 # GitHub API Integration Module
 
-> **Executive Summary:** The GitHub API Integration Module serves as the core data ingestion layer for the DARLEK CANN ecosystem. It interfaces directly with the GitHub REST API v3 to execute file-level operations, powering self-refactoring workflows and repository state analysis for the `sovereign-kernel`.
+> **Executive Summary:** The GitHub API Integration Module serves as the core data ingestion layer for the DARLEK CANN ecosystem. It interfaces directly with the GitHub REST API v3 to execute file-level operations, powering self-refactoring workflows and repository state analysis for the `Darlek Caan`.
 
 ---
 
@@ -11,7 +11,7 @@
 | **Protocol** | GitHub REST API v3 |
 | **Timeout Protection** | 15 seconds |
 | **Data Processing** | Base64 Decoding & Metadata Extraction |
-| **Primary Consumer** | `sovereign-kernel` |
+| **Primary Consumer** | `Darlek Caan` |
 
 ---
 
@@ -26,5 +26,5 @@
 
 ## System Integration
 
-* **Consumer:** `sovereign-kernel`
+* **Consumer:** `Darlek Caan`
 * **Purpose:** Retrieves explicit repository states to facilitate autonomous code evolution and runtime analysis.

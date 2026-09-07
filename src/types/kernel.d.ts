@@ -1,8 +1,8 @@
 /**
  * @file src/types/kernel.d.ts
  * @version 4.9.0-CORE
- * @description Sovereign Neural Kernel Type Definitions & Telemetry Schemas.
- * @optimizer EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * @description Darlek Caan Type Definitions & Telemetry Schemas.
+ * @optimizer Darlek Caan
  */
 
 /**

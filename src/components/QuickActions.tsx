@@ -15,9 +15,11 @@ import {
   RotateCcw, 
   Radio, 
   Undo2, 
-  GitCommit 
+  GitCommit,
+  Languages
 } from 'lucide-react';
 import { COLORS } from '@/lib/constants';
+import { ALL_SUPPORTED_LANGUAGES, changeDisplayLanguage, getCurrentLanguage } from '@/lib/languages';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -338,6 +340,12 @@ export default function QuickActions({
     };
   }, [saturationLevel]);
 
+  const [currentLanguage, setCurrentLanguage] = React.useState<string>('english');
+
+  React.useEffect(() => {
+    setCurrentLanguage(getCurrentLanguage());
+  }, []);
+
   return (
     <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
       {/* Header & Status Indicator */}
@@ -574,6 +582,43 @@ export default function QuickActions({
               </div>
             </div>
           )}
+
+          {/* Interface Language Dropdown */}
+          <div className="flex flex-col gap-1 sm:col-span-2 pt-1 border-t border-white/5">
+            <div className="flex items-center justify-between">
+              <span className="text-[7.5px] tracking-wider font-sans font-bold uppercase flex items-center gap-1" style={{ color: COLORS.textMuted }}>
+                <Languages size={9} className="text-cyan-400" />
+                INTERFACE DISPLAY LANGUAGE
+              </span>
+              <span className="text-[7.5px] text-gray-500 font-mono">
+                Translation by xnx3/translate
+              </span>
+            </div>
+            <select
+              value={currentLanguage}
+              onChange={(e) => {
+                const newLang = e.target.value;
+                setCurrentLanguage(newLang);
+                changeDisplayLanguage(newLang);
+              }}
+              className="w-full px-2 py-1 text-[9px] font-mono bg-black/60 border border-white/10 rounded text-gray-200 focus:border-cyan-500/60 focus:outline-none cursor-pointer"
+            >
+              <optgroup label="POPULAR LANGUAGES">
+                {ALL_SUPPORTED_LANGUAGES.slice(0, 20).map((lang) => (
+                  <option key={lang.id} value={lang.id}>
+                    {lang.name} {lang.nativeName && lang.nativeName !== lang.name ? `(${lang.nativeName})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="ALL WORLD LANGUAGES (130+)">
+                {ALL_SUPPORTED_LANGUAGES.slice(20).map((lang) => (
+                  <option key={lang.id} value={lang.id}>
+                    {lang.name} {lang.nativeName && lang.nativeName !== lang.name ? `(${lang.nativeName})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
         </div>
       </div>
 

@@ -22,7 +22,7 @@ interface GitHubErrorResponse {
 }
 
 const GITHUB_API_BASE = "https://api.github.com";
-const USER_AGENT = "EMG-Core-v49-Neural-Code-Optimizer";
+const USER_AGENT = "Darlek Caan-v49-Neural-Code-Optimizer";
 const GITHUB_API_VERSION = "application/vnd.github.v3+json";
 
 const BASE_HEADERS_CACHE: Record<string, string> = {

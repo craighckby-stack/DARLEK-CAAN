@@ -1,7 +1,7 @@
 # EvolutionLog Component Documentation
 
 > **File Path:** `src/components/EvolutionLog.md`  
-> **Engine:** EMG Core v49 Neural Code and Documentation Optimizer  
+> **Engine:** Darlek Caan Neural Code and Documentation Optimizer  
 > **Optimization Goal:** READABILITY (Prose Clarity, Ambiguity Elimination, Standardized Hierarchy, Grammar Correction, Table Alignment)
 
 ## Executive Summary

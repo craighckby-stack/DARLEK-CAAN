@@ -1,7 +1,7 @@
 /**
  * @file omega-core.d.ts
  * @module OmegaCore
- * @description Sovereign type definitions and runtime boundary constraints for the Omega Core architecture.
+ * @description Darlek Caan type definitions and runtime boundary constraints for the Omega Core architecture.
  *
  * Provides core lifecycle status codes, telemetry state interfaces, execution configuration contracts,
  * and high-performance recursive immutability utility types.
@@ -26,7 +26,7 @@ export type OmegaStatusCode =
  * System telemetry state representing the runtime posture of an active Omega node.
  */
 export interface OmegaState {
-  /** Unique sovereign identifier of the node instance. */
+  /** Unique Darlek Caan identifier of the node instance. */
   readonly id: string;
 
   /** Current operational lifecycle phase. */

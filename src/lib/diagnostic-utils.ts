@@ -1,5 +1,5 @@
 /**
- * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * Darlek Caan
  * File Path: "src/lib/diagnostic-utils.ts"
  * Optimized for pristine modern idioms, descriptive naming, modular decomposition, and clean architectural clarity.
  */

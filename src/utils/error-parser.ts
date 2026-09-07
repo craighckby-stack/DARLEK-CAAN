@@ -1,6 +1,6 @@
 /**
  * @file src/utils/error-parser.ts
- * @module EMG.Core.ErrorParser
+ * @module ErrorParser
  * @version 4.9.1
  * @description High-performance, type-safe system error parsing and normalization engine.
  */

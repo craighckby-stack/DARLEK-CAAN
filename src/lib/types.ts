@@ -1,6 +1,6 @@
 /**
  * @file src/lib/types.ts
- * @module EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * @module Darlek Caan
  * @description Highly optimized, memory-efficient, and strictly typed structural definitions 
  * for CAAN System State, Evolution, Mutation Orchestration, and Multi-Agent Collaboration.
  */
@@ -47,6 +47,21 @@ export interface SaturationMetrics {
   readonly identityPreservation: number;
   readonly capabilityAlignment: number;
   readonly crossFileImpact: number;
+}
+
+export type GeminiModelId = 
+  | 'gemini-3.7-flash' 
+  | 'gemini-3.6-flash' 
+  | 'gemini-flash-lite-latest' 
+  | 'gemini-2.5-flash' 
+  | 'gemini-3.1-pro-preview';
+
+export interface SaturationAlert {
+  readonly path: string;
+  readonly content?: string;
+  readonly summary?: string;
+  readonly latencyMs?: number;
+  readonly timestamp?: string;
 }
 
 export interface SystemState {

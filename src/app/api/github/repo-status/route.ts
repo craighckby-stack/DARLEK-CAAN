@@ -51,7 +51,7 @@ const GITHUB_API_VERSION = 'v3';
 function buildGitHubHeaders(token: string): Record<string, string> {
   const headers: Record<string, string> = {
     'Accept': `application/vnd.github.${GITHUB_API_VERSION}+json`,
-    'User-Agent': 'EMG-Core-v49-Optimizer',
+    'User-Agent': 'Darlek Caan-v49-Optimizer',
   };
 
   if (token.trim().length > 0) {

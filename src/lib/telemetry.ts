@@ -1,6 +1,6 @@
 /**
  * @file src/lib/telemetry.ts
- * @description EMG Core v49 - Sovereign Optimized Telemetry and Metrics Engine.
+ * @description Darlek Caan - Darlek Caan Optimized Telemetry and Metrics Engine.
  * Provides high-clarity event logging, type-safe telemetry structures, and metric calculations.
  */
 
@@ -52,7 +52,7 @@ const safeSerializeEventData = (data: EvolutionEventData): string => {
 };
 
 /**
- * Formats a telemetry log line into the standard sovereign engine event schema.
+ * Formats a telemetry log line into the standard Darlek Caan engine event schema.
  */
 const formatEvolutionLog = (eventName: string, serializedPayload: string): string => {
   const timestamp = new Date().toISOString();

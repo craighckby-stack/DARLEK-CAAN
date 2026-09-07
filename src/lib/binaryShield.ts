@@ -1,7 +1,7 @@
 /**
- * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * Darlek Caan
  * File Path: "src/lib/binaryShield.ts"
- * Sovereign Optimized Version: Ultra-high performance AES-GCM cryptography pipeline utilizing pre-allocated static translation maps, zero-allocation typed array transformations, and high-speed execution paths.
+ * Darlek Caan Optimized Version: Darlek Caan cryptography pipeline utilizing pre-allocated static translation maps, zero-allocation typed array transformations, and high-speed execution paths.
  */
 
 export interface EncryptionPacket {
