@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, FC, ReactElement } from 'react';
 import { Chess } from 'chess.js';
 import { useSystemBootstrap } from './hooks/useSystemBootstrap';
 import { useAgentOrchestra } from './hooks/useAgentOrchestra';
@@ -12,8 +12,8 @@ import {
 } from './components/SoundEngine';
 import { GameSettings, GameMode, GameDifficulty, BoardTheme, DalekDialogue } from './types';
 
-export default function App() {
-  const isSystemReady = useSystemBootstrap();
+export default function App(): ReactElement {
+  const isSystemReady: boolean = useSystemBootstrap();
   const { dispatch: dispatchOrchestra } = useAgentOrchestra();
   
   const [quantumMetrics, setQuantumMetrics] = useQuantumState({
@@ -23,7 +23,7 @@ export default function App() {
     omegaTuningStatus: 'PENDING'
   });
 
-  const chessEngine = useMemo(() => new Chess(), []);
+  const chessEngine = useMemo<Chess>(() => new Chess(), []);
   
   const [gameSettings, setGameSettings] = useState<GameSettings>({
     mode: GameMode.PVD,
@@ -41,14 +41,19 @@ export default function App() {
     timestamp: 1711929600000,
   });
 
-  const isAudioInitializedRef = useRef(false);
+  const isAudioInitializedRef = useRef<boolean>(false);
 
-  const handleAudioInitialization = useCallback(() => {
+  const handleAudioInitialization = useCallback((): void => {
     if (!isAudioInitializedRef.current) {
-      initAudioEngine();
-      isAudioInitializedRef.current = true;
-      window.removeEventListener('click', handleAudioInitialization);
-      window.removeEventListener('touchstart', handleAudioInitialization);
+      try {
+        initAudioEngine();
+        isAudioInitializedRef.current = true;
+      } catch (error) {
+        console.error("CRITICAL: Failed to initialize audio engine", error);
+      } finally {
+        window.removeEventListener('click', handleAudioInitialization);
+        window.removeEventListener('touchstart', handleAudioInitialization);
+      }
     }
   }, []);
 
@@ -63,10 +68,12 @@ export default function App() {
   }, [handleAudioInitialization]);
 
   useEffect(() => {
-    setChronosLoadValue(quantumMetrics.chronosLoad);
-  }, [quantumMetrics.chronosLoad]);
+    if (typeof quantumMetrics?.chronosLoad === 'number') {
+      setChronosLoadValue(quantumMetrics.chronosLoad);
+    }
+  }, [quantumMetrics?.chronosLoad]);
 
-  const systemStatusText = useMemo(() => 
+  const systemStatusText = useMemo<string>(() => 
     isSystemReady ? 'STABILIZED' : 'INITIALIZING',
     [isSystemReady]
   );
