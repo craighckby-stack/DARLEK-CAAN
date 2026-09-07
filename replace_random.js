@@ -7,11 +7,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/**
+ * @typedef {Object} ReplacementRule
+ * @property {RegExp} pattern
+ * @property {string} replacement
+ */
+
+/** @readonly @type {string} */
 const TARGET_FILE_PATH = path.join('src', 'utils', 'agi-engine.ts');
 
 /**
  * Configuration mapping of regex patterns to their deterministic replacements.
  * Object.freeze provides protection and hints to V8 for inline caching optimization.
+ * @type {ReadonlyArray<ReplacementRule>}
  */
 const RANDOMNESS_REPLACEMENTS = Object.freeze([
   {
@@ -36,7 +44,7 @@ const RANDOMNESS_REPLACEMENTS = Object.freeze([
  * Applies a sequence of pattern replacements to a source code string using functional iteration.
  * 
  * @param {string} sourceCode - The raw source code to transform.
- * @param {ReadonlyArray<{pattern: RegExp, replacement: string}>} replacements - The mapping of patterns.
+ * @param {ReadonlyArray<ReplacementRule>} replacements - The mapping of patterns.
  * @returns {string} The updated, deterministic source code.
  */
 function applyReplacements(sourceCode, replacements) {
@@ -49,6 +57,8 @@ function applyReplacements(sourceCode, replacements) {
 /**
  * Reads the target source file, applies all deterministic replacements, and writes the result back
  * utilizing synchronous I/O with minimized memory footprint and modern error handling.
+ * 
+ * @returns {void}
  */
 function makeEngineDeterministic() {
   try {
