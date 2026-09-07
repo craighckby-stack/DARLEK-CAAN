@@ -1,8 +1,11 @@
 (function initializeInterceptionRouteRewriteManifest() {
   "use strict";
 
+  /** @type {typeof globalThis} */
   const GLOBAL_SCOPE = globalThis;
+  /** @type {string} */
   const MANIFEST_PROPERTY_KEY = "__INTERCEPTION_ROUTE_REWRITE_MANIFEST";
+  /** @type {string} */
   const DEFAULT_SERIALIZED_MANIFEST = "[]";
 
   /**
@@ -24,6 +27,7 @@
    * @param {typeof globalThis} targetScope - The target global execution context.
    * @param {string} propertyKey - The property name to register.
    * @param {string} serializedPayload - The initial JSON-serialized manifest payload.
+   * @returns {void}
    */
   function registerGlobalManifest(targetScope, propertyKey, serializedPayload) {
     if (hasManifest(targetScope, propertyKey)) {
@@ -38,7 +42,14 @@
         enumerable: true
       });
     } catch (_definitionError) {
-      targetScope[propertyKey] = serializedPayload;
+      /**
+       * Fallback assignment for locked or non-extensible global scopes.
+       */
+      try {
+        targetScope[propertyKey] = serializedPayload;
+      } catch (_assignmentError) {
+        // Suppress failure if global scope is entirely frozen or protected
+      }
     }
   }
 
