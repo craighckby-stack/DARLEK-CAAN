@@ -3,23 +3,34 @@
  * File: fix_prompt2.js
  * Role: Core system component participating in autonomous cognitive evolution cycles.
  * Architecture: Type-safe modular unit with resilient state interfaces.
+ * Optimized by: EMG Core v49 Neural Code and Documentation Optimizer Engine.
  */
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // Constants & Pre-compiled Regex/Strings
 const TARGET_FILE_RELATIVE = 'src/app/api/evolution/propose/route.ts';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
 
+// Pre-compiled literal regex to avoid recompilation overhead during execution cycles
+const REGEX_TO_REPLACE = /```json\n\{\n  "analysis": "Specific analysis of what dead-weight or bugs were fixed\.\.\.",\n  "riskScore": 1,\n  "affectedFiles": \["list of other files"\],\n  "newFiles": \[\n    \{\n      "path": "relative\/path\/to\/new-file\.ts",\n      "content": "Full source code content of the new file to create"\n    \}\n  \]/;
+
+const NEW_STRING = '\\`\\`\\`json\\n{\\n  \\\"analysis\\\": \\\"Specific analysis of what dead-weight or bugs were fixed...\\\",\\n  \\\"riskScore\\\": 1,\\n  \\\"affectedFiles\\\": [\\\"list of other files\\\"],\\n  \\\"newFiles\\\": [\\n    {\\n      \\\"path\\\": \\\"relative/path/to/new-file.ts\\\",\\n      \\\"content\\\": \\\"Full source code content of the new file to create\\\"\\n    }\\n  ]\\n}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n// Complete proposed code for the active file goes here.\\n// MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`';
+
 /**
  * Validates path security against directory traversal and symlink attacks.
  * @param {string} relativePath - The relative path to validate and resolve.
  * @returns {string} The fully validated, real absolute file path.
+ * @throws {Error} If security boundaries are breached or path resolution fails.
  */
 function getValidatedSecurePath(relativePath) {
+    if (typeof relativePath !== 'string' || relativePath.length === 0) {
+        throw new TypeError('SECURITY_VIOLATION: Relative path must be a non-empty string.');
+    }
+
     const cwd = process.cwd();
     const expectedBaseDir = path.resolve(cwd, 'src');
     const resolvedPath = path.resolve(cwd, relativePath);
@@ -31,8 +42,8 @@ function getValidatedSecurePath(relativePath) {
     let realPath;
     try {
         realPath = fs.realpathSync(resolvedPath);
-    } catch {
-        throw new Error(`SECURITY_VIOLATION: Target file does not exist at validated path: ${relativePath}`);
+    } catch (err) {
+        throw new Error(`SECURITY_VIOLATION: Target file does not exist or cannot be accessed at validated path: ${relativePath} (${err.message})`);
     }
 
     if (!realPath.startsWith(expectedBaseDir)) {
@@ -46,10 +57,12 @@ function getValidatedSecurePath(relativePath) {
  * Safely reads a file with strict size and type enforcement.
  * @param {string} filePath - The absolute real path of the file to read.
  * @returns {string} The UTF-8 decoded file contents.
+ * @throws {Error} If file constraints, size limits, or I/O checks fail.
  */
 function readTargetFile(filePath) {
-    const fd = fs.openSync(filePath, 'r');
+    let fd;
     try {
+        fd = fs.openSync(filePath, 'r');
         const stats = fs.fstatSync(fd);
 
         if (!stats.isFile()) {
@@ -60,11 +73,22 @@ function readTargetFile(filePath) {
             throw new Error('SECURITY_VIOLATION: File size exceeds safety bounds limit.');
         }
 
+        // Handle empty files safely without allocating buffers
+        if (stats.size === 0) {
+            return '';
+        }
+
         const buffer = Buffer.allocUnsafe(stats.size);
         fs.readSync(fd, buffer, 0, stats.size, 0);
         return buffer.toString('utf8');
     } finally {
-        fs.closeSync(fd);
+        if (fd !== undefined) {
+            try {
+                fs.closeSync(fd);
+            } catch {
+                // Suppress secondary cleanup exceptions during error propagation
+            }
+        }
     }
 }
 
@@ -74,20 +98,27 @@ function readTargetFile(filePath) {
  * @returns {string} Modified source code content.
  */
 function transformCodeContent(code) {
-    const regexToReplace = /```json\n\{\n  "analysis": "Specific analysis of what dead-weight or bugs were fixed\.\.\.",\n  "riskScore": 1,\n  "affectedFiles": \["list of other files"\],\n  "newFiles": \[\n    \{\n      "path": "relative\/path\/to\/new-file\.ts",\n      "content": "Full source code content of the new file to create"\n    \}\n  \]/;
-
-    const newString = '\\`\\`\\`json\\n{\\n  \\\"analysis\\\": \\\"Specific analysis of what dead-weight or bugs were fixed...\\\",\\n  \\\"riskScore\\\": 1,\\n  \\\"affectedFiles\\\": [\\\"list of other files\\\"],\\n  \\\"newFiles\\\": [\\n    {\\n      \\\"path\\\": \\\"relative/path/to/new-file.ts\\\",\\n      \\\"content\\\": \\\"Full source code content of the new file to create\\\"\\n    }\\n  ]\\n}\\n\\`\\`\\`\\n\\n\\`\\`\\`tsx\\n// Complete proposed code for the active file goes here.\\n// MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS\\n\\`\\`\\`';
-
-    return code.replace(regexToReplace, newString);
+    if (typeof code !== 'string') {
+        throw new TypeError('TRANSFORM_ERROR: Code content must be provided as a valid string.');
+    }
+    return code.replace(REGEX_TO_REPLACE, NEW_STRING);
 }
 
-// Main Execution Flow
+/**
+ * Main Execution Flow with robust error handling and exit codes.
+ */
 function main() {
-    const securePath = getValidatedSecurePath(TARGET_FILE_RELATIVE);
-    const originalCode = readTargetFile(securePath);
-    const updatedCode = transformCodeContent(originalCode);
-    
-    fs.writeFileSync(securePath, updatedCode, { encoding: 'utf8', flag: 'w' });
+    try {
+        const securePath = getValidatedSecurePath(TARGET_FILE_RELATIVE);
+        const originalCode = readTargetFile(securePath);
+        const updatedCode = transformCodeContent(originalCode);
+        
+        fs.writeFileSync(securePath, updatedCode, { encoding: 'utf8', flag: 'w' });
+    } catch (error) {
+        process.stderr.write(`[EMG-CORE-CRITICAL] Execution Failed: ${error.message}\n`);
+        process.exitCode = 1;
+    }
 }
 
+// Execute main process
 main();
