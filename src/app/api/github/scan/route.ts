@@ -48,8 +48,8 @@ function isValidBlobItem(item: GitHubTreeItem): boolean {
 
   const { path } = item;
 
-  for (const directory of EXCLUDED_DIRECTORIES) {
-    if (path.includes(directory)) {
+  for (let i = 0; i < EXCLUDED_DIRECTORIES.length; i++) {
+    if (path.includes(EXCLUDED_DIRECTORIES[i])) {
       return false;
     }
   }
@@ -72,7 +72,15 @@ export async function GET(): Promise<NextResponse> {
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const { token, owner, repo, branch }: ScanRepoBody = await safeReqJson(req, {} as ScanRepoBody);
+    const body = await safeReqJson<ScanRepoBody>(req, {} as ScanRepoBody);
+    const { token, owner, repo, branch } = body;
+
+    if (!token || !owner || !repo || !branch) {
+      return NextResponse.json(
+        { error: 'Missing required parameters: token, owner, repo, or branch.' },
+        { status: 400 }
+      );
+    }
 
     const repositoryTreeUrl = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
 
@@ -94,9 +102,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const data: GitHubTreeResponse = await githubResponse.json();
     const tree = data.tree;
 
-    if (!tree) {
+    if (!tree || !Array.isArray(tree)) {
       return NextResponse.json(
-        { error: 'No tree data returned. Check the branch name.' },
+        { error: 'No tree data returned or invalid format. Check the branch name.' },
         { status: 400 }
       );
     }
@@ -104,7 +112,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const filteredFiles: GitHubFile[] = [];
     let repoTotal = 0;
 
-    for (const item of tree) {
+    for (let i = 0; i < tree.length; i++) {
+      const item = tree[i];
       if (item.type === 'blob') {
         repoTotal++;
         if (isValidBlobItem(item)) {
