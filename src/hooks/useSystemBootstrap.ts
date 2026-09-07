@@ -5,7 +5,7 @@
  * Implements strict memory safety, zero-overhead event binding, and explicit type contracts.
  */
 
-import { useEffect, useState, startTransition } from 'react';
+import { useEffect, useState, startTransition, useCallback } from 'react';
 
 /**
  * Custom event name defining the system bootstrap ready state trigger.
@@ -23,14 +23,22 @@ const LISTENER_OPTIONS: AddEventListenerOptions = { passive: true } as const;
 export type UseSystemBootstrapReturn = boolean;
 
 /**
- * Subscribes to the window system readiness lifecycle event.
+ * Subscribes to the window system readiness lifecycle event with guaranteed reference stability.
  */
 const useSystemReadinessSubscription = (onReady: () => void): void => {
   useEffect(() => {
-    window.addEventListener(SYSTEM_READY_EVENT, onReady, LISTENER_OPTIONS);
+    try {
+      window.addEventListener(SYSTEM_READY_EVENT, onReady, LISTENER_OPTIONS);
+    } catch (error: unknown) {
+      console.error('[EMG Core] Failed to attach system readiness listener:', error);
+    }
     
     return () => {
-      window.removeEventListener(SYSTEM_READY_EVENT, onReady, LISTENER_OPTIONS);
+      try {
+        window.removeEventListener(SYSTEM_READY_EVENT, onReady, LISTENER_OPTIONS);
+      } catch (error: unknown) {
+        console.error('[EMG Core] Failed to remove system readiness listener:', error);
+      }
     };
   }, [onReady]);
 };
@@ -43,11 +51,13 @@ const useSystemReadinessSubscription = (onReady: () => void): void => {
 export const useSystemBootstrap = (): UseSystemBootstrapReturn => {
   const [isSystemReady, setIsSystemReady] = useState<boolean>(false);
 
-  useSystemReadinessSubscription(() => {
+  const handleSystemReady = useCallback((): void => {
     startTransition(() => {
       setIsSystemReady(true);
     });
-  });
+  }, []);
+
+  useSystemReadinessSubscription(handleSystemReady);
 
   return isSystemReady;
 };
