@@ -9,8 +9,16 @@
 
 const { readFileSync, writeFileSync } = require('node:fs');
 
+/** @type {string} */
 const TARGET_FILE_PATH = 'src/app/api/evolution/propose/route.ts';
 
+/**
+ * @typedef {Object} FormattingReplacement
+ * @property {RegExp} pattern
+ * @property {string} replacement
+ */
+
+/** @type {ReadonlyArray<FormattingReplacement>} */
 const FORMATTING_REPLACEMENTS = Object.freeze([
     {
         pattern: /\\`\\`\\`json\{/g,
@@ -23,29 +31,48 @@ const FORMATTING_REPLACEMENTS = Object.freeze([
 ]);
 
 /**
- * Applies a sequence of regex transformations to string content.
+ * Applies a sequence of regex transformations to string content efficiently.
  * 
  * @param {string} content - The source string to transform.
  * @returns {string} The transformed string.
  */
 function applyFormattingTransforms(content) {
-    return FORMATTING_REPLACEMENTS.reduce(
-        (currentContent, { pattern, replacement }) => currentContent.replace(pattern, replacement),
-        content
-    );
+    if (typeof content !== 'string') {
+        throw new TypeError('Expected content to be a string.');
+    }
+
+    let currentContent = content;
+    const length = FORMATTING_REPLACEMENTS.length;
+    
+    for (let i = 0; i < length; i++) {
+        const item = FORMATTING_REPLACEMENTS[i];
+        currentContent = currentContent.replace(item.pattern, item.replacement);
+    }
+
+    return currentContent;
 }
 
 /**
- * Normalizes code block formatting within the target file.
+ * Normalizes code block formatting within the target file with robust error handling.
  * 
  * @param {string} filePath - Path to the target file.
+ * @throws {Error} If file read/write operations fail.
  */
 function normalizeCodeBlockFormatting(filePath) {
-    const originalContent = readFileSync(filePath, 'utf8');
-    const normalizedContent = applyFormattingTransforms(originalContent);
+    if (typeof filePath !== 'string' || filePath.trim() === '') {
+        throw new TypeError('Expected a valid non-empty file path string.');
+    }
 
-    if (originalContent !== normalizedContent) {
-        writeFileSync(filePath, normalizedContent, 'utf8');
+    try {
+        const originalContent = readFileSync(filePath, 'utf8');
+        const normalizedContent = applyFormattingTransforms(originalContent);
+
+        if (originalContent !== normalizedContent) {
+            writeFileSync(filePath, normalizedContent, 'utf8');
+        }
+    } catch (error) {
+        const err = /** @type {Error} */ (error);
+        throw new Error(`Failed to normalize code block formatting for "${filePath}": ${err.message}`);
     }
 }
 
