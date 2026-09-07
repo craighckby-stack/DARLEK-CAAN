@@ -21,6 +21,7 @@ const PRISTINE_REPLACEMENT = "\\`\\`\\`\\n`";
  * Validates and resolves the target file path against security boundaries using zero-allocation string checks.
  * @param {string} relativePath - The relative path to validate and resolve.
  * @returns {string} The fully resolved and validated absolute path.
+ * @throws {Error} If the resolved path falls outside the allowed security base directory.
  */
 function resolveAndValidatePath(relativePath) {
     const resolvedPath = path.resolve(relativePath);
@@ -33,13 +34,14 @@ function resolveAndValidatePath(relativePath) {
 /**
  * Performs rigorous security and sanity checks utilizing sync syscall stats efficiently.
  * @param {string} filePath - The absolute file path to inspect.
+ * @throws {Error} If the file does not exist, is not a regular file, or exceeds size limits.
  */
 function validateFileConstraints(filePath) {
     let stats;
     try {
         stats = fs.statSync(filePath);
-    } catch {
-        throw new Error(`Security Violation: Target file does not exist: ${filePath}`);
+    } catch (error) {
+        throw new Error(`Security Violation: Target file does not exist: ${filePath}. Details: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     if (!stats.isFile()) {
@@ -55,6 +57,7 @@ function validateFileConstraints(filePath) {
  * Executes targeted text mutation with pre-compiled regex engine patterns.
  * @param {string} sourceCode - The original source code string.
  * @returns {string} The mutated source code string.
+ * @throws {Error} If the input is invalid or exceeds memory safety bounds.
  */
 function mutateSourceCode(sourceCode) {
     if (typeof sourceCode !== 'string') {
@@ -70,15 +73,22 @@ function mutateSourceCode(sourceCode) {
 
 /**
  * Main execution routine optimized for memory footprint reduction and fast execution.
+ * @throws {Error} If file resolution, validation, mutation, or disk I/O operations fail.
  */
 function executeEvolutionFix() {
-    const targetFile = resolveAndValidatePath(TARGET_RELATIVE_PATH);
-    validateFileConstraints(targetFile);
+    try {
+        const targetFile = resolveAndValidatePath(TARGET_RELATIVE_PATH);
+        validateFileConstraints(targetFile);
 
-    const originalCode = fs.readFileSync(targetFile, 'utf8');
-    const optimizedCode = mutateSourceCode(originalCode);
+        const originalCode = fs.readFileSync(targetFile, 'utf8');
+        const optimizedCode = mutateSourceCode(originalCode);
 
-    fs.writeFileSync(targetFile, optimizedCode, 'utf8');
+        fs.writeFileSync(targetFile, optimizedCode, 'utf8');
+    } catch (error) {
+        console.error('CRITICAL: Evolution fix execution failed:', error instanceof Error ? error.message : error);
+        process.exitCode = 1;
+        throw error;
+    }
 }
 
 // Invoke operational workflow
