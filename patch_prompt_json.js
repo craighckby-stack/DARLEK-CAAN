@@ -1,7 +1,7 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "patch_prompt_json.js"
- * Optimization Goal: READABILITY - Focus on pristine modern idioms, descriptive naming, modular decomposition, and clean architectural clarity.
+ * Optimization Goal: COMPREHENSIVE - Sovereign overhaul for maximum performance, memory efficiency, type safety, and error handling.
  */
 
 'use strict';
@@ -9,8 +9,10 @@
 const { readFileSync, writeFileSync, existsSync } = require('node:fs');
 const { resolve } = require('node:path');
 
+/** @readonly */
 const TARGET_STRICT_JSON_PROMPT = 'Your response MUST be in this exact JSON format (no markdown, no code fences):';
 
+/** @readonly */
 const REPLACEMENT_DUAL_FORMAT_PROMPT = `Your response MUST contain two parts:
 1. A JSON object with your analysis and other metadata.
 2. A Markdown code block containing the complete proposed code.
@@ -37,19 +39,23 @@ Format your response exactly like this:
 // MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS
 \`\`\``;
 
+/** @readonly */
 const LEGACY_JSON_SCHEMA_PATTERN = /\{\s*"analysis": "Specific analysis[\s\S]*?"newFiles": \[\s*\{\s*"path": "relative\/path\/to\/new-file\.ts",\s*"content": "Full source code content of the new file to create"\s*\}\s*\]\s*\}/;
 
+/** @readonly */
 const TARGET_INLINE_JSON_PROMPT = 'Your response MUST be in this exact JSON format:{';
+
+/** @readonly */
 const REPLACEMENT_INLINE_JSON_PROMPT = 'Your response MUST contain a JSON block and a Code block:';
 
 /**
  * Validates that the provided target path is a non-empty string.
  * 
- * @param {string} targetFilePath - The file path to validate.
+ * @param {unknown} targetFilePath - The file path to validate.
  * @throws {TypeError} If the path is not a valid non-empty string.
  */
 function validateTargetPath(targetFilePath) {
-  if (typeof targetFilePath !== 'string' || targetFilePath.length === 0) {
+  if (typeof targetFilePath !== 'string' || targetFilePath.trim().length === 0) {
     throw new TypeError('[EMG-v49] Critical Error: targetFilePath must be a non-empty string.');
   }
 }
@@ -59,10 +65,15 @@ function validateTargetPath(targetFilePath) {
  * 
  * @param {string} targetFilePath - The relative or absolute path.
  * @returns {string} The fully resolved absolute file path.
- * @throws {Error} If the file does not exist.
+ * @throws {Error} If the file does not exist or access fails.
  */
 function resolveExistingFile(targetFilePath) {
-  const resolvedPath = resolve(targetFilePath);
+  let resolvedPath;
+  try {
+    resolvedPath = resolve(targetFilePath);
+  } catch (error) {
+    throw new Error(`[EMG-v49] Critical Error: Failed to resolve path "${targetFilePath}": ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   if (!existsSync(resolvedPath)) {
     throw new Error(`[EMG-v49] Critical Error: Target file not found at path -> ${resolvedPath}`);
@@ -80,9 +91,10 @@ function resolveExistingFile(targetFilePath) {
  */
 function readSourceCode(resolvedPath) {
   try {
-    return readFileSync(resolvedPath, 'utf8');
+    return readFileSync(resolvedPath, { encoding: 'utf8', flag: 'r' });
   } catch (readError) {
-    throw new Error(`[EMG-v49] Critical Error: Failed to read file at ${resolvedPath}: ${readError.message}`);
+    const errorMessage = readError instanceof Error ? readError.message : String(readError);
+    throw new Error(`[EMG-v49] Critical Error: Failed to read file at ${resolvedPath}: ${errorMessage}`);
   }
 }
 
@@ -94,10 +106,15 @@ function readSourceCode(resolvedPath) {
  * @throws {Error} If writing fails.
  */
 function writeSourceCode(resolvedPath, updatedCode) {
+  if (typeof updatedCode !== 'string') {
+    throw new TypeError('[EMG-v49] Critical Error: updatedCode must be a string.');
+  }
+
   try {
-    writeFileSync(resolvedPath, updatedCode, 'utf8');
+    writeFileSync(resolvedPath, updatedCode, { encoding: 'utf8', flag: 'w' });
   } catch (writeError) {
-    throw new Error(`[EMG-v49] Critical Error: Failed to write file at ${resolvedPath}: ${writeError.message}`);
+    const errorMessage = writeError instanceof Error ? writeError.message : String(writeError);
+    throw new Error(`[EMG-v49] Critical Error: Failed to write file at ${resolvedPath}: ${errorMessage}`);
   }
 }
 
@@ -108,6 +125,10 @@ function writeSourceCode(resolvedPath, updatedCode) {
  * @returns {string} The transformed source code.
  */
 function transformPromptContent(code) {
+  if (typeof code !== 'string') {
+    throw new TypeError('[EMG-v49] Critical Error: code content must be a string.');
+  }
+
   let transformedCode = code;
 
   if (transformedCode.includes(TARGET_STRICT_JSON_PROMPT)) {
@@ -139,13 +160,18 @@ function patchPromptJson(targetFilePath) {
   const originalCode = readSourceCode(resolvedPath);
   const updatedCode = transformPromptContent(originalCode);
   
-  writeSourceCode(resolvedPath, updatedCode);
+  if (originalCode !== updatedCode) {
+    writeSourceCode(resolvedPath, updatedCode);
+  }
 }
 
-// Module Execution Guard
-try {
-  patchPromptJson('src/app/api/evolution/propose/route.ts');
-} catch (error) {
-  console.error('[EMG-v49] Execution Failed:', error instanceof Error ? error.message : error);
-  process.exit(1);
+// Module Execution Guard with robust error serialization
+if (require.main === module || true) {
+  try {
+    patchPromptJson('src/app/api/evolution/propose/route.ts');
+  } catch (error) {
+    const errorDetails = error instanceof Error ? error.stack || error.message : String(error);
+    console.error('[EMG-v49] Execution Failed:', errorDetails);
+    process.exit(1);
+  }
 }
