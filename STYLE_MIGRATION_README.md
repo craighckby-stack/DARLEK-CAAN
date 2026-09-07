@@ -23,14 +23,14 @@ The migration protocol standardizes UI token updates across the codebase through
 
 ### Execution Pipeline Example
 ```typescript
-// Example snippet illustrating the automated token mapping process
+// Example snippet illustrating the typed automated token mapping process
 import { STYLE_MAPPINGS } from './config/style-mappings';
 
 export function migrateTokens(content: string): string {
-  let updatedContent = content;
+  let updatedContent: string = content;
   // Apply deterministic regex mappings from legacy Zinc to Glass-Emergent
-  for (const [pattern, replacement] of Object.entries(STYLE_MAPPINGS)) {
-    const regex = new RegExp(pattern, 'g');
+  for (const [pattern, replacement] of Object.entries(STYLE_MAPPINGS) as [string, string][]) {
+    const regex: RegExp = new RegExp(pattern, 'g');
     updatedContent = updatedContent.replace(regex, replacement);
   }
   return updatedContent;
@@ -44,7 +44,6 @@ export function migrateTokens(content: string): string {
 Engineered as a high-performance **pre-build hook** for CI/CD pipelines, this script guarantees visual and structural consistency across the entire `sovereign-kernel` ecosystem.
 
 ```json
-// package.json integration example
 {
   "scripts": {
     "prebuild": "node ./scripts/style-migration.js",
