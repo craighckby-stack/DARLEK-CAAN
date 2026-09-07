@@ -1,8 +1,8 @@
 /**
  * @file src/lib/diagnostic-registry.ts
  * @module DiagnosticRegistry
- * @version 49.2.0-Darlek Caan
- * @description High-performance, type-safe diagnostic module registry with hardened error boundaries and zero-allocation execution paths.
+ * @version 49.3.0-Darlek Caan
+ * @description High-performance, type-safe diagnostic module registry with hardened error boundaries, zero-allocation execution paths, and memory efficiency.
  */
 
 export type DiagnosticSeverity = number;
