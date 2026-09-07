@@ -12,7 +12,7 @@ const TOASTER_CSS_VARIABLES = {
   "--normal-border": "var(--border)",
 } as const satisfies React.CSSProperties
 
-function useResolvedTheme(propTheme?: ToasterProps["theme"]): ToasterProps["theme"] {
+function useResolvedTheme(propTheme?: ToasterProps["theme"]): NonNullable<ToasterProps["theme"]> {
   const { theme: currentSystemTheme = FALLBACK_THEME } = useTheme()
 
   return React.useMemo(() => {
