@@ -15,7 +15,14 @@ This directory serves as the control plane for the **DARLEK CANN v3.0** evolutio
 ## Operational Workflow
 1. **Initialization**: Ensure `.env.example` is populated with the required schema configuration.
 2. **Execution**: Run agent simulations utilizing the local `assets/.aistudio` execution context.
-3. **Cleanup**: Execute `npm run clean:artifacts` to securely purge ephemeral simulation buffers.
+3. **Cleanup**: Execute the cleanup script via the package manager:
+   ```json
+   {
+     "scripts": {
+       "clean:artifacts": "rimraf assets/.aistudio/temp/*.buffer"
+     }
+   }
+   ```
 
 ---
 
