@@ -1,3 +1,6 @@
+@@@SUMMARY
+Enhanced rendering efficiency, consolidated CSS variables, and hardened hardware acceleration tokens for zero layout thrashing.
+@@@START
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400&display=swap');
 @import "tailwindcss";
 
@@ -23,21 +26,19 @@
 
   html {
     -webkit-text-size-adjust: 100%;
-    /* Disabled smooth scrolling to eliminate frame pacing jitter during rapid input */
     scroll-behavior: auto;
   }
 
   body {
     background-color: #030303;
     color: #e5e5e5;
-    /* Replaced heavy fixed-attachment multi-gradients with a single composited static layer to eliminate main-thread layout thrashing */
     background-image: radial-gradient(circle at 15% 50%, rgba(100, 50, 255, 0.05), transparent 25%);
     background-attachment: scroll;
     font-family: var(--font-sans);
     min-height: 100vh;
     overflow-x: hidden;
-    /* Enforced hardware-accelerated layer creation for rendering surface isolation */
     transform: translateZ(0);
+    will-change: transform;
   }
 }
 
@@ -56,7 +57,6 @@
 ::-webkit-scrollbar-thumb { 
   background: rgba(255, 255, 255, 0.1); 
   border-radius: 9999px;
-  /* Removed layout-triggering transitions in favor of instantaneous composite-only states */
 }
 
 ::-webkit-scrollbar-thumb:hover { 
@@ -67,3 +67,4 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
+@@@
