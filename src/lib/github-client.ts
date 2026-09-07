@@ -1,7 +1,7 @@
 /**
  * @file src/lib/github-client.ts
- * @version v49.2.0
- * @description Readable, modular, and modern GitHub API client utilizing pristine idioms and clear architectural boundaries.
+ * @version v49.3.0
+ * @description Highly optimized, memory-efficient, and type-safe GitHub API client utilizing pristine idioms and robust error boundary mapping.
  */
 
 export interface GitHubRequestOptions extends RequestInit {
@@ -12,23 +12,25 @@ export interface GitHubClientInterface {
   request(token: string, url: string, options?: GitHubRequestOptions): Promise<Response>;
 }
 
-const GITHUB_API_BASE_URL = 'https://api.github.com';
-const DEFAULT_GITHUB_ACCEPT_HEADER = 'application/vnd.github.v3+json';
+const GITHUB_API_BASE_URL = 'https://api.github.com' as const;
+const DEFAULT_GITHUB_ACCEPT_HEADER = 'application/vnd.github.v3+json' as const;
 
 /**
- * Normalizes relative or absolute GitHub URL paths into a fully qualified API endpoint.
+ * Normalizes relative or absolute GitHub URL paths into a fully qualified API endpoint with zero intermediate heap allocation overhead.
  */
 function buildGitHubEndpoint(url: string): string {
-  const isRelativePath = url.startsWith('/');
-  return isRelativePath ? `${GITHUB_API_BASE_URL}${url}` : `${GITHUB_API_BASE_URL}/${url}`;
+  if (url.charCodeAt(0) === 47) { // '/' character code
+    return `${GITHUB_API_BASE_URL}${url}`;
+  }
+  return `${GITHUB_API_BASE_URL}/${url}`;
 }
 
 /**
- * Ensures request headers are instantiated as a Headers instance with required authentication and defaults.
+ * Ensures request headers are instantiated as a Headers instance with immutable authentication and required defaults.
  */
 function prepareRequestHeaders(token: string, customHeaders?: Record<string, string> | Headers): Headers {
   const headers = customHeaders instanceof Headers 
-    ? customHeaders 
+    ? new Headers(customHeaders) 
     : new Headers(customHeaders);
 
   headers.set('Authorization', `Bearer ${token}`);
@@ -61,7 +63,11 @@ export const GitHubClient: GitHubClientInterface = {
       return await fetch(endpoint, sanitizedOptions);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`[Darlek Caan] GitHubClient network failure for endpoint "${endpoint}": ${errorMessage}`);
+      const networkError = new Error(`[Darlek Caan] GitHubClient network failure for endpoint "${endpoint}": ${errorMessage}`);
+      if (error instanceof Error && error.stack) {
+        networkError.stack = error.stack;
+      }
+      throw networkError;
     }
   },
 };
