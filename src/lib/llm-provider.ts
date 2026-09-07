@@ -25,28 +25,28 @@ export interface LlmResult {
   latencyMs?: number;
 }
 
-interface ContentPart {
+export interface ContentPart {
   text: string;
 }
 
-interface ContentItem {
+export interface ContentItem {
   role: string;
   parts: ContentPart[];
 }
 
-interface ChatHistoryItem {
+export interface ChatHistoryItem {
   role: string;
   content: string;
 }
 
-type SdkRole = 'system' | 'assistant' | 'user';
+export type SdkRole = 'system' | 'assistant' | 'user';
 
-interface SdkMessage {
+export interface SdkMessage {
   role: SdkRole;
   content: string;
 }
 
-interface PersonaResponse {
+export interface PersonaResponse {
   vote: 'approve' | 'reject' | 'abstain';
   confidence: number;
   reasoning: string;
