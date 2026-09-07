@@ -1,7 +1,7 @@
 /**
  * @file src/types/manifest.d.ts
  * @module Darlek Caan
- * @description Type definitions for project manifests, providing strict readonly structures and extensible literal suggestions.
+ * @description Sovereign type definitions for project manifests, enforcing deep readonly immutability and robust extensible literal structures.
  */
 
 // ============================================================================
