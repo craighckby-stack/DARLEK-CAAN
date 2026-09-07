@@ -1,9 +1,9 @@
 /**
  * @file src/types.ts
- * @version 4.9.3
- * @engine Darlek Caan
- * @description Darlek Caan type definitions providing clean architectural models,
- * strict structural immutability, and zero-cost type safety for chess runtime orchestration.
+ * @version 4.9.4
+ * @engine EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * @description Optimized Darlek Caan type definitions providing zero-cost type safety,
+ * memory-efficient structural immutability, and branded primitive precision for chess runtime orchestration.
  */
 
 /* ============================================================================
@@ -53,6 +53,16 @@ export type BoardTheme = (typeof BoardTheme)[keyof typeof BoardTheme];
 export type PieceColor = 'w' | 'b';
 
 /**
+ * Branded string type for algebraic board square coordinates (e.g., 'e2', 'e4').
+ */
+export type Square = string & { readonly __brand: unique symbol };
+
+/**
+ * Branded string type for Standard Algebraic Notation move representations (e.g., 'e4', 'Nxf3+').
+ */
+export type SAN = string & { readonly __brand: unique symbol };
+
+/**
  * Emotional spectrum states driving synthetic Dalek telemetry and speech synthesis.
  */
 export type DalekEmotion =
@@ -78,22 +88,22 @@ export type JesusTone =
  * ========================================================================= */
 
 /**
- * Immutable log entry detailing an executed chess move.
+ * Immutable log entry detailing an executed chess move with branded structural primitives.
  */
 export interface MoveLog {
   /** Unique identifier for the move record */
   readonly id: string;
-  /** Source square coordinate in algebraic notation (e.g., 'e2') */
-  readonly from: string;
-  /** Target square coordinate in algebraic notation (e.g., 'e4') */
-  readonly to: string;
+  /** Source square coordinate in algebraic notation */
+  readonly from: Square;
+  /** Target square coordinate in algebraic notation */
+  readonly to: Square;
   /** Piece type descriptor (e.g., 'p', 'n', 'b', 'r', 'q', 'k') */
   readonly piece: string;
   /** Color of the piece executed */
   readonly color: PieceColor;
-  /** Standard Algebraic Notation representation of the move (e.g., 'e4', 'Nxf3+') */
-  readonly san: string;
-  /** Formatted timestamp indicating when the move was registered */
+  /** Standard Algebraic Notation representation of the move */
+  readonly san: SAN;
+  /** Formatted ISO-8601 timestamp indicating when the move was registered */
   readonly timestamp: string;
 }
 
@@ -161,6 +171,6 @@ export interface GameSettings {
   readonly playerColor: PieceColor;
   /** Global audio mute toggle */
   readonly muteSounds: boolean;
-  /** Master speech synthesizer volume scalar clamped between [0.0, 1.0] */
+  /** Master speech synthesizer volume scalar clamped strictly between [0.0, 1.0] */
   readonly synthesizerVolume: number;
 }
