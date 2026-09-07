@@ -7,7 +7,7 @@ export interface SubscriptionTeardown {
  */
 export class LifecycleManager {
   private subscriptions: SubscriptionTeardown[] = [];
-  private isDestroyed = false;
+  private isDestroyed: boolean = false;
 
   /**
    * Registers a subscription for automated teardown upon destruction.
@@ -34,7 +34,8 @@ export class LifecycleManager {
     const activeSubscriptions = this.subscriptions;
     this.subscriptions = [];
 
-    for (let index = activeSubscriptions.length - 1; index >= 0; index--) {
+    let index = activeSubscriptions.length;
+    while (index--) {
       this.safeTeardown(activeSubscriptions[index], 'Error during subscription teardown:');
     }
   }
