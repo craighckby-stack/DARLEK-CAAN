@@ -1,6 +1,6 @@
 # Orchestra Evolution Engine
 
-> **Executive Summary**: High-performance multi-model consensus and synthetic reasoning engine supporting concurrent execution and iterative debate modes.
+> **Executive Summary**: High-performance multi-model consensus and synthetic reasoning engine supporting concurrent execution and iterative debate modes with strict type safety.
 
 ---
 
@@ -43,20 +43,27 @@ The engine manages synthetic reasoning through two primary execution modes and c
 
 ## Code Example
 
-Below is a standard integration pattern for initializing and invoking the orchestrator:
+Below is a fully typed integration pattern for initializing and invoking the orchestrator:
 
 ```typescript
-import { OrchestraOrchestrator } from '@/app/api/evolution/orchestra';
+import { 
+  OrchestraOrchestrator, 
+  OrchestratorConfig, 
+  ExecutionResult 
+} from '@/app/api/evolution/orchestra';
 
-// Initialize the orchestrator with desired execution parameters
-const orchestrator = new OrchestraOrchestrator({
+// Define explicit configuration types
+const config: OrchestratorConfig = {
   mode: 'debate',
   maxIterations: 3,
   models: ['gpt-4o', 'claude-3-5-sonnet']
-});
+};
 
-// Execute synthetic reasoning workflow
-const result = await orchestrator.execute({
+// Initialize the orchestrator with type-safe parameters
+const orchestrator: OrchestraOrchestrator = new OrchestraOrchestrator(config);
+
+// Execute synthetic reasoning workflow with typed input and output
+const result: ExecutionResult = await orchestrator.execute({
   prompt: 'Analyze the architectural implications of multi-model consensus.'
 });
 
