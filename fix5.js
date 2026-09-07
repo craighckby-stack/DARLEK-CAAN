@@ -10,6 +10,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+/**
+ * @typedef {Object} SystemConfig
+ * @property {string} RELATIVE_TARGET_PATH
+ * @property {number} MAX_FILE_SIZE_BYTES
+ * @property {RegExp} SEARCH_PATTERN
+ * @property {string} REPLACEMENT_STRING
+ */
+
+/** @type {Readonly<SystemConfig>} */
 const CONFIG = Object.freeze({
   RELATIVE_TARGET_PATH: 'src/app/api/evolution/propose/route.ts',
   MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024, // 10MB
@@ -44,11 +53,13 @@ function assertPathSecurity(baseDir, targetPath) {
  * @throws {Error} If the target is missing, not a file, or exceeds size limits.
  */
 function validateFileConstraints(targetPath) {
+  /** @type {import('node:fs').Stats} */
   let stats;
   try {
     stats = fs.statSync(targetPath);
-  } catch {
-    throw new Error(`Target path does not exist or is inaccessible: ${targetPath}`);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Target path does not exist or is inaccessible: ${targetPath}. Reason: ${reason}`);
   }
 
   if (!stats.isFile()) {
