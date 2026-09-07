@@ -11,20 +11,24 @@
       : {};
 
   function resolveBuildId() {
-    const rawBuildId = typeof process !== "undefined" ? process?.env?.__NEXT_BUILD_ID : undefined;
+    try {
+      const rawBuildId = typeof process !== "undefined" ? process?.env?.__NEXT_BUILD_ID : undefined;
 
-    if (typeof rawBuildId !== "string") {
+      if (typeof rawBuildId !== "string" || rawBuildId === "") {
+        return "development";
+      }
+
+      const isSafeIdentifier = /^[a-zA-Z0-9_\-]+$/.test(rawBuildId);
+      return isSafeIdentifier ? rawBuildId : encodeURIComponent(rawBuildId);
+    } catch {
       return "development";
     }
-
-    const isSafeIdentifier = /^[a-zA-Z0-9_\-]+$/.test(rawBuildId);
-    return isSafeIdentifier ? rawBuildId : encodeURIComponent(rawBuildId);
   }
 
   const buildId = resolveBuildId();
   const staticAssetBasePath = `/static/${buildId}/`;
 
-  globalScope.__BUILD_MANIFEST = {
+  const buildManifest = {
     polyfillFiles: ["static/chunks/polyfills.js"],
     devFiles: [],
     ampDevFiles: [],
@@ -42,4 +46,10 @@
     },
     ampFirstPages: []
   };
+
+  try {
+    globalScope.__BUILD_MANIFEST = buildManifest;
+  } catch {
+    // Fail silently if global scope property assignment is restricted
+  }
 })();
