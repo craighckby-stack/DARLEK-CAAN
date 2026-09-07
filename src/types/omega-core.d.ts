@@ -91,7 +91,7 @@ export type DeepImmutable<T> =
     ? ReadonlyMap<DeepImmutable<K>, DeepImmutable<V>>
     : T extends Set<infer U>
     ? ReadonlySet<DeepImmutable<U>>
-    : T extends (infer R)[]
+    : T extends readonly (infer R)[]
     ? ReadonlyArray<DeepImmutable<R>>
     : T extends object
     ? { readonly [K in keyof T]: DeepImmutable<T[K]> }
