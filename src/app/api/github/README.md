@@ -35,17 +35,17 @@
 
 ```typescript
 import { fetchGitHubFile } from '@/app/api/github/service';
-import { ReadFileSchema } from '@/app/api/github/schema';
+import { ReadFileSchema, ReadFileInput } from '@/app/api/github/schema';
 
-// Example execution payload validated against ReadFileSchema
-const payload = {
+// Example execution payload strictly typed to ReadFileInput
+const payload: ReadFileInput = {
   owner: 'darlek-cann-org',
   repo: 'core-system',
   path: 'src/engine/core.ts',
 };
 
-async function loadRepositoryState() {
-  // 1. Validate payload
+async function loadRepositoryState(): Promise<void> {
+  // 1. Validate payload against schema
   const validatedData = ReadFileSchema.parse(payload);
 
   // 2. Execute retrieval with timeout & transformation
