@@ -9,19 +9,28 @@
 const { readFileSync, writeFileSync } = require('node:fs');
 const { normalize } = require('node:path');
 
+/** @type {Readonly<string>} */
 const TARGET_FILE_PATH = normalize('src/app/api/evolution/propose/route.ts');
 
+/**
+ * @typedef {Object} PatchConfig
+ * @property {string} name
+ * @property {string} search
+ * @property {string} replacement
+ */
+
+/** @type {ReadonlyArray<PatchConfig>} */
 const PATCH_CONFIGS = Object.freeze([
-    {
+    Object.freeze({
         name: 'Target Signature 1',
         search: 'let proposedCode = parsed?.proposedCode;',
         replacement: "if (!parsed) console.log('[Propose] JSON parse failed. rawText length:', rawText.length, 'preview:', rawText.slice(0, 200));\n    let proposedCode = parsed?.proposedCode;"
-    },
-    {
+    }),
+    Object.freeze({
         name: 'Target Signature 2',
         search: 'proposedCode = fileContent;',
         replacement: "console.log('[Propose] Fallback matched no code fences. Using fileContent.');\n        proposedCode = fileContent;"
-    }
+    })
 ]);
 
 /**
@@ -32,7 +41,9 @@ const PATCH_CONFIGS = Object.freeze([
  * @returns {void}
  */
 function validateTargetSignatures(sourceContent, filePath) {
-    for (const config of PATCH_CONFIGS) {
+    const len = PATCH_CONFIGS.length;
+    for (let i = 0; i < len; i++) {
+        const config = PATCH_CONFIGS[i];
         if (!sourceContent.includes(config.search)) {
             console.warn(`[EMG-v49] Warning: ${config.name} not found in ${filePath}`);
         }
@@ -46,10 +57,13 @@ function validateTargetSignatures(sourceContent, filePath) {
  * @returns {string} The updated file content.
  */
 function applyPatches(sourceContent) {
-    return PATCH_CONFIGS.reduce(
-        (content, config) => content.replace(config.search, config.replacement),
-        sourceContent
-    );
+    let content = sourceContent;
+    const len = PATCH_CONFIGS.length;
+    for (let i = 0; i < len; i++) {
+        const config = PATCH_CONFIGS[i];
+        content = content.replace(config.search, config.replacement);
+    }
+    return content;
 }
 
 /**
