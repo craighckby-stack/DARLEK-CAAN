@@ -7,9 +7,10 @@
 
 'use strict';
 
-const { readFileSync, writeFileSync, statSync } = require('fs');
-const { resolve, normalize, sep } = require('path');
+const { readFileSync, writeFileSync, statSync } = require('node:fs');
+const { resolve, normalize, sep } = require('node:path');
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB strict safety threshold
 const TARGET_REL = 'src/app/api/evolution/propose/route.ts';
 const BASE_DIR = resolve('src');
 const targetPath = normalize(resolve(TARGET_REL));
@@ -18,15 +19,38 @@ if (!targetPath.startsWith(BASE_DIR + sep) && targetPath !== BASE_DIR) {
     throw new Error('Security Violation: Access denied to path outside target boundary.');
 }
 
-const stats = statSync(targetPath);
-if (stats.size > 10485760) {
+let stats;
+try {
+    stats = statSync(targetPath);
+} catch (error) {
+    throw new Error(`Security Violation: Failed to read file stats for target path: ${error.message}`);
+}
+
+if (!stats.isFile()) {
+    throw new Error('Security Violation: Target path does not point to a valid regular file.');
+}
+
+if (stats.size > MAX_FILE_SIZE_BYTES) {
     throw new Error('Security Violation: File size exceeds safe memory thresholds.');
 }
 
-let code = readFileSync(targetPath, 'utf8');
+let code;
+try {
+    code = readFileSync(targetPath, 'utf8');
+} catch (error) {
+    throw new Error(`Execution Error: Failed to read target file content: ${error.message}`);
+}
 
 const targetPattern = /siphonedCodeContext\}\r?\n```\r?\n\$\{fileContent/g;
+
 if (targetPattern.test(code)) {
+    // Reset regex lastIndex due to previous test() execution
+    targetPattern.lastIndex = 0;
     code = code.replace(targetPattern, 'siphonedCodeContext}\n\\`\\`\\`\n${fileContent');
-    writeFileSync(targetPath, code, 'utf8');
+    
+    try {
+        writeFileSync(targetPath, code, 'utf8');
+    } catch (error) {
+        throw new Error(`Execution Error: Failed to write updated content to target file: ${error.message}`);
+    }
 }
