@@ -2,14 +2,14 @@ import http, { IncomingMessage, ServerResponse } from 'http';
 import { parse } from 'url';
 import next from 'next';
 
-const PORT = parseInt(process.env.PORT ?? '3000', 10);
-const HOSTNAME = '0.0.0.0';
-const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';
+const PORT: number = parseInt(process.env.PORT ?? '3000', 10);
+const HOSTNAME: string = '0.0.0.0';
+const IS_DEVELOPMENT: boolean = process.env.NODE_ENV !== 'production';
 
 const nextApp = next({ dev: IS_DEVELOPMENT, hostname: HOSTNAME, port: PORT });
 const requestHandler = nextApp.getRequestHandler();
 
-const INTERNAL_ERROR_BUFFER = Buffer.from('Internal Server Error', 'utf-8');
+const INTERNAL_ERROR_BUFFER: Buffer = Buffer.from('Internal Server Error', 'utf-8');
 
 function handleRequestError(err: unknown, res: ServerResponse): void {
   console.error('Error handling request:', err);
@@ -26,7 +26,7 @@ const serverListener = async (req: IncomingMessage, res: ServerResponse): Promis
   try {
     const parsedUrl = parse(req.url ?? '/', true);
     await requestHandler(req, res, parsedUrl);
-  } catch (err) {
+  } catch (err: unknown) {
     handleRequestError(err, res);
   }
 };
@@ -40,7 +40,7 @@ async function startServer(): Promise<void> {
     server.listen(PORT, HOSTNAME, () => {
       console.log(`> Ready on http://${HOSTNAME}:${PORT}`);
     });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Failed to prepare Next.js app:', err);
     process.exit(1);
   }
