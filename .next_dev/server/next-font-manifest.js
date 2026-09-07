@@ -5,12 +5,12 @@
   const MANIFEST_GLOBAL_KEY = "__NEXT_FONT_MANIFEST";
 
   /** @type {Readonly<{pages: Record<string, unknown>, app: Record<string, unknown>, appUsingSizeAdjust: boolean, pagesUsingSizeAdjust: boolean}>} */
-  const DEFAULT_FONT_MANIFEST = {
-    pages: {},
-    app: {},
+  const DEFAULT_FONT_MANIFEST = Object.freeze({
+    pages: Object.freeze({}),
+    app: Object.freeze({}),
     appUsingSizeAdjust: false,
     pagesUsingSizeAdjust: false
-  };
+  });
 
   /**
    * Resolves the global execution context safely across diverse JavaScript environments.
