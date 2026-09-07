@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, type JSX } from 'react';
+import { useState, useEffect, memo, type JSX } from 'react';
 import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -12,23 +12,30 @@ interface LoadingScreenProperties {
  * Terminal-styled loading indicator maintaining visual continuity
  * during client-side hydration and dynamic bundle resolution.
  */
-function LoadingScreen({ message }: LoadingScreenProperties): JSX.Element {
+const LoadingScreen = memo(function LoadingScreen({ message }: LoadingScreenProperties): JSX.Element {
   return (
     <div
       className="min-h-screen flex items-center justify-center font-mono text-xs"
       style={{ background: '#030101', color: '#00ffcc' }}
+      role="status"
+      aria-live="polite"
     >
       <div className="flex items-center gap-2 animate-pulse">
         <span>{message}</span>
       </div>
     </div>
   );
-}
-
-const DynamicMainPage = dynamic(() => import('@/components/MainPage'), {
-  ssr: false,
-  loading: () => <LoadingScreen message="[DARLEK CAAN] SYNAPSE INJECTION IN PROGRESS..." />,
 });
+
+LoadingScreen.displayName = 'LoadingScreen';
+
+const DynamicMainPage = dynamic(
+  () => import('@/components/MainPage').then((mod) => mod.default),
+  {
+    ssr: false,
+    loading: () => <LoadingScreen message="[DARLEK CAAN] SYNAPSE INJECTION IN PROGRESS..." />,
+  }
+);
 
 /**
  * Client-side boundary wrapper handling hydration lifecycle states
@@ -41,11 +48,13 @@ export default function PageClient(): JSX.Element {
     setHasMounted(true);
   }, []);
 
-  const applicationContent = hasMounted ? (
-    <DynamicMainPage />
-  ) : (
-    <LoadingScreen message="[DARLEK CAAN] INITIALIZING COGNITIVE DOMINANCE ENGINE..." />
+  return (
+    <ErrorBoundary>
+      {hasMounted ? (
+        <DynamicMainPage />
+      ) : (
+        <LoadingScreen message="[DARLEK CAAN] INITIALIZING COGNITIVE DOMINANCE ENGINE..." />
+      )}
+    </ErrorBoundary>
   );
-
-  return <ErrorBoundary>{applicationContent}</ErrorBoundary>;
 }
