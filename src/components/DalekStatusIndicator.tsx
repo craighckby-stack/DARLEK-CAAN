@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 
 export type DalekStatus = 'connected' | 'offline' | (string & {});
 
@@ -29,9 +29,12 @@ const resolveStatusConfiguration = (status: DalekStatus): StatusConfiguration =>
   if (status === 'connected' || status === 'offline') {
     return KNOWN_STATUS_CONFIGS[status];
   }
-  
+
+  // Safe fallback guard against empty strings or malformed runtime inputs
+  const safeStatus = typeof status === 'string' && status.length > 0 ? status : 'UNKNOWN';
+
   return {
-    text: `○ ${status.toUpperCase()}`,
+    text: `○ ${safeStatus.toUpperCase()}`,
     className: 'text-yellow-500',
   };
 };
@@ -40,15 +43,15 @@ export const DalekStatusIndicator: React.FC<DalekStatusIndicatorProps> = memo(({
   status, 
   className = '' 
 }) => {
-  const { text, className: statusClassName } = resolveStatusConfiguration(status);
+  const { text, className: statusClassName } = useMemo(() => resolveStatusConfiguration(status), [status]);
   
-  const combinedClassName = [
+  const combinedClassName = useMemo(() => [
     BASE_INDICATOR_CLASSES,
     statusClassName,
     className,
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(' '), [statusClassName, className]);
 
   return (
     <div 
