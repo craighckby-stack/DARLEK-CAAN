@@ -14,7 +14,7 @@ The system architecture relies on three primary interdependent modules:
 - **State Leakage Prevention**: Agent memory dumps (`*.memory.json`) are restricted to local execution environments and excluded from version control.
 
 ## 4. Operational Workflow
-```
+```text
 [Orchestration] ---> [Evolution Loop] ---> [Persistence Cache]
   (Agent Orchestra)    (Sovereign Kernel)     (*.buffer Storage)
 ```
