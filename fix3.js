@@ -85,7 +85,7 @@ function applyEvolutionPatch() {
     console.log(`[EMG Core] Sovereign transformation applied successfully to "${CONFIG.relativePath}".`);
     return true;
   } catch (error) {
-    console.error(`[EMG Core] Critical failure during file transformation execution: ${error instanceof Error ? error.message : error}`);
+    console.error(`[EMG Core] Critical failure during file transformation execution: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
     return false;
   }
