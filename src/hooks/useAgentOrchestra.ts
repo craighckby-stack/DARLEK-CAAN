@@ -16,6 +16,7 @@ const isValidAction = (action: unknown): action is string => {
 
 /**
  * Hook for managing execution states and dispatching actions within an agent orchestra.
+ * Optimized for maximal type safety, referential stability, and minimal memory footprint.
  */
 export const useAgentOrchestra = (): UseAgentOrchestraReturn => {
   const [status, setStatus] = useState<OrchestraStatus>('IDLE');
