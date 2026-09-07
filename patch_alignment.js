@@ -1,21 +1,21 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "patch_alignment.js"
- * Objective: READABILITY - Pristine modern idioms, descriptive naming, modular decomposition, and clean architectural clarity.
+ * Objective: COMPREHENSIVE - Sovereign Overhaul (Performance, Memory Efficiency, Error Handling, Type Safety via JSDoc)
  */
 
 'use strict';
 
 const { readFileSync, writeFileSync } = require('node:fs');
 
-/** Target source file path for the AGI engine patch alignment. */
+/** Target source file path for the AGI engine patch alignment. @type {string} */
 const TARGET_FILE_PATH = 'src/utils/agi-engine.ts';
 
-/** Code injection for initializing the Edge Governance Gatekeeper dependency. */
+/** Code injection for initializing the Edge Governance Gatekeeper dependency. @type {string} */
 const OVERSEER_PATCH_TARGET = 'public overseer = new OverseerQueue();';
 const OVERSEER_PATCH_REPLACEMENT = `${OVERSEER_PATCH_TARGET}\n  public edgeGovernance = new EdgeGovernanceGatekeeper();`;
 
-/** Code injection for enforcing Layer 0 Edge Governance checks during validation cycles. */
+/** Code injection for enforcing Layer 0 Edge Governance checks during validation cycles. @type {string} */
 const CHECK_COUNTER_TARGET = 'this.totalChecks++;';
 const EDGE_GOVERNANCE_VALIDATION_BLOCK = `
     // Layer 0: Edge Governance AST & Memory Gatekeeper
@@ -29,30 +29,44 @@ const EDGE_GOVERNANCE_VALIDATION_BLOCK = `
     }`;
 const CHECK_COUNTER_REPLACEMENT = `${CHECK_COUNTER_TARGET}\n${EDGE_GOVERNANCE_VALIDATION_BLOCK}`;
 
-/** Internal cache for compiled regular expression patterns. */
+/** 
+ * Internal LRU-style bounded cache for compiled regular expression patterns to prevent memory leakage.
+ * @type {Map<string, RegExp>} 
+ */
 const regularExpressionCache = new Map();
+const MAX_CACHE_SIZE = 100;
 
 /**
- * Escapes special regular expression characters within a target string.
+ * Escapes special regular expression characters within a target string safely.
  * @param {string} stringValue - The string to escape.
  * @returns {string} The safely escaped string.
+ * @throws {TypeError} If stringValue is not a valid string.
  */
 function escapeRegExpSpecialCharacters(stringValue) {
+  if (typeof stringValue !== 'string') {
+    throw new TypeError('Expected a string value for regular expression escaping.');
+  }
   return stringValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
- * Retrieves a cached global regular expression for the given target string.
+ * Retrieves a cached global regular expression for the given target string with memory bounds enforcement.
  * @param {string} targetSubstring - The exact substring to locate.
  * @returns {RegExp} The compiled global RegExp instance.
  */
 function getCachedGlobalRegExp(targetSubstring) {
-  if (!regularExpressionCache.has(targetSubstring)) {
+  let compiledRegExp = regularExpressionCache.get(targetSubstring);
+  
+  if (!compiledRegExp) {
+    if (regularExpressionCache.size >= MAX_CACHE_SIZE) {
+      const oldestKey = regularExpressionCache.keys().next().value;
+      regularExpressionCache.delete(oldestKey);
+    }
     const escapedPattern = escapeRegExpSpecialCharacters(targetSubstring);
-    regularExpressionCache.set(targetSubstring, new RegExp(escapedPattern, 'g'));
+    compiledRegExp = new RegExp(escapedPattern, 'g');
+    regularExpressionCache.set(targetSubstring, compiledRegExp);
   }
 
-  const compiledRegExp = regularExpressionCache.get(targetSubstring);
   compiledRegExp.lastIndex = 0;
   return compiledRegExp;
 }
@@ -70,24 +84,31 @@ function injectPatch(sourceCode, targetSubstring, replacementContent) {
 }
 
 /**
- * Reads, updates, and writes back the architectural patch alignments to the target AGI engine source file.
+ * Reads, updates, and writes back the architectural patch alignments to the target AGI engine source file
+ * with robust error handling for I/O operations.
+ * @throws {Error} If file reading, patching, or writing fails.
  */
 function applyPatchAlignment() {
-  const originalSourceCode = readFileSync(TARGET_FILE_PATH, 'utf8');
+  try {
+    const originalSourceCode = readFileSync(TARGET_FILE_PATH, 'utf8');
 
-  const sourceWithOverseer = injectPatch(
-    originalSourceCode,
-    OVERSEER_PATCH_TARGET,
-    OVERSEER_PATCH_REPLACEMENT
-  );
+    const sourceWithOverseer = injectPatch(
+      originalSourceCode,
+      OVERSEER_PATCH_TARGET,
+      OVERSEER_PATCH_REPLACEMENT
+    );
 
-  const fullyPatchedSource = injectPatch(
-    sourceWithOverseer,
-    CHECK_COUNTER_TARGET,
-    CHECK_COUNTER_REPLACEMENT
-  );
+    const fullyPatchedSource = injectPatch(
+      sourceWithOverseer,
+      CHECK_COUNTER_TARGET,
+      CHECK_COUNTER_REPLACEMENT
+    );
 
-  writeFileSync(TARGET_FILE_PATH, fullyPatchedSource, 'utf8');
+    writeFileSync(TARGET_FILE_PATH, fullyPatchedSource, 'utf8');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`[EMG Core v49] Patch alignment failed for "${TARGET_FILE_PATH}": ${errorMessage}`);
+  }
 }
 
 applyPatchAlignment();
