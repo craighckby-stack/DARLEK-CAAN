@@ -22,7 +22,7 @@ The `DebateChamber` component functions as the core visualization layer for the 
 
 ## 1. Overview
 
-The `DebateChamber` component consumes `DebateAgent` and `AgentVote` types to provide high-fidelity visualization of agent deliberation and voting states in real time.
+The `DebateChamber` component consumes explicitly typed `DebateAgent` and `AgentVote` interfaces to provide high-fidelity visualization of agent deliberation and voting states in real time with absolute type safety.
 
 ---
 
@@ -45,33 +45,45 @@ The `DebateChamber` component consumes `DebateAgent` and `AgentVote` types to pr
 
 ```typescript
 import React, { useMemo } from 'react';
-import { DebateAgent, AgentVote } from '@/types/orchestra';
+import { DebateAgent, AgentVote, ConsensusMetric } from '@/types/orchestra';
 
 /**
  * Properties for the DebateChamber component.
  */
-interface DebateChamberProps {
-  agents: DebateAgent[];
-  votes: AgentVote[];
-  isActive: boolean;
+export interface DebateChamberProps {
+  readonly agents: readonly DebateAgent[];
+  readonly votes: readonly AgentVote[];
+  readonly isActive: boolean;
+}
+
+/**
+ * Extended matrix node interface for rendered agents.
+ */
+interface ConsensusNode extends DebateAgent {
+  readonly currentVote: AgentVote | null;
 }
 
 /**
  * DebateChamber renders the real-time interactive decision matrix 
- * for the Agent Orchestra consensus mechanism.
+ * for the Agent Orchestra consensus mechanism with strict type safety.
  */
 export const DebateChamber: React.FC<DebateChamberProps> = ({ agents, votes, isActive }) => {
   // Memoized selector to prevent unnecessary re-renders during high-frequency polling
-  const consensusMatrix = useMemo(() => {
-    return agents.map(agent => ({
+  const consensusMatrix: readonly ConsensusNode[] = useMemo(() => {
+    return agents.map((agent: DebateAgent): ConsensusNode => ({
       ...agent,
-      currentVote: votes.find(v => v.agentId === agent.id) || null
+      currentVote: votes.find((v: AgentVote) => v.agentId === agent.id) ?? null
     }));
   }, [agents, votes]);
 
   return (
     <div className={`debate-chamber ${isActive ? 'active-pulse' : ''}`}>
       {/* Chamber UI Matrix Rendering */}
+      {consensusMatrix.map((node) => (
+        <div key={node.id} data-agent-id={node.id}>
+          <span>{node.name}</span>
+        </div>
+      ))}
     </div>
   );
 };
