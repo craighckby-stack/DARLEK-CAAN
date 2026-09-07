@@ -19,7 +19,7 @@ export interface ProgressProps extends React.ComponentPropsWithoutRef<typeof Pro
 const ZERO_PERCENT_TRANSFORM = "translateX(-100%)"
 
 /**
- * Clamps and normalizes a progress value within valid boundaries.
+ * Clamps and normalizes a progress value within valid boundaries with strict type guards.
  */
 function clampProgressValue(value: number | null | undefined, max: number): number {
   if (value == null || Number.isNaN(value)) return 0
