@@ -119,7 +119,8 @@ export function performSelfHealing(): void {
  */
 function isCorruptionError(error: unknown): boolean {
   if (!error) return false;
-  const errorMessage = String((error as any)?.message || (error as any)?.stack || error).toLowerCase();
+  const errObj = error as Record<string, unknown>;
+  const errorMessage = String(errObj?.message || errObj?.stack || error).toLowerCase();
   
   return [
     'malformed',
@@ -133,13 +134,13 @@ function isCorruptionError(error: unknown): boolean {
 }
 
 // Caching layer for dynamic model proxies
-const proxyCache = new Map<string | symbol, any>();
+const proxyCache = new Map<string | symbol, unknown>();
 
 /**
  * Creates a robust Proxy handler capable of capturing model invocations, 
  * catching storage corruption anomalies, and executing automatic self-healing retries.
  */
-function createCallableProxy(propertyKey: string | symbol): any {
+function createCallableProxy(propertyKey: string | symbol): unknown {
   if (proxyCache.has(propertyKey)) {
     return proxyCache.get(propertyKey);
   }
@@ -148,17 +149,17 @@ function createCallableProxy(propertyKey: string | symbol): any {
   
   const proxy = new Proxy(dummyFunction, {
     apply(_, __, args) {
-      const executeOperation = async (attempt = 1): Promise<any> => {
+      const executeOperation = async (attempt = 1): Promise<unknown> => {
         const activePrisma = getPrismaInstance();
-        const targetMethod = (activePrisma as any)[propertyKey];
+        const targetMethod = (activePrisma as Record<string | symbol, unknown>)[propertyKey];
         
         if (typeof targetMethod !== 'function') {
           throw new Error(`Prisma method "${String(propertyKey)}" is not a function.`);
         }
         
         try {
-          const result = targetMethod.apply(activePrisma, args);
-          return (result && typeof result === 'object' && typeof result.then === 'function')
+          const result = (targetMethod as (...a: unknown[]) => unknown).apply(activePrisma, args);
+          return (result && typeof result === 'object' && typeof (result as Promise<unknown>).then === 'function')
             ? await result
             : result;
         } catch (error: unknown) {
@@ -180,10 +181,10 @@ function createCallableProxy(propertyKey: string | symbol): any {
         return undefined;
       }
 
-      return function (...args: any[]) {
-        const executeModelOperation = async (attempt = 1): Promise<any> => {
+      return function (...args: unknown[]) {
+        const executeModelOperation = async (attempt = 1): Promise<unknown> => {
           const activePrisma = getPrismaInstance();
-          const modelInstance = (activePrisma as any)[propertyKey];
+          const modelInstance = (activePrisma as Record<string | symbol, unknown>)[propertyKey] as Record<string | symbol, unknown> | undefined;
           
           if (!modelInstance) {
             throw new Error(`Prisma model or method "${String(propertyKey)}" not found.`);
@@ -195,8 +196,8 @@ function createCallableProxy(propertyKey: string | symbol): any {
           }
 
           try {
-            const result = modelMethod.apply(modelInstance, args);
-            return (result && typeof result === 'object' && typeof result.then === 'function')
+            const result = (modelMethod as (...a: unknown[]) => unknown).apply(modelInstance, args);
+            return (result && typeof result === 'object' && typeof (result as Promise<unknown>).then === 'function')
               ? await result
               : result;
           } catch (error: unknown) {
