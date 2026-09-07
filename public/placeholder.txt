@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-The `public/` directory stores raw, unprocessed static assets (images, fonts, and media) that are served directly to the client. This document outlines structural organization, strict naming conventions, and correct root-relative referencing methods to maintain optimal application performance.
+The `public/` directory stores raw, unprocessed static assets (images, fonts, and media) served directly to the client. This document outlines structural organization, strict naming conventions, and correct root-relative referencing methods to maintain optimal application performance.
 
 ---
 
@@ -17,11 +17,11 @@ The `public/` directory stores raw, unprocessed static assets (images, fonts, an
 
 ## Usage Guidelines
 
-| Category         | Best Practice                                                       | Example                                  |
-| :--------------- | :------------------------------------------------------------------ | :--------------------------------------- |
-| **Organization** | Group files into descriptive subdirectories as the project scales.  | `images/`, `icons/`, `fonts/`            |
+| Category         | Best Practice                                                       | Example                                    |
+| :--------------- | :------------------------------------------------------------------ | :----------------------------------------- |
+| **Organization** | Group files into descriptive subdirectories as the project scales.  | `images/`, `icons/`, `fonts/`              |
 | **Naming**       | Use lowercase, kebab-case identifiers with explicit semantics.      | `company-logo.svg`, `hero-background.webp` |
-| **Performance**  | Compress and properly size all assets prior to repository addition. | Fast client-side loading times           |
+| **Performance**  | Compress and properly size all assets prior to repository addition. | Fast client-side loading times             |
 
 ---
 
@@ -30,7 +30,7 @@ The `public/` directory stores raw, unprocessed static assets (images, fonts, an
 Reference assets stored in the `public/` directory directly from the root URL (`/`) within your components and templates:
 
 ```html
-<!-- Example: Referencing an optimized image from the public directory -->
+<!-- EMG Core v49: Referencing an optimized image from the public root directory -->
 <img 
   src="/images/company-logo.svg" 
   alt="Company Logo" 
