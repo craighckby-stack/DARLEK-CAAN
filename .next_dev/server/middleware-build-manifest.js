@@ -12,7 +12,7 @@
 
   function resolveBuildId() {
     try {
-      const rawBuildId = typeof process !== "undefined" ? process?.env?.__NEXT_BUILD_ID : undefined;
+      const rawBuildId = typeof process !== "undefined" && process && process.env ? process.env.__NEXT_BUILD_ID : undefined;
 
       if (typeof rawBuildId !== "string" || rawBuildId === "") {
         return "development";
@@ -26,29 +26,31 @@
   }
 
   const buildId = resolveBuildId();
-  const staticAssetBasePath = `/static/${buildId}/`;
+  const staticAssetBasePath = "/static/" + buildId + "/";
 
-  const buildManifest = {
-    polyfillFiles: ["static/chunks/polyfills.js"],
-    devFiles: [],
-    ampDevFiles: [],
-    lowPriorityFiles: [
-      `${staticAssetBasePath}_buildManifest.js`,
-      `${staticAssetBasePath}_ssgManifest.js`
-    ],
-    rootMainFiles: [
+  const buildManifest = Object.freeze({
+    polyfillFiles: Object.freeze(["static/chunks/polyfills.js"]),
+    devFiles: Object.freeze([]),
+    ampDevFiles: Object.freeze([]),
+    lowPriorityFiles: Object.freeze([
+      staticAssetBasePath + "_buildManifest.js",
+      staticAssetBasePath + "_ssgManifest.js"
+    ]),
+    rootMainFiles: Object.freeze([
       "static/chunks/webpack.js",
       "static/chunks/main-app.js"
-    ],
-    rootMainFilesTree: {},
-    pages: {
-      "/_app": []
-    },
-    ampFirstPages: []
-  };
+    ]),
+    rootMainFilesTree: Object.freeze({}),
+    pages: Object.freeze({
+      "/_app": Object.freeze([])
+    }),
+    ampFirstPages: Object.freeze([])
+  });
 
   try {
-    globalScope.__BUILD_MANIFEST = buildManifest;
+    if (globalScope && typeof globalScope === "object") {
+      globalScope.__BUILD_MANIFEST = buildManifest;
+    }
   } catch {
     // Fail silently if global scope property assignment is restricted
   }
