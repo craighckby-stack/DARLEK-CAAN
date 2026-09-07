@@ -3,26 +3,26 @@ import { sanitizeContent, Finding, isSkippableFile } from '@/lib/scanner';
 import JSZip from 'jszip';
 
 export interface FolderScanFileResult {
-  file: string;
-  findings: Finding[];
-  content: string;
-  sanitized: string;
-  size: number;
+  readonly file: string;
+  readonly findings: readonly Finding[];
+  readonly content: string;
+  readonly sanitized: string;
+  readonly size: number;
 }
 
 export interface UseFolderScannerReturn {
-  results: FolderScanFileResult[];
-  isScanning: boolean;
-  progress: number;
-  currentFile: string;
-  statusMessage: string;
-  filesScanned: number;
-  filesSkipped: number;
-  scanDuration: number;
-  scanFileList: (fileList: File[]) => Promise<void>;
-  stopScan: () => void;
-  downloadSanitizedZip: () => Promise<void>;
-  setResults: Dispatch<SetStateAction<FolderScanFileResult[]>>;
+  readonly results: readonly FolderScanFileResult[];
+  readonly isScanning: boolean;
+  readonly progress: number;
+  readonly currentFile: string;
+  readonly statusMessage: string;
+  readonly filesScanned: number;
+  readonly filesSkipped: number;
+  readonly scanDuration: number;
+  readonly scanFileList: (fileList: readonly File[]) => Promise<void>;
+  readonly stopScan: () => void;
+  readonly downloadSanitizedZip: () => Promise<void>;
+  readonly setResults: Dispatch<SetStateAction<FolderScanFileResult[]>>;
 }
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
@@ -45,7 +45,7 @@ export function useFolderScanner(): UseFolderScannerReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const clearTimer = useCallback((): void => {
-    if (timerRef.current) {
+    if (timerRef.current !== null) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
@@ -66,7 +66,7 @@ export function useFolderScanner(): UseFolderScannerReturn {
   }, [isScanning, clearTimer]);
 
   const stopScan = useCallback((): void => {
-    if (abortControllerRef.current) {
+    if (abortControllerRef.current !== null) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
@@ -86,11 +86,11 @@ export function useFolderScanner(): UseFolderScannerReturn {
     abortControllerRef.current = new AbortController();
   }, []);
 
-  const processFileItem = async (
+  const processFileItem = useCallback(async (
     file: File,
     relativePath: string,
     accumulatedResults: FolderScanFileResult[]
-  ): Promise<{ scannedIncrement: number; skippedIncrement: number; hasFinding: boolean }> => {
+  ): Promise<{ readonly scannedIncrement: number; readonly skippedIncrement: number; readonly hasFinding: boolean }> => {
     if (isSkippableFile(relativePath) || file.size > MAX_FILE_SIZE) {
       return { scannedIncrement: 0, skippedIncrement: 1, hasFinding: false };
     }
@@ -123,9 +123,9 @@ export function useFolderScanner(): UseFolderScannerReturn {
       console.error(`Failed to read file: ${relativePath}`, fileError);
       return { scannedIncrement: 0, skippedIncrement: 1, hasFinding: false };
     }
-  };
+  }, []);
 
-  const scanFileList = useCallback(async (fileList: File[]): Promise<void> => {
+  const scanFileList = useCallback(async (fileList: readonly File[]): Promise<void> => {
     if (!Array.isArray(fileList) || fileList.length === 0) {
       setStatusMessage('No files provided for scanning.');
       return;
@@ -140,7 +140,7 @@ export function useFolderScanner(): UseFolderScannerReturn {
 
     try {
       for (let index = 0; index < totalFiles; index++) {
-        if (abortControllerRef.current?.signal.aborted) {
+        if (abortControllerRef.current?.signal.aborted === true) {
           break;
         }
 
@@ -178,7 +178,7 @@ export function useFolderScanner(): UseFolderScannerReturn {
       const totalFindings = accumulatedResults.reduce((acc, result) => acc + result.findings.length, 0);
       setStatusMessage(`Scan complete. Found ${totalFindings} secrets across ${accumulatedResults.length} files.`);
     }
-  }, [resetScanState]);
+  }, [resetScanState, processFileItem]);
 
   const downloadSanitizedZip = useCallback(async (): Promise<void> => {
     if (results.length === 0) return;
@@ -187,7 +187,7 @@ export function useFolderScanner(): UseFolderScannerReturn {
       const zipInstance = new JSZip();
       
       for (const result of results) {
-        if (result?.file) {
+        if (typeof result?.file === 'string' && result.file.length > 0) {
           zipInstance.file(result.file, result.sanitized);
         }
       }
