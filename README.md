@@ -67,7 +67,7 @@
 ### 4. Batch Processing
 
 1. Enable **Batch Mode** for sequential multi-file analysis.
-2. Configure your **Auto-Approve Risk Threshold** (Low, Medium, or Manual Check) to manage execution autonomy.
+2. Configure your **Auto-Approve Risk Threshold** (`Low`, `Medium`, or `Manual Check`) to manage execution autonomy.
 
 ---
 
@@ -92,7 +92,7 @@
 **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**  
 [Full text of the license is available at https://creativecommons.org]
 
-**Copyright (c) 2026 Craighckby.** All rights reserved.  
+**Copyright (c) 2026 Craighckby.** All rights reserved.    
 Maintained under the [craighckby-stack/Darlek-Caan-vs-Jesus-Chess](https://github.com/craighckby-stack/Darlek-Caan-vs-Jesus-Chess) repository.
 
 ### Key License Provisions:
