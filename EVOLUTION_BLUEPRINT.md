@@ -31,6 +31,7 @@ The execution sequence managed by `updateModule.js` adheres to three strict oper
 3. **Execution Phase**: Performs an atomic file write accompanied by a pre-flight backup snapshot for zero-downtime recovery.
 
 ### Core Implementation (`updateModule.js`)
+
 ```javascript
 /**
  * @file updateModule.js
