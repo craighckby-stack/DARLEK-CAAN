@@ -12,15 +12,18 @@ import { toggleVariants } from "@/components/ui/toggle"
  */
 export interface ToggleGroupContextValue extends VariantProps<typeof toggleVariants> {}
 
-const ToggleGroupContext = React.createContext<ToggleGroupContextValue>({
-  size: "default",
-  variant: "default",
-})
+const ToggleGroupContext = React.createContext<ToggleGroupContextValue | undefined>(undefined)
 
 /**
- * Custom hook to consume the ToggleGroup context safely.
+ * Custom hook to consume the ToggleGroup context safely with runtime defense.
  */
-const useToggleGroupContext = () => React.useContext(ToggleGroupContext)
+const useToggleGroupContext = (): ToggleGroupContextValue => {
+  const context = React.useContext(ToggleGroupContext)
+  if (!context) {
+    return { size: "default", variant: "default" }
+  }
+  return context
+}
 
 export interface ToggleGroupProps
   extends React.ComponentProps<typeof ToggleGroupPrimitive.Root>,
