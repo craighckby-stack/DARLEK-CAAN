@@ -16,7 +16,7 @@ export const enum AgentRole {
   WORKER = 'worker',
 
   /** Passive telemetry and monitoring agent observing operational integrity. */
-  OBSERVER = 'observer'
+  OBSERVER = 'observer',
 }
 
 /**
@@ -30,7 +30,7 @@ export const enum SystemStatus {
   DORMANT = 'dormant',
 
   /** System is executing dynamic reconfiguration and state evolution. */
-  EVOLVING = 'evolving'
+  EVOLVING = 'evolving',
 }
 
 /**
