@@ -1,11 +1,13 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
-interface ErrorBoundaryProps {
+export interface ErrorBoundaryProps {
   children: ReactNode;
+  fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
-interface ErrorBoundaryState {
+export interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
@@ -20,7 +22,7 @@ const LAST_CHUNK_RELOAD_KEY = 'last_chunk_reload';
 
 /**
  * Encapsulates runtime exceptions, automatically handles chunk loading retries,
- * and renders a styled fallback interface for unrecoverable errors.
+ * and renders a styled fallback interface for unrecoverable errors with sovereign type-safety.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
@@ -33,7 +35,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('Uncaught error:', error, errorInfo);
+    console.error('[EMG Neural Engine] Uncaught error detected:', error, errorInfo);
+    
+    if (this.props.onError) {
+      try {
+        this.props.onError(error, errorInfo);
+      } catch (callbackError) {
+        console.error('[EMG Neural Engine] Error in onError callback:', callbackError);
+      }
+    }
+
     this.handleChunkLoadError(error);
   }
 
@@ -43,13 +54,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     if (!isChunkError) return;
 
-    const lastReloadTimestamp = sessionStorage.getItem(LAST_CHUNK_RELOAD_KEY);
-    const now = Date.now();
-    const hasCooldownPassed = !lastReloadTimestamp || now - parseInt(lastReloadTimestamp, 10) > CHUNK_RELOAD_COOLDOWN_MS;
+    try {
+      const lastReloadTimestamp = sessionStorage.getItem(LAST_CHUNK_RELOAD_KEY);
+      const now = Date.now();
+      const hasCooldownPassed = !lastReloadTimestamp || now - parseInt(lastReloadTimestamp, 10) > CHUNK_RELOAD_COOLDOWN_MS;
 
-    if (hasCooldownPassed) {
-      sessionStorage.setItem(LAST_CHUNK_RELOAD_KEY, now.toString());
-      window.location.reload();
+      if (hasCooldownPassed) {
+        sessionStorage.setItem(LAST_CHUNK_RELOAD_KEY, now.toString());
+        window.location.reload();
+      }
+    } catch (storageError) {
+      console.warn('[EMG Neural Engine] Session storage access denied during chunk recovery:', storageError);
     }
   }
 
@@ -64,17 +79,18 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   private parseErrorDetails(error: Error | null): ParsedErrorDetails {
     if (!error?.message) {
-      return { errorMessage: 'An unexpected error occurred.', isFirestoreError: false };
+      return { errorMessage: 'An unexpected system anomaly occurred.', isFirestoreError: false };
     }
 
     try {
       const parsed = JSON.parse(error.message);
       
-      if (parsed?.operationType && parsed?.authInfo) {
-        const operation = parsed.operationType.toUpperCase();
-        const path = parsed.path || 'unknown';
+      if (parsed && typeof parsed === 'object' && 'operationType' in parsed && 'authInfo' in parsed) {
+        const operation = String((parsed as Record<string, unknown>).operationType).toUpperCase();
+        const path = String((parsed as Record<string, unknown>).path || 'unknown');
+        const detailError = String((parsed as Record<string, unknown>).error || '');
         return {
-          errorMessage: `Firestore ${operation} error at path: ${path}. ${parsed.error || ''}`,
+          errorMessage: `Firestore ${operation} error at path: ${path}. ${detailError}`,
           isFirestoreError: true,
         };
       }
@@ -89,12 +105,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return this.props.children;
     }
 
+    if (this.props.fallback) {
+      return this.props.fallback;
+    }
+
     const { errorMessage, isFirestoreError } = this.parseErrorDetails(this.state.error);
 
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6 font-mono">
+      <div className="min-h-screen bg-black flex items-center justify-center p-6 font-mono select-none">
         <div className="max-w-md w-full border border-red-900/30 bg-[#0A0000] p-8 rounded-lg shadow-2xl relative overflow-hidden">
-          {/* Glitch Effect Background */}
+          {/* Glitch Effect Background Pattern */}
           <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
           
           <div className="relative z-10">
@@ -120,6 +140,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             <div className="grid grid-cols-2 gap-3">
               <button
+                type="button"
                 onClick={this.handleReset}
                 className="flex items-center justify-center gap-2 p-3 bg-red-950/20 border border-red-900/50 text-red-500 hover:bg-red-900/30 transition-all rounded text-[10px] font-bold uppercase tracking-widest cursor-pointer"
               >
@@ -127,6 +148,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 Reboot System
               </button>
               <button
+                type="button"
                 onClick={this.handleNavigateHome}
                 className="flex items-center justify-center gap-2 p-3 bg-[#111] border border-[#222] text-gray-500 hover:text-white transition-all rounded text-[10px] font-bold uppercase tracking-widest cursor-pointer"
               >
@@ -143,3 +165,5 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     );
   }
 }
+
+export default ErrorBoundary;
