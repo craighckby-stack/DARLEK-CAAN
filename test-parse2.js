@@ -1,50 +1,122 @@
+/**
+ * @file test-parse2.js
+ * @version 4.0.0
+ * @engine EMG Core v49 Neural Code and Documentation Optimizer Engine
+ */
+
+/**
+ * @typedef {Object} LlmParsedResponse
+ * @property {string} [analysis]
+ * @property {number} [riskScore]
+ * @property {string[]} [affectedFiles]
+ * @property {string[]} [newFiles]
+ * @property {string} [proposedCode]
+ */
+
+/**
+ * @typedef {Object} ParseResult
+ * @property {LlmParsedResponse | null} parsedResponse
+ * @property {string} proposedCode
+ * @property {string} analysis
+ */
+
+/**
+ * Sanitizes control characters from potential JSON strings for secure parsing.
+ * @param {string} input
+ * @returns {string}
+ */
+function sanitizeControlCharacters(input) {
+  return input.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ');
+}
+
+/**
+ * Parses an LLM response string to extract structured metadata, analysis, and code blocks safely.
+ * 
+ * @param {string} rawText - The raw string output from the LLM.
+ * @param {string} fallbackCode - The default code fallback if no valid code is identified.
+ * @returns {ParseResult} The structured parsing results.
+ */
 function parseLlmResponse(rawText, fallbackCode) {
+  /** @type {LlmParsedResponse | null} */
   let parsedResponse = null;
   let proposedCode = '';
   let analysis = 'Analysis complete.';
-  
+
+  if (typeof rawText !== 'string' || rawText.length === 0) {
+    return {
+      parsedResponse: null,
+      proposedCode: typeof fallbackCode === 'string' ? fallbackCode : '',
+      analysis
+    };
+  }
+
+  // 1. Attempt to extract and parse JSON payload safely
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0].replace(/[\u0000-\u001F\u007F-\u009F]/g, ' '));
-      if (parsed.analysis || parsed.riskScore !== undefined || parsed.newFiles) {
+      const sanitizedJson = sanitizeControlCharacters(jsonMatch[0]);
+      /** @type {LlmParsedResponse} */
+      const parsed = JSON.parse(sanitizedJson);
+      if (parsed && (typeof parsed.analysis === 'string' || parsed.riskScore !== undefined || Array.isArray(parsed.newFiles))) {
         parsedResponse = parsed;
       }
     }
-  } catch (e) {
+  } catch {
+    // Graceful fallback on JSON parse failure
   }
 
-  const codeBlocks = [...rawText.matchAll(/```(?:[^\n]*)\n([\s\S]*?)```/g)];
-  
-  for (const block of codeBlocks) {
-    const content = block[1].trim();
-    if (parsedResponse && content.includes(parsedResponse.analysis || '')) continue;
+  // 2. Extract code blocks via regex iterator
+  const codeBlockRegex = /```(?:[^\n]*)\n([\s\S]*?)```/g;
+  let blockMatch;
+
+  while ((blockMatch = codeBlockRegex.exec(rawText)) !== null) {
+    const content = blockMatch[1].trim();
+    
+    // Skip if content matches the extracted analysis string
+    if (parsedResponse && typeof parsedResponse.analysis === 'string' && content.includes(parsedResponse.analysis)) {
+      continue;
+    }
+
+    // Skip if the block is purely a JSON structure
     if (content.startsWith('{') && content.endsWith('}')) {
       try {
         JSON.parse(content);
         continue;
-      } catch (e) {}
+      } catch {
+        // Not valid JSON, treat as standard code block
+      }
     }
-    
+
     if (!proposedCode && content.length > 10) {
       proposedCode = content;
+      break; // Found primary proposed code block
     }
   }
-  
+
+  // 3. Fallback extraction if no code blocks were found
   if (!proposedCode) {
-    const textWithoutJson = rawText.replace(/\{[\s\S]*\}/, '').replace(/```(?:json|tsx|)[^\n]*/g, '').replace(/```/g, '').trim();
+    const textWithoutJson = rawText
+      .replace(/\{[\s\S]*\}/, '')
+      .replace(/```(?:json|tsx|ts|js|)[^\n]*/gi, '')
+      .replace(/```/g, '')
+      .trim();
+
     if (textWithoutJson.length > 20) {
       proposedCode = textWithoutJson;
     }
   }
-  
+
+  // 4. Merge parsed response overrides
   if (parsedResponse) {
-    analysis = parsedResponse.analysis || analysis;
-    if (parsedResponse.proposedCode && !proposedCode) {
+    if (typeof parsedResponse.analysis === 'string' && parsedResponse.analysis.length > 0) {
+      analysis = parsedResponse.analysis;
+    }
+    if (typeof parsedResponse.proposedCode === 'string' && parsedResponse.proposedCode.length > 0 && !proposedCode) {
       proposedCode = parsedResponse.proposedCode;
     }
   }
-  
+
+  // 5. Apply final fallback code safeguard
   if (!proposedCode) {
     proposedCode = fallbackCode;
   }
@@ -63,4 +135,7 @@ const rawText1 = `
 export const x = 1;
 \`\`\`
 `;
-console.log(parseLlmResponse(rawText1, "fallback"));
+
+console.log(parseLlmResponse(rawText1, 'fallback'));
+
+module.exports = { parseLlmResponse };
