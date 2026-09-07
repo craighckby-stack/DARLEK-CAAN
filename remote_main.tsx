@@ -4,17 +4,17 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
-const IS_DEV = process.env.NODE_ENV === 'development';
+const IS_DEV: boolean = process.env.NODE_ENV === 'development';
 
-const DEV_STYLE = 'color: red; padding: 20px; font-family: monospace; background: #fff0f0;';
-const PROD_STYLE = 'padding: 40px; font-family: sans-serif; text-align: center; color: #333;';
+const DEV_STYLE: string = 'color: red; padding: 20px; font-family: monospace; background: #fff0f0;';
+const PROD_STYLE: string = 'padding: 40px; font-family: sans-serif; text-align: center; color: #333;';
 
 function createBootstrapErrorFallback(error: unknown): HTMLDivElement {
-  const container = document.createElement('div');
+  const container: HTMLDivElement = document.createElement('div');
   
   if (IS_DEV) {
     container.style.cssText = DEV_STYLE;
-    const errorMessage = error instanceof Error ? (error.stack || error.message) : String(error);
+    const errorMessage: string = error instanceof Error ? (error.stack ?? error.message) : String(error);
     container.innerHTML = `
       <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Application Failed to Render</h1>
       <p style="margin-bottom: 1rem;">Please check the console for structural details.</p>
@@ -32,7 +32,7 @@ function createBootstrapErrorFallback(error: unknown): HTMLDivElement {
 }
 
 function initializeApplication(): void {
-  const rootElement = document.getElementById('root');
+  const rootElement: HTMLElement | null = document.getElementById('root');
 
   if (!rootElement) {
     throw new Error('Critical: Failed to locate the DOM root element.');
@@ -50,7 +50,7 @@ function initializeApplication(): void {
         </ErrorBoundary>
       </StrictMode>
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Failed to render the application:', error);
     rootElement.replaceChildren(createBootstrapErrorFallback(error));
   }
