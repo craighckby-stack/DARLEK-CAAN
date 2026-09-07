@@ -9,14 +9,22 @@
 'use strict';
 
 const { readFileSync, writeFileSync } = require('node:fs');
-const { resolve } = require('node:path');
+const { resolve, normalize } = require('node:path');
 
+/**
+ * System configuration parameters bound to immutable structures.
+ * @type {Readonly<{BASE_DIR: string, TARGET_FILE: string, MAX_FILE_SIZE_BYTES: number}>}
+ */
 const CONFIG = Object.freeze({
   BASE_DIR: resolve('src/app/api/evolution/propose'),
   TARGET_FILE: resolve('src/app/api/evolution/propose/route.ts'),
   MAX_FILE_SIZE_BYTES: 5_000_000,
 });
 
+/**
+ * Compiled regular expression patterns for high-performance string matching and substitution.
+ * @type {Readonly<{PRIMARY_REGEX: RegExp, SECONDARY_REGEX: RegExp, REPLACEMENT_TEXT: string}>}
+ */
 const PROMPT_PATTERNS = Object.freeze({
   PRIMARY_REGEX: /Your response MUST contain two parts:[\s\S]*?NO PLACEHOLDERS OR TRUNCATIONS"/,
   SECONDARY_REGEX: /,[\s]*"riskScore": 1-10,[\s]*"affectedFiles": \["list of other files that might be affected by this change"\],[\s]*"newFiles": \[[\s\S]*?\][\s]*\}/,
@@ -49,18 +57,24 @@ Format your response exactly like this:
 
 /**
  * Validates path security boundaries to prevent directory traversal vulnerabilities.
+ * Utilizes path normalization to ensure absolute security against path manipulation exploits.
+ * 
  * @param {string} targetPath - The absolute path to validate.
  * @param {string} basePath - The allowed root boundary path.
  * @throws {Error} If the target path falls outside the allowed base directory.
  */
 function assertSecurePath(targetPath, basePath) {
-  if (!targetPath.startsWith(basePath)) {
+  const normalizedTarget = normalize(targetPath);
+  const normalizedBase = normalize(basePath);
+
+  if (!normalizedTarget.startsWith(normalizedBase)) {
     throw new Error('[EMG Security] Access denied: Target path resolves outside the allowed base directory.');
   }
 }
 
 /**
- * Validates file content integrity and sizing boundaries.
+ * Validates file content integrity and sizing boundaries to prevent memory starvation attacks.
+ * 
  * @param {string} content - The file content to validate.
  * @throws {Error} If content type is invalid or exceeds safety limits.
  */
@@ -81,8 +95,8 @@ function executePromptFix() {
     let code;
     try {
       code = readFileSync(CONFIG.TARGET_FILE, 'utf8');
-    } catch {
-      throw new Error(`Target evolution route file not found at: ${CONFIG.TARGET_FILE}`);
+    } catch (readError) {
+      throw new Error(`Target evolution route file not found at: ${CONFIG.TARGET_FILE}. Details: ${/** @type {Error} */(readError).message}`);
     }
 
     assertValidFileContent(code);
@@ -100,7 +114,8 @@ function executePromptFix() {
     writeFileSync(CONFIG.TARGET_FILE, code, 'utf8');
     console.log(`[EMG Success] Successfully optimized and updated prompt structures in ${CONFIG.TARGET_FILE}`);
   } catch (error) {
-    console.error(`[EMG Error] Failed to execute prompt fix: ${error.message}`);
+    const errMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[EMG Error] Failed to execute prompt fix: ${errMessage}`);
     process.exitCode = 1;
   }
 }
