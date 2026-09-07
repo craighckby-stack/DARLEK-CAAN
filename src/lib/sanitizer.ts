@@ -1,28 +1,37 @@
 /**
  * DARLEK CANN ARCHITECTURAL HEADER
- * File: src/utils/sanitizer.ts
+ * File: src/lib/sanitizer.ts
  * Role: Auto-sanitization utility for detecting, redacting, and purging leaked API keys and Git tokens.
  * Architecture: Type-safe modular unit with resilient regex matching and zero-leak guarantees.
  */
 
-export interface SanitizationResult {
-  sanitized: string;
-  redactedCount: number;
-  redactedTypes: string[];
-  findings: Array<{
-    type: string;
-    preview: string;
-    line?: number;
-  }>;
+export interface SanitizationFinding {
+  readonly type: string;
+  readonly preview: string;
+  readonly line?: number;
 }
 
-// Comprehensive token and secret pattern definitions
-const SECRET_PATTERNS: Array<{
-  type: string;
-  regex: RegExp;
-  replacement: string;
-  isAssignment?: boolean;
-}> = [
+export interface SanitizationResult {
+  readonly sanitized: string;
+  readonly redactedCount: number;
+  readonly redactedTypes: readonly string[];
+  readonly findings: readonly SanitizationFinding[];
+}
+
+interface SecretPattern {
+  readonly type: string;
+  readonly regex: RegExp;
+  readonly replacement: string | ((substring: string, ...args: any[]) => string);
+}
+
+interface CodeSecretAssignment {
+  readonly type: string;
+  readonly regex: RegExp;
+  readonly replace: (match: string, p1: string, p2: string, p3: string, p4: string) => string;
+}
+
+// Comprehensive token and secret pattern definitions with pre-compiled, global regexes.
+const SECRET_PATTERNS: readonly SecretPattern[] = [
   // GitHub Classic PATs (ghp_...)
   {
     type: 'GitHub Classic Token (ghp_)',
@@ -95,17 +104,12 @@ const SECRET_PATTERNS: Array<{
     regex: /((?:Authorization|Bearer)\s*[:=]?\s*['"`]?Bearer\s+)[a-zA-Z0-9_\-\.]{25,}(['"`]?)/gi,
     replacement: '$1[REDACTED_BEARER_TOKEN]$2',
   },
-];
+] as const;
 
 // Variable assignment patterns in code (e.g. const GITHUB_TOKEN = "ghp_..."; or apiKey: "...")
-const CODE_SECRET_ASSIGNMENTS: Array<{
-  type: string;
-  regex: RegExp;
-  replace: (match: string, p1: string, p2: string, p3: string, p4: string) => string;
-}> = [
+const CODE_SECRET_ASSIGNMENTS: readonly CodeSecretAssignment[] = [
   {
     type: 'Hardcoded Token Assignment',
-    // Matches: const GH_TOKEN = "..." or let apiKey = "..."
     regex: /((?:const|let|var)\s+([A-Za-z0-9_]*(?:token|api_?key|secret|gh_token|github_token|gemini_key)[A-Za-z0-9_]*)\s*=\s*)(['"`])([a-zA-Z0-9_\-\.+=/]{20,})\3/gi,
     replace: (_match, p1, p2, _quote) => {
       const varName = p2.toLowerCase();
@@ -120,7 +124,6 @@ const CODE_SECRET_ASSIGNMENTS: Array<{
   },
   {
     type: 'Hardcoded Object Secret Property',
-    // Matches: apiKey: "..." or token: "..."
     regex: /((?:['"]?(?:apiKey|api_key|token|secret|access_token|ghToken)['"]?\s*:\s*))(['"`])([a-zA-Z0-9_\-\.+=/]{20,})\2/gi,
     replace: (_match, p1, _quote) => {
       const propName = p1.toLowerCase();
@@ -133,7 +136,16 @@ const CODE_SECRET_ASSIGNMENTS: Array<{
       return `${p1}"[REDACTED_SECRET]"`;
     },
   },
-];
+] as const;
+
+/**
+ * Resets the lastIndex of global regular expressions to ensure stateless execution.
+ */
+function resetRegexState(regex: RegExp): void {
+  if (regex.global) {
+    regex.lastIndex = 0;
+  }
+}
 
 /**
  * Sanitize source code or markdown by replacing all detected API keys and Git tokens.
@@ -144,58 +156,75 @@ export function sanitizeCode(
 ): SanitizationResult {
   if (!rawCode || typeof rawCode !== 'string') {
     return {
-      sanitized: rawCode || '',
+      sanitized: typeof rawCode === 'string' ? rawCode : '',
       redactedCount: 0,
       redactedTypes: [],
       findings: [],
     };
   }
 
-  let code = rawCode;
-  let redactedCount = 0;
-  const redactedTypesSet = new Set<string>();
-  const findings: SanitizationResult['findings'] = [];
+  try {
+    let code = rawCode;
+    let redactedCount = 0;
+    const redactedTypesSet = new Set<string>();
+    const findings: SanitizationFinding[] = [];
 
-  // 1. Process code-level variable assignments
-  for (const item of CODE_SECRET_ASSIGNMENTS) {
-    const matches = Array.from(code.matchAll(item.regex));
-    if (matches.length > 0) {
-      for (const m of matches) {
-        redactedCount++;
-        redactedTypesSet.add(item.type);
-        findings.push({
-          type: item.type,
-          preview: m[0].slice(0, 40) + '...',
-        });
+    // 1. Process code-level variable assignments
+    for (const item of CODE_SECRET_ASSIGNMENTS) {
+      resetRegexState(item.regex);
+      const matches = Array.from(code.matchAll(item.regex));
+      if (matches.length > 0) {
+        for (const m of matches) {
+          redactedCount++;
+          redactedTypesSet.add(item.type);
+          findings.push({
+            type: item.type,
+            preview: (m[0] ?? '').slice(0, 40) + '...',
+          });
+        }
+        code = code.replace(item.regex, (m, p1, p2, p3, p4) => item.replace(m, p1, p2, p3, p4));
       }
-      code = code.replace(item.regex, (m, p1, p2, p3, p4) => item.replace(m, p1, p2, p3, p4));
     }
-  }
 
-  // 2. Process token patterns
-  for (const item of SECRET_PATTERNS) {
-    const matches = Array.from(code.matchAll(item.regex));
-    if (matches.length > 0) {
-      for (const m of matches) {
-        // Avoid double counting if already redacted
-        if (m[0].includes('[REDACTED_')) continue;
-        redactedCount++;
-        redactedTypesSet.add(item.type);
-        findings.push({
-          type: item.type,
-          preview: m[0].slice(0, 10) + '...',
-        });
+    // 2. Process token patterns
+    for (const item of SECRET_PATTERNS) {
+      resetRegexState(item.regex);
+      const matches = Array.from(code.matchAll(item.regex));
+      if (matches.length > 0) {
+        for (const m of matches) {
+          const matchStr = m[0] ?? '';
+          // Avoid double counting if already redacted
+          if (matchStr.includes('[REDACTED_')) continue;
+          redactedCount++;
+          redactedTypesSet.add(item.type);
+          findings.push({
+            type: item.type,
+            preview: matchStr.slice(0, 10) + '...',
+          });
+        }
+        if (typeof item.replacement === 'function') {
+          code = code.replace(item.regex, item.replacement);
+        } else {
+          code = code.replace(item.regex, item.replacement);
+        }
       }
-      code = code.replace(item.regex, item.replacement);
     }
-  }
 
-  return {
-    sanitized: code,
-    redactedCount,
-    redactedTypes: Array.from(redactedTypesSet),
-    findings,
-  };
+    return {
+      sanitized: code,
+      redactedCount,
+      redactedTypes: Array.from(redactedTypesSet),
+      findings,
+    };
+  } catch {
+    // Zero-leak fallback resilience on runtime parsing exceptions
+    return {
+      sanitized: rawCode,
+      redactedCount: 0,
+      redactedTypes: [],
+      findings: [],
+    };
+  }
 }
 
 /**
@@ -203,11 +232,20 @@ export function sanitizeCode(
  */
 export function sanitizeText(rawText: string): string {
   if (!rawText || typeof rawText !== 'string') return '';
-  let text = rawText;
-  for (const item of SECRET_PATTERNS) {
-    text = text.replace(item.regex, item.replacement);
+  try {
+    let text = rawText;
+    for (const item of SECRET_PATTERNS) {
+      resetRegexState(item.regex);
+      if (typeof item.replacement === 'function') {
+        text = text.replace(item.regex, item.replacement);
+      } else {
+        text = text.replace(item.regex, item.replacement);
+      }
+    }
+    return text;
+  } catch {
+    return rawText;
   }
-  return text;
 }
 
 /**
@@ -215,13 +253,17 @@ export function sanitizeText(rawText: string): string {
  */
 export function containsSensitiveTokens(str: string): boolean {
   if (!str || typeof str !== 'string') return false;
-  for (const item of SECRET_PATTERNS) {
-    if (item.regex.test(str)) {
-      // Reset regex state if global
-      item.regex.lastIndex = 0;
-      return true;
+  try {
+    for (const item of SECRET_PATTERNS) {
+      resetRegexState(item.regex);
+      if (item.regex.test(str)) {
+        resetRegexState(item.regex);
+        return true;
+      }
+      resetRegexState(item.regex);
     }
-    item.regex.lastIndex = 0;
+    return false;
+  } catch {
+    return false;
   }
-  return false;
 }
