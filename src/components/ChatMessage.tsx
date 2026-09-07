@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, type JSX } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { Message } from '@/lib/types';
 import { COLORS } from '@/lib/constants';
@@ -11,8 +11,9 @@ export interface ChatMessageProps {
 
 const COLLAPSE_THRESHOLD = 280;
 const PREVIEW_LINES = 3;
+const MAX_CACHE_SIZE = 200;
 
-// Module-level cache for string truncations to prevent redundant allocations and loops
+// Module-level bounded caches to prevent memory leaks while optimizing string truncation
 const previewCache = new Map<string, string>();
 const lineCountCache = new Map<string, number>();
 
@@ -32,28 +33,28 @@ function truncateToLines(text: string, maxLines: number): string {
   }
 
   if (lineCount < maxLines) return text;
-  return text.slice(0, index - 1);
+  return text.slice(0, Math.max(0, index - 1));
 }
 
 function getPreviewText(text: string): string {
   if (text.length <= COLLAPSE_THRESHOLD) return text;
-  let cached = previewCache.get(text);
+  const cached = previewCache.get(text);
   if (cached !== undefined) return cached;
 
   const truncated = truncateToLines(text, PREVIEW_LINES);
-  cached = truncated.trimEnd() + '...';
+  const result = truncated.trimEnd() + '...';
   
-  if (previewCache.size > 200) {
+  if (previewCache.size >= MAX_CACHE_SIZE) {
     const firstKey = previewCache.keys().next().value;
     if (firstKey !== undefined) previewCache.delete(firstKey);
   }
-  previewCache.set(text, cached);
-  return cached;
+  previewCache.set(text, result);
+  return result;
 }
 
 function countHiddenLines(content: string): number {
-  let count = lineCountCache.get(content);
-  if (count !== undefined) return count;
+  const cached = lineCountCache.get(content);
+  if (cached !== undefined) return cached;
 
   const len = content.length;
   let lines = 0;
@@ -61,8 +62,8 @@ function countHiddenLines(content: string): number {
     if (content.charCodeAt(i) === 10) lines++;
   }
 
-  count = Math.max(0, lines - PREVIEW_LINES + 1);
-  if (lineCountCache.size > 200) {
+  const count = Math.max(0, lines - PREVIEW_LINES + 1);
+  if (lineCountCache.size >= MAX_CACHE_SIZE) {
     const firstKey = lineCountCache.keys().next().value;
     if (firstKey !== undefined) lineCountCache.delete(firstKey);
   }
@@ -70,11 +71,12 @@ function countHiddenLines(content: string): number {
   return count;
 }
 
-export default function ChatMessage({ message }: ChatMessageProps) {
+export default function ChatMessage({ message }: ChatMessageProps): JSX.Element {
   const [expanded, setExpanded] = useState<boolean>(false);
 
   const timeStr = useMemo(() => {
     try {
+      if (!message.timestamp) return '';
       return new Date(message.timestamp).toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
@@ -148,6 +150,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           </p>
           {isLong && (
             <button
+              type="button"
               onClick={handleToggle}
               className="flex items-center justify-center gap-1 mx-auto mt-1.5 px-2 py-0.5 rounded-sm transition-all"
               style={{
@@ -209,6 +212,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           </p>
           {isLong && (
             <button
+              type="button"
               onClick={handleToggle}
               className="flex items-center gap-1 mt-2 px-2 py-0.5 rounded-sm transition-all"
               style={{
@@ -269,6 +273,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         </p>
         {isLong && (
           <button
+            type="button"
             onClick={handleToggle}
             className="flex items-center gap-1 mt-2 ml-auto px-2 py-0.5 rounded-sm transition-all"
             style={{
