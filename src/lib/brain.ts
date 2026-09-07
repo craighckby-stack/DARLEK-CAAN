@@ -104,7 +104,7 @@ export class Brain extends EventTarget {
   // Pre-allocated reusable event instances to reduce allocation overhead
   private readonly _stateChangeEvent: CustomEvent<StateChangeEventDetail>;
   private readonly _ingestMutationEvent: CustomEvent<MutationEventDetail>;
-  private readonly _commitMutationEventFactory = (txId: string, version: number) => 
+  private readonly _commitMutationEventFactory = (txId: string, version: number): CustomEvent<MutationEventDetail> => 
     new CustomEvent<MutationEventDetail>('mutation', { detail: { type: 'COMMIT', txId, version } });
 
   constructor(config: BrainConfig = {}) {
@@ -160,7 +160,7 @@ export class Brain extends EventTarget {
         await this.ingest(payload);
       }
       this.transition(BrainState.IDLE);
-    } catch (error) {
+    } catch (error: unknown) {
       this.transition(BrainState.ERROR);
       throw new Error(`Brain initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -188,7 +188,7 @@ export class Brain extends EventTarget {
       const len = decoded.length;
       let i = 0;
       for (; i < len; i++) {
-        const chunk = decoded[i];
+        const chunk = decoded[i] as { path?: unknown; content?: unknown };
         if (!chunk || typeof chunk.path !== 'string' || typeof chunk.content !== 'string') {
           throw new Error('Invalid chunk structure');
         }
@@ -204,7 +204,7 @@ export class Brain extends EventTarget {
       
       this._ingestMutationEvent.detail.version = nextVersion;
       this.dispatchEvent(this._ingestMutationEvent);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Substrate Ingestion Failure:', error);
       throw new Error(`Ingestion failed: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -258,7 +258,7 @@ export class Brain extends EventTarget {
 
       this.dispatchEvent(this._commitMutationEventFactory(tx.id, this._version));
       this.transition(BrainState.IDLE);
-    } catch (error) {
+    } catch (error: unknown) {
       this.transition(BrainState.ERROR);
       throw new Error(`Transaction execution failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -323,7 +323,7 @@ export class Brain extends EventTarget {
       const payload = await this.export();
       await this.ingest(payload);
       this.transition(BrainState.IDLE);
-    } catch (error) {
+    } catch (error: unknown) {
       this.transition(BrainState.ERROR);
       throw new Error(`Global refactor failed: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -341,7 +341,7 @@ export class Brain extends EventTarget {
     try {
       await this.ingest(payload);
       this.transition(BrainState.IDLE);
-    } catch (error) {
+    } catch (error: unknown) {
       this.transition(BrainState.ERROR);
       throw new Error(`Synchronization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -366,7 +366,7 @@ export class Brain extends EventTarget {
         buf[i] = bin.charCodeAt(i);
       }
       return buf;
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('Buffer conversion warning:', error);
       return new Uint8Array(0);
     }
