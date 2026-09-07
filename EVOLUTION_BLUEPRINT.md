@@ -43,11 +43,17 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /**
+ * @typedef {Object} InjectionMarkers
+ * @property {RegExp} start - Start boundary regular expression.
+ * @property {RegExp} end - End boundary regular expression.
+ */
+
+/**
  * Injects a payload into a target file using atomic boundaries and backup provisioning.
  * 
  * @param {string} targetPath - The destination file path for the payload.
  * @param {string} payload - The code or content block to inject.
- * @param {Object} markers - Start and end regex markers for injection boundaries.
+ * @param {InjectionMarkers} markers - Start and end regex markers for injection boundaries.
  * @returns {boolean} Returns true upon successful execution.
  * @throws {Error} Throws an error if the target file cannot be read or written.
  */
