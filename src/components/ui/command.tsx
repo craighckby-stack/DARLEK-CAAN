@@ -19,7 +19,7 @@ import {
  * Props for the main Command component.
  * Extends all native props of the `cmdk` CommandPrimitive.
  */
-export interface CommandProps extends React.ComponentProps<typeof CommandPrimitive> {}
+export type CommandProps = React.ComponentProps<typeof CommandPrimitive>
 
 /**
  * Props for the CommandDialog component, which wraps Command in a Dialog.
@@ -40,43 +40,43 @@ export interface CommandDialogProps extends React.ComponentProps<typeof Dialog> 
  * Props for the CommandInput component.
  * Extends all native props of the `cmdk` CommandPrimitive.Input.
  */
-export interface CommandInputProps extends React.ComponentProps<typeof CommandPrimitive.Input> {}
+export type CommandInputProps = React.ComponentProps<typeof CommandPrimitive.Input>
 
 /**
  * Props for the CommandList component.
  * Extends all native props of the `cmdk` CommandPrimitive.List.
  */
-export interface CommandListProps extends React.ComponentProps<typeof CommandPrimitive.List> {}
+export type CommandListProps = React.ComponentProps<typeof CommandPrimitive.List>
 
 /**
  * Props for the CommandEmpty component.
  * Extends all native props of the `cmdk` CommandPrimitive.Empty.
  */
-export interface CommandEmptyProps extends React.ComponentProps<typeof CommandPrimitive.Empty> {}
+export type CommandEmptyProps = React.ComponentProps<typeof CommandPrimitive.Empty>
 
 /**
  * Props for the CommandGroup component.
  * Extends all native props of the `cmdk` CommandPrimitive.Group.
  */
-export interface CommandGroupProps extends React.ComponentProps<typeof CommandPrimitive.Group> {}
+export type CommandGroupProps = React.ComponentProps<typeof CommandPrimitive.Group>
 
 /**
  * Props for the CommandSeparator component.
  * Extends all native props of the `cmdk` CommandPrimitive.Separator.
  */
-export interface CommandSeparatorProps extends React.ComponentProps<typeof CommandPrimitive.Separator> {}
+export type CommandSeparatorProps = React.ComponentProps<typeof CommandPrimitive.Separator>
 
 /**
  * Props for the CommandItem component.
  * Extends all native props of the `cmdk` CommandPrimitive.Item.
  */
-export interface CommandItemProps extends React.ComponentProps<typeof CommandPrimitive.Item> {}
+export type CommandItemProps = React.ComponentProps<typeof CommandPrimitive.Item>
 
 /**
  * Props for the CommandShortcut component.
  * Extends all native props of a standard `<span>` element.
  */
-export interface CommandShortcutProps extends React.ComponentProps<"span"> {}
+export type CommandShortcutProps = React.ComponentProps<"span">
 
 // --- Component Implementation ---
 
@@ -138,7 +138,6 @@ const CommandDialog = React.memo(function CommandDialog({
             "[&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0",
 
             // Input wrapper and icon styles
-            "&_data-[slot=command-input-wrapper]:h-12", // Corrected from `**` typo
             "[&_[cmdk-input-wrapper]_svg]:h-5",
             "[&_[cmdk-input-wrapper]_svg]:w-5",
 
@@ -171,7 +170,7 @@ const CommandInput = React.memo(
     return (
       <div
         data-slot="command-input-wrapper"
-        className="flex h-9 items-center gap-2 border-b px-3"
+        className="flex h-12 items-center gap-2 border-b px-3"
       >
         <SearchIcon className="size-4 shrink-0 opacity-50" aria-hidden="true" />
         <CommandPrimitive.Input
