@@ -1,5 +1,9 @@
 import { safeFetchJson } from './safe-json';
 
+/**
+ * Represents the standardized immutable result structure of an API request.
+ * @template T The expected underlying data payload type.
+ */
 export interface ApiResult<T> {
   readonly success: boolean;
   readonly data: T | null;
@@ -8,21 +12,41 @@ export interface ApiResult<T> {
 }
 
 /**
- * Validates that the provided URL is a non-empty string.
+ * Validates that the provided input is a non-empty string URL.
+ * 
+ * @internal
+ * @param {unknown} url - The value to validate as a URL string.
+ * @returns {url is string} True if the input is a valid non-empty string.
  */
 function isValidUrl(url: unknown): url is string {
-  return typeof url === 'string' && url.length > 0;
+  return typeof url === 'string' && url.trim().length > 0;
 }
 
 /**
- * Normalizes an unknown caught error into a readable error message.
+ * Normalizes an unknown caught exception into a readable error message string.
+ * 
+ * @internal
+ * @param {unknown} error - The caught exception or error object.
+ * @returns {string} A human-readable error description.
  */
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'An unexpected network error occurred.';
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error;
+  }
+  return 'An unexpected network error occurred.';
 }
 
 /**
- * Safely performs an HTTP fetch request and normalizes the JSON response.
+ * Safely performs an HTTP fetch request utilizing the underlying safe JSON parser,
+ * ensuring robust type-safety, memory efficiency, and comprehensive error handling.
+ * 
+ * @template T - The expected return type of the data payload.
+ * @param {string} url - The target endpoint URL.
+ * @param {RequestInit} [options] - Optional native fetch initialization parameters.
+ * @returns {Promise<ApiResult<T>>} A standardized, immutable API result envelope.
  */
 export async function safeApiFetch<T = unknown>(
   url: string,
@@ -40,11 +64,16 @@ export async function safeApiFetch<T = unknown>(
   try {
     const result = await safeFetchJson<T>(url, options);
     
+    const success = Boolean(result?.success);
+    const data = result?.data ?? null;
+    const status = typeof result?.status === 'number' ? result.status : (success ? 200 : 500);
+    const error = result?.error;
+
     return {
-      success: Boolean(result?.success),
-      data: result?.data ?? null,
-      status: typeof result?.status === 'number' ? result.status : 500,
-      ...(result?.error ? { error: result.error } : {}),
+      success,
+      data,
+      status,
+      ...(error ? { error } : {}),
     };
   } catch (error: unknown) {
     return {
