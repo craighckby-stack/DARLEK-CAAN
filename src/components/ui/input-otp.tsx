@@ -84,8 +84,12 @@ const InputOTPSlot = React.memo(
   React.forwardRef<HTMLDivElement, InputOTPSlotProps>(
     function InputOTPSlot({ index, className, ...props }, ref) {
       const context = React.useContext(OTPInputContext)
-      const slot = context?.slots?.[index]
       
+      if (!context) {
+        throw new Error("InputOTPSlot must be used within an InputOTP component.")
+      }
+      
+      const slot = context.slots?.[index]
       const { char: character, hasFakeCaret, isActive } = slot ?? {}
 
       const mergedClassName = React.useMemo(
