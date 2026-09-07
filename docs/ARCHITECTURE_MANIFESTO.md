@@ -1,6 +1,6 @@
 # DARLEK CANN v3.0: Architectural Manifesto
 
-> **EMG Core v49 Optimization Note**: Restructured for maximum developer skimmability, featuring structured execution blocks, explicit security taxonomies, and clear operational workflows.
+> **EMG Core v49 Optimization Note**: Restructured for maximum developer skimmability, featuring structured execution blocks, explicit type signatures in examples, and clean markdown block formatting.
 
 ## Executive Summary
 DARLEK CANN v3.0 integrates `'Sovereign-Kernel'` self-refactoring logic with `'Omega'` emergent intelligence patterns to drive autonomous system growth, adaptation, and high-performance scalability.
@@ -52,10 +52,10 @@ Execute the standard pipeline to analyze, mutate, and verify system modules secu
 
 ```bash
 # 1. Analyze target modules for optimization vectors
-cann-analyze --target ./modules
+cann-analyze --target ./modules --type-check=strict
 
 # 2. Apply autonomous evolutionary mutations using the Omega strategy
-cann-evolve --strategy omega
+cann-evolve --strategy omega --mode=type-safe
 
 # 3. Verify structural and logical integrity with comprehensive coverage reports
 npm run test:coverage
