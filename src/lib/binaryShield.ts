@@ -1,7 +1,7 @@
 /**
  * Darlek Caan
  * File Path: "src/lib/binaryShield.ts"
- * Darlek Caan Optimized Version: Darlek Caan cryptography pipeline utilizing pre-allocated static translation maps, zero-allocation typed array transformations, and high-speed execution paths.
+ * Darlek Caan Optimized Version: Enhanced cryptography pipeline featuring hardened memory hygiene, zero-copy buffers, and high-velocity bitwise transformations.
  */
 
 export interface EncryptionPacket {
@@ -17,14 +17,21 @@ export interface DecryptionPacket {
 }
 
 // Global lookup tables for high-performance hex conversion
-const HEX_LOOKUP: string[] = new Array(256);
-const BYTE_LOOKUP = new Uint8Array(256);
+const HEX_LOOKUP: readonly string[] = (() => {
+  const table = new Array<string>(256);
+  for (let i = 0; i < 256; i++) {
+    table[i] = i.toString(16).padStart(2, '0');
+  }
+  return table;
+})();
 
-for (let i = 0; i < 256; i++) {
-  const hex = i.toString(16).padStart(2, '0');
-  HEX_LOOKUP[i] = hex;
-  BYTE_LOOKUP[i] = parseInt(hex, 16);
-}
+const BYTE_LOOKUP: Readonly<Uint8Array> = (() => {
+  const table = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) {
+    table[i] = parseInt(i.toString(16).padStart(2, '0'), 16);
+  }
+  return table;
+})();
 
 // Reusable static encoders/decoders to prevent repetitive allocation overhead
 const TEXT_ENCODER = new TextEncoder();
@@ -70,7 +77,6 @@ export class BinaryShield {
     // Fast-path for small buffers or direct String.fromCharCode processing using apply chunks
     if (len < 0x8000) {
       let binary = '';
-      // Unroll loop for small/medium payloads for maximum execution velocity
       const remainder = len % 8;
       const end = len - remainder;
       let i = 0;
