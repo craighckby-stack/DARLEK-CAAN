@@ -48,6 +48,10 @@ const TARGET_PATTERN = /Format your response exactly like this:.*?\`\`\`Risk sco
  * @throws {Error} If path traversal or file validation fails.
  */
 function getValidatedFilePath(targetRelativePath) {
+  if (typeof targetRelativePath !== 'string' || targetRelativePath.trim() === '') {
+    throw new Error('SECURITY_VIOLATION: Invalid target path provided.');
+  }
+
   const resolvedPath = path.resolve(CWD, targetRelativePath);
 
   if (!resolvedPath.startsWith(EXPECTED_BASE_DIR) && !resolvedPath.startsWith(ALLOWED_SOURCE_DIR)) {
@@ -57,7 +61,7 @@ function getValidatedFilePath(targetRelativePath) {
   let fileStats;
   try {
     fileStats = fs.statSync(resolvedPath);
-  } catch {
+  } catch (error) {
     throw new Error(`SECURITY_VIOLATION: Target file does not exist: ${targetRelativePath}`);
   }
 
@@ -85,6 +89,10 @@ function buildReplacementContent() {
  * @throws {Error} If the injection signature is missing.
  */
 function applyPromptPatch(sourceCode) {
+  if (typeof sourceCode !== 'string') {
+    throw new Error('SECURITY_VIOLATION: Source code content must be a valid string.');
+  }
+
   if (!TARGET_PATTERN.test(sourceCode)) {
     throw new Error('SECURITY_VIOLATION: Target injection signature not found within expected bounds.');
   }
@@ -93,16 +101,29 @@ function applyPromptPatch(sourceCode) {
 }
 
 /**
- * Main execution routine for file transformation.
+ * Main execution routine for file transformation with hardened error handling.
  */
 function main() {
   const TARGET_FILE_RELATIVE = 'src/app/api/evolution/propose/route.ts';
-  const targetFilePath = getValidatedFilePath(TARGET_FILE_RELATIVE);
+  
+  try {
+    const targetFilePath = getValidatedFilePath(TARGET_FILE_RELATIVE);
+    const sourceCode = fs.readFileSync(targetFilePath, 'utf8');
+    const updatedCode = applyPromptPatch(sourceCode);
 
-  const sourceCode = fs.readFileSync(targetFilePath, 'utf8');
-  const updatedCode = applyPromptPatch(sourceCode);
-
-  fs.writeFileSync(targetFilePath, updatedCode, { encoding: 'utf8', mode: 0o600 });
+    fs.writeFileSync(targetFilePath, updatedCode, { encoding: 'utf8', mode: 0o600 });
+  } catch (error) {
+    console.error(`[EMG-CORE-ERROR] Evolution prompt patch failure: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  }
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  getValidatedFilePath,
+  buildReplacementContent,
+  applyPromptPatch
+};
