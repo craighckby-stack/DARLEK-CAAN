@@ -13,19 +13,45 @@
 
 ## 1. Overview & Workflow
 
-The migration protocol standardizes UI token updates across the codebase through a three-stage execution pipeline:
+The migration protocol standardizes UI token updates across the codebase through a robust, three-stage execution pipeline designed to prevent partial writes and malformed states:
 
 | Stage | Operation | Target / Mechanism |
 | :--- | :--- | :--- |
 | **1. Load** | Reads primary entry point | `src/App.tsx` |
-| **2. Map** | Applies deterministic replacements | Defined within `STYLE_MAPPINGS` (Regex) |
-| **3. Commit** | Performs atomic disk write | Direct file system update |
+| **2. Map** | Applies deterministic replacements | Defined within `STYLE_MAPPINGS` (Regex engine) |
+| **3. Commit** | Performs atomic disk write | Direct file system update (`fs.writeFileSync`) |
+
+### Execution Pipeline Example
+```typescript
+// Example snippet illustrating the automated token mapping process
+import { STYLE_MAPPINGS } from './config/style-mappings';
+
+export function migrateTokens(content: string): string {
+  let updatedContent = content;
+  // Apply deterministic regex mappings from legacy Zinc to Glass-Emergent
+  for (const [pattern, replacement] of Object.entries(STYLE_MAPPINGS)) {
+    const regex = new RegExp(pattern, 'g');
+    updatedContent = updatedContent.replace(regex, replacement);
+  }
+  return updatedContent;
+}
+```
 
 ---
 
 ## 2. Integration
 
-Engineered as a **pre-build hook** for CI/CD pipelines, this script guarantees visual and structural consistency across the entire `sovereign-kernel` ecosystem.
+Engineered as a high-performance **pre-build hook** for CI/CD pipelines, this script guarantees visual and structural consistency across the entire `sovereign-kernel` ecosystem.
+
+```json
+// package.json integration example
+{
+  "scripts": {
+    "prebuild": "node ./scripts/style-migration.js",
+    "build": "vite build"
+  }
+}
+```
 
 ---
 
