@@ -2,6 +2,25 @@ const https = require('https');
 const fs = require('fs/promises');
 const path = require('path');
 
+/**
+ * @typedef {Object} RepositoryConfig
+ * @property {string} owner
+ * @property {string} repo
+ * @property {string} branch
+ * @property {string} targetDirectoryFilter
+ * @property {string} userAgent
+ */
+
+/**
+ * @typedef {Object} FileNode
+ * @property {string} path
+ * @property {string} type
+ * @property {string} [sha]
+ * @property {number} [size]
+ * @property {string} [url]
+ */
+
+/** @type {RepositoryConfig} */
 const REPOSITORY_CONFIG = Object.freeze({
   owner: 'craighckby-stack',
   repo: 'DARLEK_CAAN_ENGINE',
@@ -11,54 +30,71 @@ const REPOSITORY_CONFIG = Object.freeze({
 });
 
 /**
- * Performs an optimized HTTPS GET request with pre-allocated buffer sizing.
+ * Performs an optimized HTTPS GET request with pre-allocated buffer sizing and strict error boundaries.
  * @param {string} url - Target URL.
  * @returns {Promise<string>} Response body payload.
  */
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': REPOSITORY_CONFIG.userAgent } }, (res) => {
-      if (res.statusCode >= 400) {
+    const req = https.get(url, { headers: { 'User-Agent': REPOSITORY_CONFIG.userAgent } }, (res) => {
+      const statusCode = res.statusCode || 500;
+      if (statusCode >= 400) {
         res.resume();
-        return reject(new Error(`Request failed with status code ${res.statusCode}`));
+        return reject(new Error(`Request failed with status code ${statusCode}`));
       }
 
+      /** @type {Buffer[]} */
       const chunks = [];
       let totalLength = 0;
 
-      res.on('data', chunk => {
+      res.on('data', (chunk) => {
         chunks.push(chunk);
         totalLength += chunk.length;
       });
 
       res.on('end', () => {
-        resolve(Buffer.concat(chunks, totalLength).toString('utf8'));
+        try {
+          const payload = Buffer.concat(chunks, totalLength).toString('utf8');
+          resolve(payload);
+        } catch (err) {
+          reject(err);
+        }
       });
-    }).on('error', reject);
+    });
+
+    req.on('error', (err) => {
+      reject(err);
+    });
+
+    req.end();
   });
 }
 
 /**
  * Downloads and persists a single file from the remote repository efficiently.
- * @param {Object} fileNode - Git tree file node metadata.
+ * @param {FileNode} fileNode - Git tree file node metadata.
  * @returns {Promise<void>}
  */
 async function restoreFile(fileNode) {
   const destinationPath = fileNode.path;
   
   try {
-    await fs.mkdir(path.dirname(destinationPath), { recursive: true });
+    const absoluteDestination = path.resolve(destinationPath);
+    await fs.mkdir(path.dirname(absoluteDestination), { recursive: true });
+    
     const rawFileUrl = `https://raw.githubusercontent.com/${REPOSITORY_CONFIG.owner}/${REPOSITORY_CONFIG.repo}/${REPOSITORY_CONFIG.branch}/${destinationPath}`;
     const fileContent = await fetchUrl(rawFileUrl);
-    await fs.writeFile(destinationPath, fileContent, 'utf8');
+    
+    await fs.writeFile(absoluteDestination, fileContent, 'utf8');
   } catch (error) {
-    console.error(`\nFailed to restore file: ${destinationPath}`, error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`\nFailed to restore file: ${destinationPath}`, errorMessage);
   }
 }
 
 /**
  * Sequentially restores an array of source files with minimized overhead.
- * @param {Object[]} files - Array of file nodes to restore.
+ * @param {FileNode[]} files - Array of file nodes to restore.
  * @returns {Promise<void>}
  */
 async function restoreFilesSequentially(files) {
@@ -71,7 +107,8 @@ async function restoreFilesSequentially(files) {
 }
 
 /**
- * Orchestrates the repository restoration process with zero-redundancy parsing.
+ * Orchestrates the repository restoration process with zero-redundancy parsing and strict memory safety.
+ * @returns {Promise<void>}
  */
 async function main() {
   const { owner, repo, branch, targetDirectoryFilter } = REPOSITORY_CONFIG;
@@ -80,16 +117,23 @@ async function main() {
   try {
     console.log(`Fetching repository tree for ${repo}...`);
     const treeJsonResponse = await fetchUrl(treeApiUrl);
-    const parsedTree = JSON.parse(treeJsonResponse).tree;
+    
+    let parsedTree;
+    try {
+      parsedTree = JSON.parse(treeJsonResponse).tree;
+    } catch {
+      throw new Error('Failed to parse repository tree JSON response.');
+    }
 
     if (!Array.isArray(parsedTree)) {
       throw new Error('No valid git tree found in response.');
     }
 
+    /** @type {FileNode[]} */
     const srcFiles = [];
     for (let i = 0, len = parsedTree.length; i < len; ++i) {
       const node = parsedTree[i];
-      if (node.type === 'blob' && node.path.startsWith(targetDirectoryFilter)) {
+      if (node && node.type === 'blob' && typeof node.path === 'string' && node.path.startsWith(targetDirectoryFilter)) {
         srcFiles.push(node);
       }
     }
@@ -97,7 +141,8 @@ async function main() {
     console.log(`Restoring ${srcFiles.length} files from ${repo} (${targetDirectoryFilter})...`);
     await restoreFilesSequentially(srcFiles);
   } catch (error) {
-    console.error('Repository restoration failed:', error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Repository restoration failed:', errorMessage);
     process.exit(1);
   }
 }
