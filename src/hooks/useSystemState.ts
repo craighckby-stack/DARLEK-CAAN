@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error' | (string & {});
 
@@ -8,7 +8,7 @@ export interface SystemState {
   [key: string]: unknown;
 }
 
-type StateUpdater = SystemState | ((prevState: SystemState) => SystemState);
+export type StateUpdater = SystemState | ((prevState: SystemState) => SystemState);
 
 const STORAGE_KEY = 'darlek_cann_state';
 
@@ -18,7 +18,7 @@ const INITIAL_STATE: SystemState = {
 };
 
 /**
- * Safely parses JSON from storage, logging any errors encountered.
+ * Safely parses JSON from storage with defensive type validation.
  */
 const readStoredState = (): Partial<SystemState> | null => {
   try {
@@ -26,28 +26,30 @@ const readStoredState = (): Partial<SystemState> | null => {
     if (saved === null) return null;
     
     const parsed = JSON.parse(saved) as unknown;
-    return (parsed !== null && typeof parsed === 'object') ? (parsed as Partial<SystemState>) : null;
+    return (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) 
+      ? (parsed as Partial<SystemState>) 
+      : null;
   } catch (error) {
-    console.error(`Failed to parse state from key "${STORAGE_KEY}":`, error);
+    console.error(`[EMG Engine] Failed to parse state from key "${STORAGE_KEY}":`, error);
     return null;
   }
 };
 
 /**
- * Safely persists state to storage, logging any errors encountered.
+ * Safely persists state to storage with exception trapping.
  */
 const writeStoredState = (state: SystemState): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
-    console.error(`Failed to persist state to key "${STORAGE_KEY}":`, error);
+    console.error(`[EMG Engine] Failed to persist state to key "${STORAGE_KEY}":`, error);
   }
 };
 
 export const useSystemState = () => {
   const [systemState, setSystemState] = useState<SystemState>(INITIAL_STATE);
   
-  // Maintain a stable reference to the current state to prevent stale closures
+  // Maintain a synchronized reference to avoid stale closures and unnecessary re-renders
   const stateRef = useRef(systemState);
   stateRef.current = systemState;
 
@@ -56,16 +58,15 @@ export const useSystemState = () => {
     const storedData = readStoredState();
 
     if (storedData) {
-      // Defer state hydration to avoid cascading render warnings on mount
-      const timer = setTimeout(() => {
+      const timer = requestAnimationFrame(() => {
         if (isMounted) {
           setSystemState((prevState) => ({ ...prevState, ...storedData }));
         }
-      }, 0);
+      });
 
       return () => {
         isMounted = false;
-        clearTimeout(timer);
+        cancelAnimationFrame(timer);
       };
     }
 
@@ -86,5 +87,9 @@ export const useSystemState = () => {
     setSystemState(newState);
   }, []);
 
-  return { systemState, updateState, persist };
+  return useMemo(() => ({
+    systemState,
+    updateState,
+    persist,
+  }), [systemState, updateState, persist]);
 };
