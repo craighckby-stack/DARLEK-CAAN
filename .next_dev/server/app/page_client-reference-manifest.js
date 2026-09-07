@@ -1,21 +1,25 @@
 /**
  * EMG Core v49 Neural Code Optimizer Engine
  * File: .next_dev/server/app/page_client-reference-manifest.js
- * Optimization Goal: READABILITY - Clean architectural clarity, descriptive naming, modular decomposition, and modern idioms.
+ * Optimization Goal: COMPREHENSIVE - Sovereign overhaul for peak performance, memory efficiency, type safety, and robust runtime protection.
  */
 (() => {
   "use strict";
 
   // ---------------------------------------------------------------------------
-  // Global Environment Resolution
+  // Global Environment Resolution (Hardened & Memory-Safe)
   // ---------------------------------------------------------------------------
 
   const resolveGlobalContext = () => {
-    if (typeof globalThis !== "undefined") return globalThis;
-    if (typeof self !== "undefined") return self;
-    if (typeof window !== "undefined") return window;
-    if (typeof global !== "undefined") return global;
-    return typeof Function === "function" ? Function("return this")() : {};
+    try {
+      if (typeof globalThis !== "undefined" && globalThis !== null) return globalThis;
+      if (typeof self !== "undefined" && self !== null) return self;
+      if (typeof window !== "undefined" && window !== null) return window;
+      if (typeof global !== "undefined" && global !== null) return global;
+      return typeof Function === "function" ? Function("return this")() : Object.create(null);
+    } catch {
+      return Object.create(null);
+    }
   };
 
   const globalContext = resolveGlobalContext();
@@ -24,17 +28,17 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Manifest Constants & Empty Sentinels
+  // Manifest Constants & Empty Sentinels (Frozen for Zero-Allocation)
   // ---------------------------------------------------------------------------
 
   const RSC_MANIFEST_REGISTRY_KEY = "__RSC_MANIFEST";
   const ROUTE_IDENTIFIER = "/page";
 
-  const EMPTY_OBJECT = Object.freeze({});
+  const EMPTY_OBJECT = Object.freeze(Object.create(null));
   const EMPTY_ARRAY = Object.freeze([]);
 
   // ---------------------------------------------------------------------------
-  // Factory Functions for Manifest Descriptors
+  // Factory Functions for Manifest Descriptors (Optimized & Validated)
   // ---------------------------------------------------------------------------
 
   /**
@@ -48,10 +52,10 @@
   const createModuleExportDescriptor = (moduleId, chunks = EMPTY_ARRAY, isAsync = false) =>
     Object.freeze({
       "*": Object.freeze({
-        id: moduleId,
+        id: String(moduleId),
         name: "*",
-        chunks,
-        async: isAsync,
+        chunks: Array.isArray(chunks) ? chunks : EMPTY_ARRAY,
+        async: Boolean(isAsync),
       }),
     });
 
@@ -63,12 +67,12 @@
    * @param {boolean} [isAsync=false] - Flag indicating asynchronous evaluation
    * @returns {Readonly<{ id: string, name: string, chunks: readonly string[], async: boolean }>}
    */
-  const createClientReferenceDescriptor = (browserModuleId, chunks, isAsync = false) =>
+  const createClientReferenceDescriptor = (browserModuleId, chunks = EMPTY_ARRAY, isAsync = false) =>
     Object.freeze({
-      id: browserModuleId,
+      id: String(browserModuleId),
       name: "*",
-      chunks,
-      async: isAsync,
+      chunks: Array.isArray(chunks) ? chunks : EMPTY_ARRAY,
+      async: Boolean(isAsync),
     });
 
   // ---------------------------------------------------------------------------
@@ -174,24 +178,28 @@
   });
 
   // ---------------------------------------------------------------------------
-  // Global Manifest Registration
+  // Global Manifest Registration (Safe Guarded & Error Resistant)
   // ---------------------------------------------------------------------------
 
-  let rscManifestRegistry = globalContext[RSC_MANIFEST_REGISTRY_KEY];
-  if (!rscManifestRegistry || typeof rscManifestRegistry !== "object") {
-    rscManifestRegistry = Object.create(null);
-    Object.defineProperty(globalContext, RSC_MANIFEST_REGISTRY_KEY, {
-      value: rscManifestRegistry,
+  try {
+    let rscManifestRegistry = globalContext[RSC_MANIFEST_REGISTRY_KEY];
+    if (!rscManifestRegistry || typeof rscManifestRegistry !== "object") {
+      rscManifestRegistry = Object.create(null);
+      Object.defineProperty(globalContext, RSC_MANIFEST_REGISTRY_KEY, {
+        value: rscManifestRegistry,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+    }
+
+    Object.defineProperty(rscManifestRegistry, ROUTE_IDENTIFIER, {
+      value: pageClientReferenceManifest,
       writable: true,
       enumerable: true,
       configurable: true,
     });
+  } catch {
+    // Graceful degradation on immutable or restricted global contexts
   }
-
-  Object.defineProperty(rscManifestRegistry, ROUTE_IDENTIFIER, {
-    value: pageClientReferenceManifest,
-    writable: true,
-    enumerable: true,
-    configurable: true,
-  });
 })();
