@@ -11,7 +11,7 @@ export interface SelectTriggerProps
   readonly size?: "sm" | "default"
 }
 
-// Centralized theme styling definitions
+// Centralized theme styling definitions (immutable via Object.freeze)
 const STYLES = Object.freeze({
   trigger: cn(
     "border-input data-[placeholder]:text-muted-foreground",
