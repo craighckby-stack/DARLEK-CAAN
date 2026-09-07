@@ -3,38 +3,38 @@ import mammoth from 'mammoth';
 
 export const dynamic = 'force-dynamic';
 
-interface SuccessResponse {
+export interface SuccessResponse {
   readonly success: true;
   readonly text: string;
   readonly status?: string;
   readonly service?: string;
 }
 
-interface ErrorResponse {
+export interface ErrorResponse {
   readonly success: false;
   readonly error: string;
 }
 
-type ApiResponse = SuccessResponse | ErrorResponse;
+export type ApiResponse = SuccessResponse | ErrorResponse;
 
 const MAX_PAYLOAD_SIZE_BYTES = 25 * 1024 * 1024; // 25MB safety boundary
 
 // Cached static JSON responses for minimal memory allocation and faster GC turnaround
-const ONLINE_RESPONSE = NextResponse.json({ 
+const ONLINE_RESPONSE: NextResponse<ApiResponse> = NextResponse.json({ 
   status: 'online', 
   service: 'EXTRACT_TEXT_API', 
   success: true, 
   text: '' 
 } as SuccessResponse);
 
-const PAYLOAD_TOO_LARGE_RESPONSE = NextResponse.json(
+const PAYLOAD_TOO_LARGE_RESPONSE: NextResponse<ApiResponse> = NextResponse.json(
   { error: 'Payload exceeds maximum limit of 25MB', success: false } as ErrorResponse,
   { status: 413 }
 );
 
-const NO_TEXT_RESPONSE = NextResponse.json({ error: 'No text provided', success: false } as ErrorResponse, { status: 400 });
-const NO_PAYLOAD_RESPONSE = NextResponse.json({ error: 'No file or text payload provided', success: false } as ErrorResponse, { status: 400 });
-const NO_FILE_RESPONSE = NextResponse.json({ error: 'No file provided in form data', success: false } as ErrorResponse, { status: 400 });
+const NO_TEXT_RESPONSE: NextResponse<ApiResponse> = NextResponse.json({ error: 'No text provided', success: false } as ErrorResponse, { status: 400 });
+const NO_PAYLOAD_RESPONSE: NextResponse<ApiResponse> = NextResponse.json({ error: 'No file or text payload provided', success: false } as ErrorResponse, { status: 400 });
+const NO_FILE_RESPONSE: NextResponse<ApiResponse> = NextResponse.json({ error: 'No file provided in form data', success: false } as ErrorResponse, { status: 400 });
 
 /**
  * Validates the incoming request size against the safety limit.
@@ -126,8 +126,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
     // Handle JSON payloads
     if (contentType.includes('application/json')) {
       const body = await req.json().catch(() => null);
-      if (body && typeof body.text === 'string' && body.text.length > 0) {
-        return NextResponse.json({ text: body.text, success: true });
+      if (body && typeof (body as Record<string, unknown>).text === 'string' && ((body as Record<string, unknown>).text as string).length > 0) {
+        return NextResponse.json({ text: (body as Record<string, unknown>).text as string, success: true });
       }
       return NO_TEXT_RESPONSE;
     }
