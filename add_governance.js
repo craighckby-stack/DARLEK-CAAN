@@ -14,6 +14,9 @@ const { resolve } = require('node:path');
 const TARGET_FILE_PATH = resolve(__dirname, 'src/utils/agi-engine.ts');
 const MAX_PAYLOAD_SIZE_BYTES = 131072; // 128KB Wasm Sandbox limit
 
+// Pre-compiled RegExp for high-speed pattern matching with zero interim allocations on each invocation
+const UNSAFE_PATTERN_REGEX = /(?:constructor|__proto__|prototype|eval\(|exec\(|setTimeout\(|setInterval\())/;
+
 // Pre-allocate template string to avoid dynamic re-allocation overhead on each invocation
 const GOVERNANCE_CLASS_MODULE = `
 // ---------------------------------------------------------------------------
@@ -25,8 +28,8 @@ export class EdgeGovernanceGatekeeper {
       return false;
     }
     
-    // Consolidated checks utilizing RegExp for high-speed pattern matching with zero interim allocations
-    return !/(?:constructor|__proto__|prototype|eval\(|exec\(|setTimeout\(|setInterval\()/.test(payload);
+    // Consolidated checks utilizing pre-compiled RegExp for high-speed pattern matching
+    return !UNSAFE_PATTERN_REGEX.test(payload);
   }
 
   public enforceMemoryLimit(payloadSize: number): boolean {
@@ -51,8 +54,8 @@ export class EdgeGovernanceGatekeeper {
 function readTargetSource(filePath) {
   try {
     return readFileSync(filePath, 'utf8');
-  } catch {
-    console.error('Critical failure: Target file could not be safely accessed.');
+  } catch (error) {
+    console.error('Critical failure: Target file could not be safely accessed.', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }
@@ -65,8 +68,8 @@ function readTargetSource(filePath) {
 function writeTargetSource(filePath, content) {
   try {
     writeFileSync(filePath, content, 'utf8');
-  } catch {
-    console.error('Critical failure: Target file could not be safely updated.');
+  } catch (error) {
+    console.error('Critical failure: Target file could not be safely updated.', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }
