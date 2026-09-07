@@ -24,6 +24,9 @@ const GITHUB_TREE_API_URL = 'https://api.github.com/repos/craighckby-stack/epist
  * @returns {boolean} True if safe, false otherwise.
  */
 function isPathWithinBase(targetPath) {
+  if (typeof targetPath !== 'string' || targetPath.length === 0) {
+    return false;
+  }
   const resolvedTarget = path.resolve(targetPath);
   return resolvedTarget.startsWith(RESOLVED_BASE);
 }
@@ -76,7 +79,10 @@ function walk(dirPath, accumulator = []) {
  * @returns {Array<Object>} Filtered array of blob nodes.
  */
 function extractRemoteBlobs(treeNodes) {
-  return treeNodes.filter((node) => node && node.type === 'blob');
+  if (!Array.isArray(treeNodes)) {
+    return [];
+  }
+  return treeNodes.filter((node) => node && typeof node === 'object' && node.type === 'blob');
 }
 
 /**
@@ -131,7 +137,13 @@ function createRequestOptions(parsedUrl) {
  * Implements strict payload size limits, protocol enforcement, and response validation.
  */
 function executeSyncCycle() {
-  const parsedUrl = new URL(GITHUB_TREE_API_URL);
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(GITHUB_TREE_API_URL);
+  } catch (error) {
+    console.error('Security error: Malformed GITHUB_TREE_API_URL.', error);
+    return;
+  }
 
   if (parsedUrl.protocol !== 'https:') {
     console.error('Security violation: Non-HTTPS protocol rejected.');
@@ -159,8 +171,12 @@ function executeSyncCycle() {
     });
 
     res.on('end', () => {
-      const rawData = Buffer.concat(chunks).toString('utf8');
-      processTreeResponse(rawData);
+      try {
+        const rawData = Buffer.concat(chunks).toString('utf8');
+        processTreeResponse(rawData);
+      } catch (error) {
+        console.error('Failed to process response stream payload:', error);
+      }
     });
   });
 
