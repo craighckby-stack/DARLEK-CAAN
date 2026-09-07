@@ -1,1 +1,14 @@
-[{"eventName":"NEXT_CLI_SESSION_STOPPED","payload":{"nextVersion":"15.1.6","nodeVersion":"v22.23.2","cliCommand":"dev","durationMilliseconds":930,"turboFlag":false,"pagesDir":false,"appDir":true}}]
+[
+  {
+    "eventName": "NEXT_CLI_SESSION_STOPPED",
+    "payload": {
+      "nextVersion": "15.1.6",
+      "nodeVersion": "v22.23.2",
+      "cliCommand": "dev",
+      "durationMilliseconds": 930,
+      "turboFlag": false,
+      "pagesDir": false,
+      "appDir": true
+    }
+  }
+]
