@@ -3,7 +3,7 @@
 # Engine: EMG Core v49 Neural Code and Documentation Optimizer Engine
 # Role: Enforces strict quality gates, architectural compliance, automated verification, and security controls.
 # Integration: Aligns PR submissions with Zero-Leak Sandbox, Dynamic Consensus Weighting (DCW), Diagnostic Engine, and Security Assurance Framework.
-# Version: 3.2.0-COMPREHENSIVE-OPTIMIZED
+# Version: 3.2.1-TYPE-SAFE-OPTIMIZED
 -->
 
 ## ⚡ Executive Summary
@@ -126,14 +126,42 @@
 
 ```json
 {
-  "status": "PASS",
-  "timestamp": "<YYYY-MM-DDTHH:MM:SSZ>",
-  "diagnostic_results": {
-    "sandbox_leak_check": "PASSED",
-    "dcw_liveness_check": "PASSED",
-    "security_audit_check": "PASSED"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DiagnosticTelemetryReport",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "DEGRADED"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "diagnostic_results": {
+      "type": "object",
+      "properties": {
+        "sandbox_leak_check": { "type": "string" },
+        "dcw_liveness_check": { "type": "string" },
+        "security_audit_check": { "type": "string" }
+      },
+      "required": ["sandbox_leak_check", "dcw_liveness_check", "security_audit_check"]
+    },
+    "raw_output": {
+      "type": "string"
+    }
   },
-  "raw_output": "[Paste diagnostic engine output here]"
+  "required": ["status", "timestamp", "diagnostic_results", "raw_output"],
+  "example": {
+    "status": "PASS",
+    "timestamp": "2026-03-30T12:00:00Z",
+    "diagnostic_results": {
+      "sandbox_leak_check": "PASSED",
+      "dcw_liveness_check": "PASSED",
+      "security_audit_check": "PASSED"
+    },
+    "raw_output": "[Diagnostic Engine: All subsystems operational]"
+  }
 }
 ```
 
