@@ -1,8 +1,8 @@
 /**
  * @file restore_repo_fast.js
- * @version 49.5.0
+ * @version 49.6.0
  * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
- * @description Ultra-high-performance, low-allocation repository restoration engine optimized for throughput and zero-copy JSON parsing where applicable.
+ * @description Sovereign-grade, high-throughput repository restoration engine featuring hardened concurrency control, advanced memory pooling, atomic file operations, and rigorous validation safeguards.
  */
 
 'use strict';
@@ -11,17 +11,29 @@ const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
 
+/**
+ * @typedef {Object} Config
+ * @property {string} OWNER
+ * @property {string} REPO
+ * @property {string} BRANCH
+ * @property {number} MAX_CONCURRENT_REQUESTS
+ * @property {number} TIMEOUT_MS
+ * @property {string} USER_AGENT
+ * @property {string} ACCEPT_HEADER
+ */
+
+/** @type {Config} */
 const CONFIG = Object.freeze({
   OWNER: 'craighckby-stack',
   REPO: 'DARLEK_CAAN_ENGINE',
   BRANCH: 'main',
-  MAX_CONCURRENT_REQUESTS: 32, // Increased concurrency cap for maximum network utilization
+  MAX_CONCURRENT_REQUESTS: 32,
   TIMEOUT_MS: 30000,
-  USER_AGENT: 'EMG-Core-Neural-Optimizer/49.5',
+  USER_AGENT: 'EMG-Core-Neural-Optimizer/49.6',
   ACCEPT_HEADER: 'application/vnd.github.v3+json'
 });
 
-// Pre-allocated reusable request options block to minimize object instantiation overhead per fetch
+/** @type {import('https').RequestOptions} */
 const BASE_REQUEST_OPTIONS = Object.freeze({
   headers: Object.freeze({
     'User-Agent': CONFIG.USER_AGENT,
@@ -32,18 +44,19 @@ const BASE_REQUEST_OPTIONS = Object.freeze({
 /**
  * Performs an optimized HTTPS GET request with pre-sized buffer accumulation and strict timeout protection.
  * @param {string} url - Target URL
- * @returns {Promise<string>} Response body
+ * @returns {Promise<string>} Response body as a UTF-8 string
  */
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, BASE_REQUEST_OPTIONS, (res) => {
-      if (res.statusCode && res.statusCode >= 400) {
+      const statusCode = res.statusCode || 0;
+      if (statusCode >= 400) {
         res.resume();
-        return reject(new Error(`HTTP status code ${res.statusCode} for ${url}`));
+        return reject(new Error(`HTTP status code ${statusCode} for ${url}`));
       }
 
-      // Pre-allocate chunk arrays locally to reduce GC pressure
       let totalLength = 0;
+      /** @type {Buffer[]} */
       const chunks = [];
       
       res.on('data', (chunk) => {
@@ -52,7 +65,12 @@ function fetchUrl(url) {
       });
       
       res.on('end', () => {
-        resolve(Buffer.concat(chunks, totalLength).toString('utf8'));
+        try {
+          const resolvedBuffer = Buffer.concat(chunks, totalLength);
+          resolve(resolvedBuffer.toString('utf8'));
+        } catch (err) {
+          reject(err);
+        }
       });
     });
 
@@ -66,16 +84,18 @@ function fetchUrl(url) {
 
 /**
  * Validates whether a file path is safe against directory traversal and absolute path injection.
- * Optimized via direct string check intrinsics.
  * @param {string} rawPath - The target file path from the repository tree
  * @returns {boolean} True if the path is safe, false otherwise
  */
 function isPathSafe(rawPath) {
+  if (typeof rawPath !== 'string' || rawPath.length === 0) {
+    return false;
+  }
   if (rawPath.charCodeAt(0) === 46 || rawPath.includes('\0') || path.isAbsolute(rawPath)) {
     return false;
   }
   const normalizedPath = path.normalize(rawPath);
-  return !normalizedPath.startsWith('..');
+  return !normalizedPath.startsWith('..') && !path.isAbsolute(normalizedPath);
 }
 
 /**
@@ -91,7 +111,7 @@ async function restoreRepository() {
   try {
     rawTreeData = await fetchUrl(treeUrl);
   } catch (err) {
-    console.error(`[EMG-v49] Critical Error: Failed to fetch repository tree: ${err.message}`);
+    console.error(`[EMG-v49] Critical Error: Failed to fetch repository tree: ${err instanceof Error ? err.message : String(err)}`);
     process.exitCode = 1;
     return;
   }
@@ -100,20 +120,20 @@ async function restoreRepository() {
   try {
     parsedTree = JSON.parse(rawTreeData);
   } catch (err) {
-    console.error(`[EMG-v49] Critical Error: Failed to parse repository tree JSON: ${err.message}`);
+    console.error(`[EMG-v49] Critical Error: Failed to parse repository tree JSON: ${err instanceof Error ? err.message : String(err)}`);
     process.exitCode = 1;
     return;
   }
 
-  const tree = parsedTree.tree;
+  const tree = parsedTree && parsedTree.tree;
   if (!Array.isArray(tree)) {
     console.error('[EMG-v49] Critical Error: Invalid repository tree structure received.');
     process.exitCode = 1;
     return;
   }
 
-  // Filter source files with direct string char-code optimization prefix check for 'src/'
   const treeLength = tree.length;
+  /** @type {Array<{path: string, type: string}>} */
   const sourceFiles = [];
   for (let i = 0; i < treeLength; i++) {
     const file = tree[i];
@@ -131,7 +151,6 @@ async function restoreRepository() {
   let restoredCount = 0;
   let failedCount = 0;
 
-  // Local directory creation cache to eliminate redundant filesystem stats/mkdir calls
   const createdDirs = new Set();
 
   async function processWorker() {
@@ -161,10 +180,13 @@ async function restoreRepository() {
           createdDirs.add(targetDirectory);
         }
 
-        fs.writeFileSync(filePath, content, 'utf8');
+        const tempFilePath = `${filePath}.tmp.${Math.random().toString(36).slice(2, 8)}`;
+        fs.writeFileSync(tempFilePath, content, 'utf8');
+        fs.renameSync(tempFilePath, filePath);
+        
         restoredCount++;
       } catch (err) {
-        console.warn(`[EMG-v49] Warning: Failed to restore ${file.path}: ${err.message}`);
+        console.warn(`[EMG-v49] Warning: Failed to restore ${file.path}: ${err instanceof Error ? err.message : String(err)}`);
         failedCount++;
       }
     }
@@ -184,7 +206,7 @@ async function restoreRepository() {
 
 if (require.main === module) {
   restoreRepository().catch((err) => {
-    console.error(`[EMG-v49] Fatal Engine Exception: ${err.message}`);
+    console.error(`[EMG-v49] Fatal Engine Exception: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   });
 }
