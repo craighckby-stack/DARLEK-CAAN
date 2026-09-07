@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 
 export type MutationStatus = 'pending' | 'evolving' | 'stable';
 
@@ -12,20 +12,20 @@ interface StatusConfiguration {
   readonly label: string;
 }
 
-const MUTATION_STATUS_CONFIGURATIONS: Record<MutationStatus, StatusConfiguration> = {
-  pending: {
+const MUTATION_STATUS_CONFIGURATIONS: Record<MutationStatus, StatusConfiguration> = Object.freeze({
+  pending: Object.freeze({
     dotClassName: 'bg-yellow-500',
     label: 'pending',
-  },
-  evolving: {
+  }),
+  evolving: Object.freeze({
     dotClassName: 'animate-pulse bg-cyan-500',
     label: 'evolving',
-  },
-  stable: {
+  }),
+  stable: Object.freeze({
     dotClassName: 'bg-green-500',
     label: 'stable',
-  },
-};
+  }),
+});
 
 const BASE_CONTAINER_CLASS = 'flex items-center gap-1 px-2 py-1 rounded bg-black border border-white/10';
 const BASE_DOT_CLASS = 'w-2 h-2 rounded-full';
@@ -33,12 +33,19 @@ const LABEL_CLASS = 'text-[8px] uppercase tracking-widest text-white select-none
 
 export const MutationStatusIndicator: React.FC<MutationStatusIndicatorProps> = memo(({
   status,
-  className = '',
+  className,
 }) => {
-  const { dotClassName, label } = MUTATION_STATUS_CONFIGURATIONS[status] ?? MUTATION_STATUS_CONFIGURATIONS.stable;
+  const { dotClassName, label } = useMemo(() => {
+    return MUTATION_STATUS_CONFIGURATIONS[status] ?? MUTATION_STATUS_CONFIGURATIONS.stable;
+  }, [status]);
   
-  const containerClassName = [BASE_CONTAINER_CLASS, className].filter(Boolean).join(' ');
-  const combinedDotClassName = `${BASE_DOT_CLASS} ${dotClassName}`;
+  const containerClassName = useMemo(() => {
+    return className ? `${BASE_CONTAINER_CLASS} ${className}` : BASE_CONTAINER_CLASS;
+  }, [className]);
+
+  const combinedDotClassName = useMemo(() => {
+    return `${BASE_DOT_CLASS} ${dotClassName}`;
+  }, [dotClassName]);
 
   return (
     <div 
