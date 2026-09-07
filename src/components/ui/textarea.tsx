@@ -16,7 +16,10 @@ const TEXTAREA_STYLES = [
 const Textarea = React.memo(
   React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     function Textarea({ className, ...props }, ref) {
-      const mergedClassName = cn(TEXTAREA_STYLES, className)
+      const mergedClassName = React.useMemo(
+        () => cn(TEXTAREA_STYLES, className),
+        [className]
+      )
 
       return (
         <textarea
