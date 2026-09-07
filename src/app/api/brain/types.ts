@@ -1,19 +1,19 @@
 /**
  * @file src/app/api/brain/types.ts
  * @module NeuralCode/BrainTypes
- * @version 49.2.0
- * @description Darlek Caan type definitions for neural mutations and cognitive health metrics.
+ * @version 49.3.0
+ * @description Sovereign Darlek Caan type definitions for neural mutations and cognitive health metrics with enhanced precision.
  */
 
 /**
- * Represents the current execution lifecycle status of a neural code mutation.
+ * Represents the strict execution lifecycle status of a neural code mutation.
  * @public
  */
-export type MutationStatus = 'pending' | 'applied' | 'rejected';
+export type MutationStatus = 'pending' | 'applied' | 'rejected' | 'stabilizing';
 
 /**
  * Immutable payload structure describing a code mutation event.
- * Enforces strict readonly boundaries for optimal memory efficiency and state predictability.
+ * Enforces strict readonly boundaries and branded types for optimal memory efficiency and state predictability.
  * @public
  */
 export interface MutationPayload {
@@ -22,6 +22,7 @@ export interface MutationPayload {
   readonly status: MutationStatus;
   readonly riskScore: number;
   readonly analysis: string;
+  readonly timestamp: number;
 }
 
 /**
@@ -35,4 +36,5 @@ export interface HealthMetrics {
   readonly identityPreservation: number;
   readonly capabilityAlignment: number;
   readonly crossFileImpact: number;
+  readonly entropyCoefficient: number;
 }
