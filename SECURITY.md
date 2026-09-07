@@ -22,6 +22,19 @@
 | **Evolution Logs** | `.evolution.history` | Excluded from VCS to prevent recursion pollution and state drift. |
 | **Secrets & Keys** | `.vault`, `.key`, `.env.local` | Managed via local patterns; **never** commit cryptographic assets. |
 
+### Example Configuration: Security Ignore Matrix
+
+```gitignore
+# DARLEK CANN v3.0 Exclusion Matrix
+*.consciousness.dump
+*.quantum.data
+*.swarm.state
+.evolution.history
+.vault
+.key
+.env.local
+```
+
 ---
 
 ## Vulnerability Reporting & Disclosure
