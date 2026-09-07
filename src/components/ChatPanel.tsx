@@ -683,7 +683,13 @@ export default function ChatPanel({
 
       {/* Free text input (after setup) */}
       {systemState.setupComplete && (
-        <div className="p-3 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
+        <div 
+          className="p-3 flex-shrink-0 pb-safe sm:pb-3" 
+          style={{ 
+            borderTop: `1px solid ${COLORS.panelBorder}`,
+            paddingBottom: 'max(env(safe-area-inset-bottom), 12px)'
+          }}
+        >
           {attachedFile && (
             <div className="mb-2 px-3 py-2 bg-[#120808] border border-[#a21f1f]/30 rounded flex items-center justify-between text-xs font-mono text-stone-300">
               <div className="flex items-center gap-1.5 truncate">
@@ -728,6 +734,16 @@ export default function ChatPanel({
               dir="ltr"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onFocus={() => {
+                setTimeout(() => {
+                  if (textareaRef.current) {
+                    textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  }
+                  if (scrollRef.current) {
+                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                  }
+                }, 300);
+              }}
               onKeyDown={handleKeyDown}
               placeholder={attachedFile ? "Description of specification system... Type 'create' with this to compile!" : "Type a command..."}
               rows={1}
