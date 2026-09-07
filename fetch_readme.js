@@ -12,6 +12,7 @@ const https = require('node:https');
 const CONFIG = Object.freeze({
   targetUrl: 'https://raw.githubusercontent.com/craighckby-stack/epistemic_debate_engine/main/README.md',
   maxDataSizeBytes: 1024 * 1024,
+  timeoutMs: 10000,
   requestOptions: Object.freeze({
     headers: Object.freeze({
       'User-Agent': 'EMG-Core-v49-Neural-Code-Optimizer'
@@ -20,7 +21,7 @@ const CONFIG = Object.freeze({
 });
 
 /**
- * Validates HTTP status and wires up data collection streams.
+ * Validates HTTP status and wires up data collection streams with strict bounds checking.
  * @param {import('http').IncomingMessage} response 
  * @param {import('http').ClientRequest} request 
  */
@@ -38,7 +39,7 @@ function handleResponse(response, request) {
     currentDataSize += chunk.length;
     if (currentDataSize > CONFIG.maxDataSizeBytes) {
       console.error('Error: Payload size exceeds safety bounds.');
-      request.destroy();
+      request.destroy(new Error('Payload size limit exceeded'));
       return;
     }
     chunks.push(chunk);
@@ -46,10 +47,12 @@ function handleResponse(response, request) {
 
   response.on('end', () => {
     if (currentDataSize <= CONFIG.maxDataSizeBytes) {
-      const finalBuffer = Buffer.concat(chunks, currentDataSize);
-      process.stdout.write(finalBuffer.toString('utf8') + '\n');
-    } else {
-      console.error('Error: Invalid data payload format or size.');
+      try {
+        const finalBuffer = Buffer.concat(chunks, currentDataSize);
+        process.stdout.write(finalBuffer.toString('utf8') + '\n');
+      } catch (err) {
+        console.error('Error processing data stream payload securely handled.');
+      }
     }
   });
 }
@@ -63,5 +66,9 @@ function handleError(error) {
 }
 
 const req = https.get(CONFIG.targetUrl, CONFIG.requestOptions, (res) => handleResponse(res, req));
+req.setTimeout(CONFIG.timeoutMs, () => {
+  console.error('Error: Request timeout exceeded.');
+  req.destroy(new Error('Request timeout'));
+});
 req.on('error', handleError);
 req.end();
