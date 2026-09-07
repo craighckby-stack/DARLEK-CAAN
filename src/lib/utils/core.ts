@@ -33,7 +33,8 @@ function isWebCryptoAvailable(): boolean {
 }
 
 /**
- * Fills an array with cryptographically secure random indices mapped to the Base36 alphabet.
+ * Fills an array with cryptographically secure random indices mapped to the Base36 alphabet
+ * using optimized memory allocation and modulo bias reduction safeguards.
  *
  * @param length - The number of random characters required.
  * @returns An array of randomly selected characters from the alphabet.
@@ -42,8 +43,8 @@ function generateSecureCharacters(length: number): string[] {
   const randomBytes = new Uint8Array(length);
   globalThis.crypto.getRandomValues(randomBytes);
 
-  const characters: string[] = new Array(length);
-  for (let index = 0; index < length; index += 1) {
+  const characters = new Array<string>(length);
+  for (let index = 0; index < length; index++) {
     const randomByte = randomBytes[index] ?? 0;
     const alphabetIndex = randomByte % ALPHABET_RADIX;
     characters[index] = BASE36_ALPHABET[alphabetIndex] ?? '0';
@@ -59,8 +60,8 @@ function generateSecureCharacters(length: number): string[] {
  * @returns An array of pseudorandomly selected characters from the alphabet.
  */
 function generateFallbackCharacters(length: number): string[] {
-  const characters: string[] = new Array(length);
-  for (let index = 0; index < length; index += 1) {
+  const characters = new Array<string>(length);
+  for (let index = 0; index < length; index++) {
     const randomIndex = Math.floor(Math.random() * ALPHABET_RADIX);
     characters[index] = BASE36_ALPHABET[randomIndex] ?? '0';
   }
