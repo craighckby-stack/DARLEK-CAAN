@@ -8,6 +8,9 @@
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+/**
+ * System configuration parameters bound to immutable frozen structures.
+ */
 const CONFIG = Object.freeze({
     ALLOWED_BASE_DIR: resolve('src/app/api/evolution'),
     RELATIVE_FILE_PATH: 'propose/route.ts',
@@ -20,6 +23,11 @@ const CONFIG = Object.freeze({
 /**
  * Validates path security against directory traversal vulnerabilities.
  * Optimized with direct string validation to eliminate unnecessary object allocations.
+ * 
+ * @param {string} baseDir - The trusted base directory path.
+ * @param {string} relativePath - The relative path to validate and resolve.
+ * @returns {string} The fully resolved and validated file path.
+ * @throws {Error} If path traversal or unauthorized access is attempted.
  */
 function resolveAndValidatePath(baseDir, relativePath) {
     const resolvedPath = resolve(baseDir, relativePath);
@@ -31,13 +39,18 @@ function resolveAndValidatePath(baseDir, relativePath) {
 
 /**
  * Validates file existence, type constraints, and size limits using synchronous operations.
+ * 
+ * @param {string} filePath - The verified absolute file path.
+ * @param {number} maxSize - Maximum permissible file size in bytes.
+ * @throws {Error} If the file fails stat inspection, is not a regular file, or exceeds size limits.
  */
 function validateFileConstraints(filePath, maxSize) {
     let stats;
     try {
         stats = statSync(filePath);
     } catch (err) {
-        throw new Error(`SECURITY ERROR: Failed to stat target file: ${err.message}`);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        throw new Error(`SECURITY ERROR: Failed to stat target file: ${errorMessage}`);
     }
 
     if (!stats.isFile()) {
@@ -52,6 +65,12 @@ function validateFileConstraints(filePath, maxSize) {
 /**
  * Performs content sanitization and replacement on the target source file.
  * Optimized to use direct string replacement avoiding global regex overhead.
+ * 
+ * @param {string} filePath - The absolute target file path.
+ * @param {string} targetStr - The exact string sequence to search for.
+ * @param {string} replacementStr - The replacement string sequence.
+ * @param {BufferEncoding} encoding - The character encoding format.
+ * @throws {Error} If the target string pattern cannot be located.
  */
 function sanitizeSourceCode(filePath, targetStr, replacementStr, encoding) {
     const code = readFileSync(filePath, encoding);
@@ -67,12 +86,21 @@ function sanitizeSourceCode(filePath, targetStr, replacementStr, encoding) {
 }
 
 /**
- * Main Execution Flow
+ * Main Execution Flow for evolutionary prompt fixes.
+ * 
+ * @throws {Error} If path resolution, constraint validation, or sanitization fails.
  */
 function executeEvolutionaryPromptFix() {
-    const targetPath = resolveAndValidatePath(CONFIG.ALLOWED_BASE_DIR, CONFIG.RELATIVE_FILE_PATH);
-    validateFileConstraints(targetPath, CONFIG.MAX_FILE_SIZE_BYTES);
-    sanitizeSourceCode(targetPath, CONFIG.TARGET_STRING, CONFIG.REPLACEMENT_STRING, CONFIG.ENCODING);
+    try {
+        const targetPath = resolveAndValidatePath(CONFIG.ALLOWED_BASE_DIR, CONFIG.RELATIVE_FILE_PATH);
+        validateFileConstraints(targetPath, CONFIG.MAX_FILE_SIZE_BYTES);
+        sanitizeSourceCode(targetPath, CONFIG.TARGET_STRING, CONFIG.REPLACEMENT_STRING, /** @type {BufferEncoding} */ (CONFIG.ENCODING));
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[EMG CORE v49 FATAL]: ${errorMessage}`);
+        process.exitCode = 1;
+        throw error;
+    }
 }
 
 executeEvolutionaryPromptFix();
