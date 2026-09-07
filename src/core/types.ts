@@ -25,7 +25,7 @@ export interface QuantumNode<TInput = unknown, TOutput = unknown> {
   /**
    * Safely deconstructs and releases system resources allocated by the node.
    */
-  teardown(): void;
+  teardown(): void | Promise<void>;
 }
 
 /**
