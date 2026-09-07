@@ -79,9 +79,8 @@ The `OMEGA` kernel interfaces with external high-availability modules for distri
 * **`Unitary-Core`**: High-dimensional tensor processing, cognitive pattern recognition, and vector embedding computations.
 * **`Sovereign-v86`**: Kernel-level access for autonomous self-refactoring, instruction-set verification, and zero-downtime hot-patching.
 
-```text
-+------------------+       +-------------------+       +-------------------+
-|  OMEGA-EMERGENT  | <---> |   Unitary-Core    | <---> |   Sovereign-v86   |
-|   (Core Kernel)  |       | (High-Dim Engine) |       | (Self-Refactor)   |
-+------------------+       +-------------------+       +-------------------+
+```mermaid
+graph TD
+    A[OMEGA-EMERGENT Core Kernel] <--> B[Unitary-Core High-Dim Engine]
+    A <--> C[Sovereign-v86 Self-Refactor]
 ```
