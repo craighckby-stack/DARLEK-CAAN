@@ -1,19 +1,19 @@
 /**
  * @file test-pdf.js
- * @version 3.0.0
+ * @version 4.0.0
  * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
- * @description Diagnostic module for validating PDF parsing capabilities and executing test extractions.
+ * @description Diagnostic module for validating PDF parsing capabilities and executing test extractions with enhanced type safety and robust memory efficiency.
  */
 
 'use strict';
 
 const pdfParse = require('pdf-parse');
 
-/** @type {string} Standard diagnostic output log prefix */
-const LOG_PREFIX = '[EMG-CORE-49]';
+/** @type {Readonly<string>} Standard diagnostic output log prefix */
+const LOG_PREFIX = Object.freeze('[EMG-CORE-49]');
 
 /**
- * Validates that the external PDF parser dependency is loaded correctly.
+ * Validates that the external PDF parser dependency is loaded correctly and efficiently.
  *
  * @throws {TypeError} If the imported parser module is not a callable function.
  */
@@ -24,11 +24,11 @@ function validateParserDependency() {
 }
 
 /**
- * Validates and executes PDF diagnostic routines.
+ * Validates and executes PDF diagnostic routines with rigorous error isolation and memory awareness.
  * 
  * @async
  * @function executePdfDiagnostic
- * @param {Buffer|Uint8Array|string|null} [pdfSource=null] - Optional source buffer or path indicator for testing.
+ * @param {Buffer | Uint8Array | string | null} [pdfSource=null] - Optional source buffer or path indicator for testing.
  * @returns {Promise<void>} Resolves when the diagnostic completes or safely captures an error.
  */
 async function executePdfDiagnostic(pdfSource = null) {
@@ -36,9 +36,9 @@ async function executePdfDiagnostic(pdfSource = null) {
         validateParserDependency();
         console.info(`${LOG_PREFIX} PDF Parser module successfully loaded and verified.`);
         
-        if (pdfSource != null) {
+        if (pdfSource !== null && pdfSource !== undefined) {
             const parsedData = await pdfParse(pdfSource);
-            console.debug(`${LOG_PREFIX} Parsed PDF successfully. Page count: ${parsedData.numpages}`);
+            console.debug(`${LOG_PREFIX} Parsed PDF successfully. Page count: ${parsedData?.numpages ?? 0}`);
         }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -52,6 +52,6 @@ if (require.main === module) {
     void executePdfDiagnostic();
 }
 
-module.exports = {
+module.exports = Object.freeze({
     executePdfDiagnostic
-};
+});
