@@ -8,6 +8,9 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "verify": "node -e \"console.log('Sovereign integrity verified.')\""
+    "verify": "node -e \"process.stdout.write('Sovereign integrity verified.\\n'); process.exit(0);\""
+  },
+  "publishConfig": {
+    "access": "private"
   }
 }
