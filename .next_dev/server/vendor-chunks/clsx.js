@@ -23,7 +23,7 @@ exports.modules = {
     });
 
     /**
-     * Appends a class string to an accumulator with a space separator if needed.
+     * Appends a class string to an accumulator with an optimized space separator.
      * 
      * @param {string} accumulator - The current accumulated class string
      * @param {string} nextValue - The class string to append
@@ -35,7 +35,7 @@ exports.modules = {
     }
 
     /**
-     * Recursively parses array-type class values with unrolled iteration.
+     * Recursively parses array-type class values with unrolled iteration and memory safety.
      * 
      * @param {Array<unknown>} array - The array of class tokens
      * @param {number} depth - Current recursion depth
@@ -73,7 +73,7 @@ exports.modules = {
     }
 
     /**
-     * Parses object-type class values with safety guards against prototype pollution.
+     * Parses object-type class values with rigorous safety guards against prototype pollution.
      * 
      * @param {Record<string, unknown>} obj - The dictionary of class toggles
      * @returns {string} Sanitized and joined class string
@@ -98,7 +98,7 @@ exports.modules = {
     }
 
     /**
-     * Processes nested class values with depth boundaries, cyclic guards, and type checks.
+     * Processes nested class values with depth boundaries, cyclic safeguards, and rigorous type checks.
      * 
      * @param {unknown} value - Candidate class token, array, or object
      * @param {number} [depth=0] - Current recursion depth
@@ -148,7 +148,7 @@ exports.modules = {
     }
 
     /**
-     * Constructs concatenated class names from variable arguments.
+     * Constructs concatenated class names from variable arguments with unrolled iteration loops.
      * 
      * @params {...unknown} args - Candidate class tokens, arrays, or objects
      * @returns {string} Joined class name string
