@@ -5,9 +5,9 @@ import { validateStructuralSanity, StructuralSanityResult } from './structural-s
  * Represents a generic repository or code file structure.
  */
 export interface CodeFile {
-  path: string;
-  content: string;
-  [key: string]: unknown;
+  readonly path: string;
+  readonly content: string;
+  readonly [key: string]: unknown;
 }
 
 /**
