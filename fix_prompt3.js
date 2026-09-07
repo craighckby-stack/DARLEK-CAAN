@@ -26,6 +26,10 @@ const REPLACEMENT_SUBSTRING = "\\`\\`\\`json\\n{\\n  \\\"analysis\\\": \\\"Speci
  * @throws {Error} If path traversal, absolute path injection, or boundary escape is detected.
  */
 function resolveAndValidatePath(relativeTargetPath) {
+    if (typeof relativeTargetPath !== 'string' || relativeTargetPath.length === 0) {
+        throw new Error('[EMG Core v49] Security Violation: Invalid path parameter provided.');
+    }
+
     if (relativeTargetPath.includes('..') || path.isAbsolute(relativeTargetPath)) {
         throw new Error('[EMG Core v49] Security Violation: Path traversal or absolute path detected.');
     }
@@ -49,8 +53,9 @@ function validateFileConstraints(filePath) {
     let fileStats;
     try {
         fileStats = fs.statSync(filePath);
-    } catch {
-        throw new Error(`[EMG Core v49] Target file not found: ${filePath}`);
+    } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new Error(`[EMG Core v49] Target file not found or inaccessible: ${filePath}. Details: ${detail}`);
     }
     
     if (!fileStats.isFile()) {
