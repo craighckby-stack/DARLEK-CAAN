@@ -25,16 +25,16 @@ const GITHUB_API_BASE = "https://api.github.com";
 const USER_AGENT = "Darlek Caan-v49-Neural-Code-Optimizer";
 const GITHUB_API_VERSION = "application/vnd.github.v3+json";
 
-const BASE_HEADERS_CACHE: Record<string, string> = {
+const BASE_HEADERS_CACHE: Readonly<Record<string, string>> = Object.freeze({
   Accept: GITHUB_API_VERSION,
   "User-Agent": USER_AGENT,
-};
+});
 
-const POST_HEADERS_CACHE: Record<string, string> = {
+const POST_HEADERS_CACHE: Readonly<Record<string, string>> = Object.freeze({
   Accept: GITHUB_API_VERSION,
   "User-Agent": USER_AGENT,
   "Content-Type": "application/json",
-};
+});
 
 /**
  * Generates HTTP headers utilizing pre-allocated reference objects with the provided authentication token.
