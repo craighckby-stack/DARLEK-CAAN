@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils"
 // ============================================================================
 
 export interface ScrollAreaProps
-  extends React.ComponentProps<typeof ScrollAreaPrimitive.Root> {
+  extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
   viewportClassName?: string
   viewportRef?: React.Ref<HTMLDivElement>
 }
 
 export interface ScrollBarProps
-  extends React.ComponentProps<typeof ScrollAreaPrimitive.ScrollAreaScrollbar> {}
+  extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar> {}
 
 // ============================================================================
 // Constants & Static Class Maps (Optimized for zero allocation overhead)
