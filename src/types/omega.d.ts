@@ -1,8 +1,19 @@
 /**
  * @file src/types/omega.d.ts
- * @version 4.9.1-core-opt
+ * @version 4.9.2-core-opt
  * @description Darlek Caan Neural Code Optimized Type Definitions for resilient task execution and deterministic outcomes.
  */
+
+/**
+ * Represents a deeply immutable primitive or structured type for maximum memory safety.
+ */
+export type DeepReadonly<T> = T extends (infer U)[]
+  ? ReadonlyArray<DeepReadonly<U>>
+  : T extends (...args: unknown[]) => unknown
+  ? T
+  : T extends object
+  ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+  : T;
 
 /**
  * Represents an immutable unit of work scheduled for execution within the engine.
@@ -16,8 +27,8 @@ export interface Task<TPayload = Readonly<Record<string, unknown>>> {
   /** Execution priority weight where higher numeric values indicate greater execution urgency. */
   readonly priority: number;
 
-  /** Contextual execution payload associated with this task. */
-  readonly payload: TPayload;
+  /** Contextual execution payload associated with this task, deeply frozen. */
+  readonly payload: DeepReadonly<TPayload>;
 }
 
 /**
@@ -27,7 +38,7 @@ export interface Task<TPayload = Readonly<Record<string, unknown>>> {
  */
 export interface SuccessResult<TData = unknown> {
   readonly success: true;
-  readonly data: TData;
+  readonly data: DeepReadonly<TData>;
   readonly error?: never;
 }
 
@@ -39,7 +50,7 @@ export interface SuccessResult<TData = unknown> {
 export interface FailureResult<TError = Error | string> {
   readonly success: false;
   readonly data?: never;
-  readonly error: TError;
+  readonly error: DeepReadonly<TError>;
 }
 
 /**
@@ -49,10 +60,10 @@ export interface FailureResult<TError = Error | string> {
  * @template TError - Type of error yielded upon failure.
  */
 export type Result<TData = unknown, TError = Error | string> =
-  | Readonly<SuccessResult<TData>>
-  | Readonly<FailureResult<TError>>;
+  | SuccessResult<TData>
+  | FailureResult<TError>;
 
 /**
- * Teardown callback signature invoked to release resources or deregister subscriptions.
+ * Teardown callback signature invoked to release resources or deregister subscriptions safely.
  */
 export type Unsubscribe = () => void;
