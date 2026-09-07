@@ -1,4 +1,4 @@
-'use client';
+'center';
 
 /**
  * DARLEK CAAN ARCHITECTURAL COMPONENT
@@ -6,7 +6,9 @@
  * Role: System License & Intellectual Property Modal displaying Creative Commons CC BY-NC-SA 4.0.
  */
 
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useCallback } from 'react';
 import {
   Scale,
   Copy,
@@ -21,7 +23,7 @@ import {
 } from 'lucide-react';
 import { COLORS } from '@/lib/constants';
 
-interface LicenseModalProps {
+export interface LicenseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPushLicenseToRepo?: () => Promise<boolean | void>;
@@ -79,40 +81,47 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
   onPushLicenseToRepo,
   canPushToRepo = false,
 }) => {
-  const [copied, setCopied] = useState(false);
-  const [isPushing, setIsPushing] = useState(false);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [isPushing, setIsPushing] = useState<boolean>(false);
 
-  if (!isOpen) return null;
-
-  const handleCopy = async () => {
+  const handleCopy = useCallback(async (): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(FULL_LICENSE_TEXT);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(FULL_LICENSE_TEXT);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
     } catch {
-      // fallback
+      // Gracefully handle clipboard access errors
     }
-  };
+  }, []);
 
-  const handlePush = async () => {
+  const handlePush = useCallback(async (): Promise<void> => {
     if (!onPushLicenseToRepo || isPushing) return;
     setIsPushing(true);
     try {
       await onPushLicenseToRepo();
+    } catch {
+      // Gracefully handle push execution errors
     } finally {
       setIsPushing(false);
     }
-  };
+  }, [onPushLicenseToRepo, isPushing]);
+
+  if (!isOpen) return null;
 
   return (
     <div
       id="license-backdrop"
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="license-title"
     >
       <div
         id="license-modal"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
         className="bg-[#0a0202] border border-red-900/60 rounded-xl w-full max-w-2xl shadow-[0_0_50px_rgba(255,0,51,0.25)] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
       >
         {/* Modal Header */}
@@ -122,7 +131,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
               <Scale className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-wide flex items-center gap-2 font-mono">
+              <h2 id="license-title" className="text-sm font-bold text-white tracking-wide flex items-center gap-2 font-mono">
                 INTELLECTUAL PROPERTY & LICENSE
               </h2>
               <p className="text-[10px] text-gray-400 font-mono">
@@ -132,9 +141,11 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
           </div>
           <button
             id="btn-close-license"
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             title="Close modal"
+            aria-label="Close modal"
           >
             <X className="w-4 h-4" />
           </button>
@@ -263,6 +274,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
 
             <button
               id="btn-dismiss-license"
+              type="button"
               onClick={onClose}
               className="px-4 py-1.5 rounded text-[10px] font-mono font-bold uppercase transition-all bg-red-600/20 border border-red-500/40 text-red-200 hover:bg-red-600/30 hover:border-red-400 cursor-pointer"
             >
