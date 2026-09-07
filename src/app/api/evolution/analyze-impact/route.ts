@@ -6,25 +6,42 @@ export const dynamic = 'force-dynamic';
 
 // --- Types & Interfaces ---
 
-type IssueSeverity = 'high' | 'medium' | 'low';
+export type IssueSeverity = 'high' | 'medium' | 'low';
 
 export interface StaticIssue {
-  type: string;
-  severity: IssueSeverity;
-  message: string;
+  readonly type: string;
+  readonly severity: IssueSeverity;
+  readonly message: string;
 }
 
 export interface AnalyzeImpactBody {
-  originalCode: string;
-  proposedCode: string;
-  filePath: string;
-  riskScore: number;
-  apiKeys: Record<string, string>;
+  readonly originalCode: string;
+  readonly proposedCode: string;
+  readonly filePath: string;
+  readonly riskScore: number;
+  readonly apiKeys: Record<string, string>;
+}
+
+export interface AnalysisResponseSuccess {
+  readonly success: true;
+  readonly staticIssues: readonly StaticIssue[];
+  readonly llmAnalysis: string;
+  readonly llmProvider: string;
+  readonly totalIssues: number;
+  readonly highSeverity: number;
+  readonly mediumSeverity: number;
+  readonly lowSeverity: number;
+  readonly overallRisk: 'HIGH' | 'MEDIUM' | 'LOW';
+  readonly summary: string;
+}
+
+export interface AnalysisResponseError {
+  readonly error: string;
 }
 
 // --- Constants ---
 
-const MAX_CODE_LENGTH = 35000;
+const MAX_CODE_LENGTH = 35_000;
 const LLM_MAX_TOKENS = 512;
 const LLM_TEMPERATURE = 0.2;
 
@@ -58,7 +75,9 @@ function extractMatches(code: string, regex: RegExp, groupIndex = 1): string[] {
   const matches: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = regex.exec(code)) !== null) {
-    matches.push(match[groupIndex]);
+    if (match[groupIndex]) {
+      matches.push(match[groupIndex]);
+    }
   }
   return matches;
 }
@@ -187,11 +206,13 @@ function detectStaticIssues(originalCode: string, proposedCode: string): StaticI
 // --- Response Builder ---
 
 function truncateCode(code: string): string {
-  if (code.length <= MAX_CODE_LENGTH) return code;
+  if (code.length <= MAX_CODE_LENGTH) {
+    return code;
+  }
   return `${code.slice(0, MAX_CODE_LENGTH)}\n// ... [truncated]`;
 }
 
-function buildResponse(staticIssues: StaticIssue[], llmAnalysis: string, llmProvider: string) {
+function buildResponse(staticIssues: readonly StaticIssue[], llmAnalysis: string, llmProvider: string): NextResponse<AnalysisResponseSuccess> {
   const severityCounts = staticIssues.reduce(
     (acc, issue) => {
       acc[issue.severity]++;
@@ -222,14 +243,14 @@ function buildResponse(staticIssues: StaticIssue[], llmAnalysis: string, llmProv
 
 // --- Route Handlers ---
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ 
     status: 'online', 
     service: 'EVOLUTION_ANALYZE_IMPACT_API' 
   });
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<NextResponse<AnalysisResponseSuccess | AnalysisResponseError>> {
   try {
     const body = await safeReqJson<AnalyzeImpactBody>(req, {} as AnalyzeImpactBody);
     const { originalCode, proposedCode, filePath, riskScore, apiKeys } = body;
@@ -277,8 +298,8 @@ export async function POST(req: NextRequest) {
 
     return buildResponse(staticIssues, llmResult.text ?? '', llmResult.provider ?? '');
   } catch (error: unknown) {
-    console.error('Analyze impact error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[AnalyzeImpact API] Error executing code impact analysis:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown internal execution error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
