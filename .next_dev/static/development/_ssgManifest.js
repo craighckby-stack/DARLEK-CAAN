@@ -8,7 +8,7 @@ function resolveGlobalScope() {
   return typeof globalThis === 'undefined'
     ? (typeof self === 'undefined'
         ? (typeof window === 'undefined'
-            ? (typeof global === 'undefined' ? this : global)
+            ? (typeof global === 'undefined' ? (function () { return this; })() : global)
             : window)
         : self)
     : globalThis;
@@ -25,16 +25,20 @@ function resolveGlobalScope() {
   }
 
   try {
-    Object.defineProperty(globalScope, '__SSG_MANIFEST', {
-      value: typeof Set === 'function' ? new Set() : [],
-      writable: true,
-      enumerable: true,
-      configurable: true
-    });
+    if (!Object.prototype.hasOwnProperty.call(globalScope, '__SSG_MANIFEST')) {
+      Object.defineProperty(globalScope, '__SSG_MANIFEST', {
+        value: typeof Set === 'function' ? new Set() : [],
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
+    }
 
     const manifestCallback = globalScope.__SSG_MANIFEST_CB;
     if (typeof manifestCallback === 'function') {
       manifestCallback.call(globalScope);
     }
-  } catch {}
+  } catch (error) {
+    // Fail silently to prevent runtime interruption in restricted execution environments
+  }
 })();
