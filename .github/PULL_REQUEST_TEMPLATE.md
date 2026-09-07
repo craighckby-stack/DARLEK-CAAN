@@ -13,10 +13,10 @@
 | **PR Classification**  | `[ ] Fix` &nbsp;•&nbsp; `[ ] Feature` &nbsp;•&nbsp; `[ ] Breaking` &nbsp;•&nbsp; `[ ] Sandbox` &nbsp;•&nbsp; `[ ] Telemetry` &nbsp;•&nbsp; `[ ] Security` |
 | **Target Subsystems**  | `[ e.g., Core Engine, DCW Consensus, Sandbox Runtime, Telemetry Pipeline ]`                                 |
 | **Tracking Reference** | Closes / Fixes #`<!-- Issue Number -->`                                                                     |
-| **Automated Gates**    | `[ ] Zero-Leak Sandbox` &nbsp;\|&nbsp; `[ ] DCW Liveness` &nbsp;\|&nbsp; `[ ] Diagnostic Engine` &nbsp;\|&nbsp; `[ ] SAST/Security` |
+| **Automated Gates**    | `[ ] Zero-Leak Sandbox` &nbsp;\|&nbsp; `[ ] DCW Liveness` &nbsp;\|&nbsp; `[ ] Diagnostic Engine` &nbsp;\|&nbsp; `[ ] SAST / Security` |
 
 > [!CAUTION]
-> **CRITICAL SECURITY NOTICE:** If this pull request resolves an unpatched vulnerability or credential leak, **DO NOT** submit it publicly. Follow the [Responsible Vulnerability Disclosure](#6-responsible-vulnerability-disclosure) protocol immediately.
+> **CRITICAL SECURITY NOTICE:** If this pull request resolves an unpatched vulnerability, active zero-day, or credential leak, **DO NOT** submit it publicly. Follow the [Responsible Vulnerability Disclosure](#6-responsible-vulnerability-disclosure) protocol immediately.
 
 ---
 
