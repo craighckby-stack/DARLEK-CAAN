@@ -19,7 +19,7 @@ const ALERT_BASE_CLASSES = [
   "[&>svg]:size-4",
   "[&>svg]:translate-y-0.5",
   "[&>svg]:text-current",
-].join(" ")
+].join(" ") as const
 
 const ALERT_VARIANT_STYLES = {
   default: "bg-card text-card-foreground",
@@ -33,14 +33,14 @@ const alertVariants = cva(ALERT_BASE_CLASSES, {
   defaultVariants: {
     variant: "default",
   },
-})
+}) as const
 
 export type AlertProps = React.ComponentProps<"div"> & VariantProps<typeof alertVariants>
 export type AlertTitleProps = React.ComponentProps<"div">
 export type AlertDescriptionProps = React.ComponentProps<"div">
 
-const ALERT_TITLE_CLASSES = "col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight"
-const ALERT_DESC_CLASSES = "text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed"
+const ALERT_TITLE_CLASSES = "col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight" as const
+const ALERT_DESC_CLASSES = "text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed" as const
 
 const Alert = React.memo(
   React.forwardRef<HTMLDivElement, AlertProps>(function Alert({ className, variant, ...props }, ref) {
@@ -85,4 +85,4 @@ const AlertDescription = React.memo(
 )
 AlertDescription.displayName = "AlertDescription"
 
-export { Alert, AlertTitle, AlertDescription }
+export { Alert, AlertTitle, AlertDescription, alertVariants }
