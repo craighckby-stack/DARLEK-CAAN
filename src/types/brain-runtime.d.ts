@@ -86,7 +86,7 @@ export interface RuntimeConfig {
  */
 export interface RuntimeHealthStatus {
   /** Current operating health status of the runtime system. */
-  readonly status: HealthState | 'nominal' | 'degraded' | 'critical';
+  readonly status: HealthState;
 
   /** Total number of currently active client and database connections. */
   readonly activeConnections: number;
