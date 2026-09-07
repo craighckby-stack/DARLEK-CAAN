@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, type JSX, type ReactNode } from "react";
+import React, { createContext, useContext, useMemo, type JSX, type ReactNode } from "react";
 
 /**
  * Represents the core telemetry metadata and operational context.
@@ -20,10 +20,10 @@ export interface SystemTelemetryProviderProps {
 /**
  * Immutable default telemetry state configuration.
  */
-const DEFAULT_TELEMETRY_STATE: SystemTelemetryContextType = {
+const DEFAULT_TELEMETRY_STATE: SystemTelemetryContextType = Object.freeze({
   status: "active",
   node: "omega-core",
-} as const;
+});
 
 /**
  * Internal helper to safely trigger client-side telemetry initialization logging.
@@ -44,17 +44,24 @@ const logTelemetryInitialization = (): void => {
 logTelemetryInitialization();
 
 const TelemetryContext = createContext<SystemTelemetryContextType | undefined>(undefined);
+TelemetryContext.displayName = "TelemetryContext";
 
 /**
  * React Context Provider component for exposing system telemetry data to the component tree.
  */
 export const SystemTelemetryProvider = ({
   children,
-}: SystemTelemetryProviderProps): JSX.Element => (
-  <TelemetryContext.Provider value={DEFAULT_TELEMETRY_STATE}>
-    {children}
-  </TelemetryContext.Provider>
-);
+}: SystemTelemetryProviderProps): JSX.Element => {
+  const value = useMemo(() => DEFAULT_TELEMETRY_STATE, []);
+
+  return (
+    <TelemetryContext.Provider value={value}>
+      {children}
+    </TelemetryContext.Provider>
+  );
+};
+
+SystemTelemetryProvider.displayName = "SystemTelemetryProvider";
 
 /**
  * Custom React hook for accessing current system telemetry context with dynamic error handling.
