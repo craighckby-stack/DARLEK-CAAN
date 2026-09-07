@@ -11,8 +11,8 @@ export interface LanguageOption {
   readonly serviceId: string;
 }
 
-// Full catalogue of supported world languages recognized by translate.js
-export const ALL_SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
+// Full catalogue of supported world languages recognized by translate.js, frozen for runtime immutability and memory efficiency.
+export const ALL_SUPPORTED_LANGUAGES: readonly LanguageOption[] = Object.freeze([
   { id: 'english', name: 'English', nativeName: 'English', serviceId: 'en' },
   { id: 'spanish', name: 'Spanish', nativeName: 'Español', serviceId: 'es' },
   { id: 'chinese_simplified', name: 'Chinese (Simplified)', nativeName: '简体中文', serviceId: 'zh-CN' },
@@ -143,23 +143,35 @@ export const ALL_SUPPORTED_LANGUAGES: readonly LanguageOption[] = [
   { id: 'welsh', name: 'Welsh', nativeName: 'Cymraeg', serviceId: 'cy' },
   { id: 'yiddish', name: 'Yiddish', nativeName: 'ייִדיש', serviceId: 'yi' },
   { id: 'yoruba', name: 'Yoruba', nativeName: 'Yorùbá', serviceId: 'yo' },
-];
+]) as const;
+
+// Internal storage key constant to eliminate magic strings and optimize memory lookup
+const STORAGE_KEY_LANGUAGE = 'darlek_cann_language';
+
+interface WindowTranslate {
+  translate?: {
+    changeLanguage(langId: string): void;
+  };
+}
 
 /**
  * Changes display language using xnx3/translate runtime
  */
 export function changeDisplayLanguage(langId: string): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || !langId) return false;
+  
   try {
-    localStorage.setItem('darlek_cann_language', langId);
-    const win = window as any;
-    if (win.translate) {
+    localStorage.setItem(STORAGE_KEY_LANGUAGE, langId);
+    const win = window as unknown as WindowTranslate;
+    
+    if (win.translate && typeof win.translate.changeLanguage === 'function') {
       win.translate.changeLanguage(langId);
       return true;
     }
   } catch (err) {
     console.warn('Could not execute translate.changeLanguage:', err);
   }
+  
   return false;
 }
 
@@ -168,9 +180,11 @@ export function changeDisplayLanguage(langId: string): boolean {
  */
 export function getCurrentLanguage(): string {
   if (typeof window === 'undefined') return 'english';
+  
   try {
-    return localStorage.getItem('darlek_cann_language') || 'english';
-  } catch {
+    return localStorage.getItem(STORAGE_KEY_LANGUAGE) || 'english';
+  } catch (err) {
+    console.warn('Could not access localStorage for current language:', err);
     return 'english';
   }
 }
