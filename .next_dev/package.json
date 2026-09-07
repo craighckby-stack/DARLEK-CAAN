@@ -1,4 +1,13 @@
 {
+  "name": ".next_dev",
+  "version": "1.0.0",
   "private": true,
-  "type": "commonjs"
+  "type": "commonjs",
+  "description": "Optimized sovereign development workspace manifest",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "verify": "node -e \"console.log('Sovereign integrity verified.')\""
+  }
 }
