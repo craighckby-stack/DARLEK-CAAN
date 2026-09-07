@@ -11,12 +11,16 @@ const MOBILE_BREAKPOINT_QUERY = "(max-width: 767px)" as const
 let sharedMediaQueryList: MediaQueryList | null = null
 
 function getCachedMediaQueryList(): MediaQueryList | null {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return null
   }
 
   if (!sharedMediaQueryList) {
-    sharedMediaQueryList = window.matchMedia(MOBILE_BREAKPOINT_QUERY)
+    try {
+      sharedMediaQueryList = window.matchMedia(MOBILE_BREAKPOINT_QUERY)
+    } catch {
+      return null
+    }
   }
 
   return sharedMediaQueryList
@@ -50,10 +54,23 @@ export function useIsMobile(): boolean {
     // Sync current state immediately upon mount
     setIsMobile(mediaQueryList.matches)
 
-    mediaQueryList.addEventListener("change", handleBreakpointChange)
-
-    return () => {
-      mediaQueryList.removeEventListener("change", handleMediaQueryChange)
+    // Modern browsers support addEventListener/removeEventListener on MediaQueryList
+    if (typeof mediaQueryList.addEventListener === "function") {
+      mediaQueryList.addEventListener("change", handleBreakpointChange)
+      return () => {
+        mediaQueryList.removeEventListener("change", handleBreakpointChange)
+      }
+    } 
+    // Fallback for legacy environments supportingaddListener
+    else if (typeof (mediaQueryList as MediaQueryList & { addListener?: (listener: (event: MediaQueryListEvent) => void) => void }).addListener === "function") {
+      const legacyQuery = mediaQueryList as MediaQueryList & {
+        addListener: (listener: (event: MediaQueryListEvent) => void) => void
+        removeListener: (listener: (event: MediaQueryListEvent) => void) => void
+      }
+      legacyQuery.addListener(handleBreakpointChange)
+      return () => {
+        legacyQuery.removeListener(handleBreakpointChange)
+      }
     }
   }, [])
 
