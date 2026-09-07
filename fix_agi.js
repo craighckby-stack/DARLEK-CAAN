@@ -12,13 +12,14 @@ const path = require('node:path');
 
 /**
  * Configuration constants for file system boundaries and safety limits.
+ * @readonly
  */
 const CONFIG = Object.freeze({
     TARGET_RELATIVE_PATH: 'src/utils/agi-engine.ts',
     MAX_FILE_SIZE_BYTES: 50 * 1024 * 1024, // 50MB limit
 });
 
-// Cache base directory resolution to avoid redundant path calculations during execution
+/** @readonly */
 const BASE_DIR = path.resolve();
 
 /**
@@ -48,7 +49,7 @@ function assertFileSafety(targetPath) {
     let stats;
     try {
         stats = fs.statSync(targetPath);
-    } catch {
+    } catch (error) {
         throw new Error(`Critical target path not found: ${targetPath}`);
     }
 
@@ -68,7 +69,6 @@ function removeDuplicateEdgeGovernance(code) {
     const matches = code.match(classRegex);
 
     if (matches && matches.length > 1) {
-        // Direct string replacement avoiding unnecessary re-matching overhead
         const targetIndex = code.indexOf(matches[1]);
         if (targetIndex !== -1) {
             return code.slice(0, targetIndex) + code.slice(targetIndex + matches[1].length);
@@ -81,7 +81,7 @@ function removeDuplicateEdgeGovernance(code) {
 /**
  * Sanitizes error messages to suppress leakage of raw system paths or volatile internal state.
  * 
- * @param {Error|unknown} error - The caught error object.
+ * @param {unknown} error - The caught error object.
  * @returns {string} A safe, sanitized error message.
  */
 function formatSanitizedErrorMessage(error) {
