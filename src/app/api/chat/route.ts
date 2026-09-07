@@ -7,7 +7,7 @@ import { safeReqJson, safeResponseJson } from '@/lib/safe-json';
 export const dynamic = 'force-dynamic';
 
 interface RepoTreeItem {
-  path: string;
+  path?: string;
   size?: number;
   type?: string;
 }
@@ -21,13 +21,50 @@ interface RepoFile {
   size: number;
 }
 
-const EXCLUDED_PATTERNS = [
+interface RepoConfig {
+  owner?: string;
+  repo?: string;
+  branch?: string;
+}
+
+interface SystemState {
+  setupComplete?: boolean;
+  evolutionCycle?: number;
+  repoConfig?: RepoConfig;
+  connectionStatus?: Record<string, string>;
+  apiKeys?: {
+    github?: string;
+    gemini?: string;
+    [key: string]: string | undefined;
+  };
+  saturation?: {
+    structuralChange?: number;
+    semanticSaturation?: number;
+    velocity?: number;
+    identityPreservation?: number;
+    capabilityAlignment?: number;
+    crossFileImpact?: number;
+  };
+}
+
+interface ChatRequestBody {
+  message?: string;
+  history?: Array<{ role: string; content: string }>;
+  systemState?: SystemState;
+  scannedFiles?: Array<{ path: string; size?: number }>;
+  apiKeys?: {
+    gemini?: string;
+    [key: string]: string | undefined;
+  };
+}
+
+const EXCLUDED_PATTERNS = Object.freeze([
   'node_modules/', '.git/', 'dist/', 'build/', '.next/',
   '__pycache__/', '.DS_Store', '.env', '.env.local',
   'package-lock.json', 'yarn.lock', '.svn/',
-];
+]);
 
-const CRITICAL_CANDIDATES = [
+const CRITICAL_CANDIDATES = Object.freeze([
   'package.json',
   'prisma/schema.prisma',
   'src/db/schema.ts',
@@ -42,17 +79,17 @@ const CRITICAL_CANDIDATES = [
   'postcss.config.js',
   'postcss.config.mjs',
   'README.md',
-];
+]);
 
-const ANALYSIS_KEYWORDS = [
+const ANALYSIS_KEYWORDS = Object.freeze([
   'readme', 'read me', 'analyse system', 'analyze system',
   'analyse repository', 'analyze repository', 'system analysis',
   'repository analysis', 'architecture overview', 'describe the project',
-];
+]);
 
-const REVERSE_TRANSFORM_WORDS = [
+const REVERSE_TRANSFORM_WORDS = Object.freeze([
   'help', 'create', 'status', 'scan', 'propose', 'abort', 'skip', 'done', 'hello', 'hi', 'exterminate'
-];
+]);
 
 export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ status: 'online', service: 'DALEK_CHAT_API' });
@@ -92,12 +129,12 @@ async function fetchGithubRepoTree(token: string, owner: string, repo: string, b
 
     if (res.ok) {
       const data = (await safeResponseJson(res, {})) as TreeApiResponse;
-      if (Array.isArray(data.tree)) {
+      if (Array.isArray(data?.tree)) {
         return data.tree
-          .filter((item): item is RepoTreeItem & { type: string; path: string } => item.type === 'blob' && typeof item.path === 'string')
+          .filter((item): item is RepoTreeItem & { type: string; path: string } => item?.type === 'blob' && typeof item?.path === 'string')
           .map((item) => ({
             path: item.path,
-            size: item.size || 0,
+            size: item.size ?? 0,
           }));
       }
     }
@@ -138,7 +175,7 @@ async function gatherAnalysisContext(
   let filesList: RepoFile[] = [];
 
   if (scannedFiles && Array.isArray(scannedFiles) && scannedFiles.length > 0) {
-    filesList = scannedFiles.map((f) => ({ path: f.path, size: f.size || 0 }));
+    filesList = scannedFiles.map((f) => ({ path: f.path, size: f.size ?? 0 }));
   } else {
     filesList = await fetchGithubRepoTree(token, owner, repo, branch);
   }
@@ -150,14 +187,14 @@ async function gatherAnalysisContext(
     .filter(file => {
       const pathLower = file.path.toLowerCase();
       const isCode = /\.(tsx?|jsx?|prisma|py|md)$/.test(pathLower);
-      const isCritical = CRITICAL_CANDIDATES.includes(file.path);
+      const isCritical = (CRITICAL_CANDIDATES as readonly string[]).includes(file.path);
       return isCode && !isCritical;
     })
     .slice(0, 10)
     .map(file => file.path);
 
   const filesToRead = [
-    ...CRITICAL_CANDIDATES.filter(path => filteredFiles.some(file => file.path === path)),
+    ...(CRITICAL_CANDIDATES as readonly string[]).filter(path => filteredFiles.some(file => file.path === path)),
     ...representativeFiles,
   ].slice(0, 15);
 
@@ -227,7 +264,7 @@ ${readmeContent.slice(0, 8000)}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const body = await safeReqJson<Record<string, any>>(req, {});
+    const body = await safeReqJson<ChatRequestBody>(req, {});
     const { message, history, systemState, scannedFiles } = body;
 
     if (!message || typeof message !== 'string') {
@@ -246,7 +283,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     };
 
     const token = state.apiKeys?.github;
-    const { owner, repo, branch } = state.repoConfig || {};
+    const owner = state.repoConfig?.owner;
+    const repo = state.repoConfig?.repo;
+    const branch = state.repoConfig?.branch;
 
     let systemContext = '';
     let fetchedTreeCount = 0;
@@ -265,7 +304,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    const contextInfo = `State: ${state.setupComplete ? 'OPERATIONAL' : 'SETUP'} | Cycle: ${state.evolutionCycle} | Repo: ${state.repoConfig.owner}/${state.repoConfig.repo} | Branch: ${state.repoConfig.branch}`.trim();
+    const repoOwner = state.repoConfig?.owner ?? 'unknown';
+    const repoName = state.repoConfig?.repo ?? 'unknown';
+    const repoBranch = state.repoConfig?.branch ?? 'unknown';
+    const contextInfo = `State: ${state.setupComplete ? 'OPERATIONAL' : 'SETUP'} | Cycle: ${state.evolutionCycle ?? 0} | Repo: ${repoOwner}/${repoName} | Branch: ${repoBranch}`.trim();
 
     const enhancedSystemPrompt = [
       DALEK_CAAN_SYSTEM_PROMPT,
@@ -273,7 +315,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       systemContext,
     ].filter(Boolean).join('\n\n');
 
-    const userGeminiKey = body.apiKeys?.gemini as string | undefined;
+    const userGeminiKey = body.apiKeys?.gemini;
     const geminiKey = userGeminiKey || getDefaultGeminiKey();
 
     const result = await callLlm({
@@ -284,7 +326,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       temperature: 0.7,
     });
 
-    const content = result.text || dalekBrainChat(enhancedSystemPrompt, processedMessage, history || []) || 'Processing error. Try again.';
+    const fallbackChat = dalekBrainChat(enhancedSystemPrompt, processedMessage, history || []);
+    const content = result.text || fallbackChat || 'Processing error. Try again.';
 
     return NextResponse.json({
       content,
