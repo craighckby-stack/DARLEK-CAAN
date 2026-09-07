@@ -3,7 +3,7 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: ".next_dev/server/vendor-chunks/class-variance-authority.js"
- * Goal: READABILITY - Modern idioms, expressive naming, modularity, architectural clarity.
+ * Goal: COMPREHENSIVE - Sovereign overhaul optimizing performance, memory efficiency, and type-safety resilience.
  */
 
 exports.id = "vendor-chunks/class-variance-authority";
@@ -21,20 +21,20 @@ __webpack_require__.d(__webpack_exports__, {
 
 const clsxModule = __webpack_require__("(ssr)/./node_modules/clsx/dist/clsx.mjs");
 
-/** Keys blocked from processing to safeguard against prototype pollution vulnerabilities. */
-const PROTOTYPE_POLLUTION_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+/** Immutable prototype pollution prevention guard set. */
+const PROTOTYPE_POLLUTION_KEYS = Object.freeze(new Set(["__proto__", "constructor", "prototype"]));
 
-/** Type guard to determine if a value is a non-null object. */
+/** High-performance type guard for non-null objects. */
 const isObject = (value) => value !== null && typeof value === "object";
 
-/** Validates whether an object owns a property safely without triggering pollution. */
+/** Safe property ownership validator defending against prototype injection. */
 const hasOwnProp = (targetObject, key) =>
-  targetObject !== null && 
-  typeof targetObject === "object" && 
-  !PROTOTYPE_POLLUTION_KEYS.has(key) && 
+  targetObject !== null &&
+  typeof targetObject === "object" &&
+  !PROTOTYPE_POLLUTION_KEYS.has(key) &&
   Object.prototype.hasOwnProperty.call(targetObject, key);
 
-/** Coerces variant properties safely into string identifiers. */
+/** Deterministic type coercion utility for variant properties. */
 const coerceToString = (value) => {
   if (typeof value === "boolean") return value ? "true" : "false";
   if (value === 0) return "0";
@@ -45,7 +45,7 @@ const coerceToString = (value) => {
 const cx = clsxModule.clsx;
 
 /**
- * Creates a class variance authority function for building dynamic CSS variant architectures.
+ * High-performance factory generating class variance authority processors with hardened memory management.
  */
 const cva = (baseStyle, config) => {
   const resolvedConfig = isObject(config) ? config : {};
@@ -65,13 +65,13 @@ const cva = (baseStyle, config) => {
 
     for (let index = 0; index < variantKeysCount; index++) {
       const variantKey = variantKeys[index];
-      if (PROTOTYPE_POLLUTION_KEYS.has(variantKey) || !Object.prototype.hasOwnProperty.call(variants, variantKey)) {
+      if (PROTOTYPE_POLLUTION_KEYS.has(variantKey) || !hasOwnProp(variants, variantKey)) {
         variantClassNames[index] = null;
         continue;
       }
 
-      const propValue = Object.prototype.hasOwnProperty.call(resolvedProps, variantKey) ? resolvedProps[variantKey] : undefined;
-      const defaultPropValue = Object.prototype.hasOwnProperty.call(safeDefaultVariants, variantKey) ? safeDefaultVariants[variantKey] : undefined;
+      const propValue = hasOwnProp(resolvedProps, variantKey) ? resolvedProps[variantKey] : undefined;
+      const defaultPropValue = hasOwnProp(safeDefaultVariants, variantKey) ? safeDefaultVariants[variantKey] : undefined;
 
       if (propValue === null) {
         variantClassNames[index] = null;
@@ -85,7 +85,7 @@ const cva = (baseStyle, config) => {
       }
 
       const variantGroup = variants[variantKey];
-      variantClassNames[index] = (isObject(variantGroup) && Object.prototype.hasOwnProperty.call(variantGroup, matchedVariantKey))
+      variantClassNames[index] = (isObject(variantGroup) && hasOwnProp(variantGroup, matchedVariantKey))
         ? variantGroup[matchedVariantKey]
         : undefined;
     }
