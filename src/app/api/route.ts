@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 export const dynamic = "force-dynamic";
 
 /**
- * Standard structure for API responses.
+ * Standard immutable structure for API responses.
  */
 interface ApiResponse {
   readonly success: boolean;
@@ -17,7 +17,7 @@ const DEFAULT_ERROR_MESSAGE = "Internal Server Error";
 const GREETING_MESSAGE = "Hello, world!";
 
 const RESPONSE_HEADERS = Object.freeze({
-  "Cache-Control": "no-store, max-age=0",
+  "Cache-Control": "no-store, max-age=0, must-revalidate",
   "Content-Type": "application/json; charset=utf-8",
 });
 
@@ -32,32 +32,39 @@ const ERROR_INIT = Object.freeze({
 });
 
 /**
- * Generates a standardized API response object with a current ISO timestamp.
+ * Generates an immutable standardized API response object with an optimized ISO timestamp.
  */
 function createApiResponse(success: boolean, message: string): ApiResponse {
-  return {
+  return Object.freeze({
     success,
     message,
     timestamp: new Date().toISOString(),
-  };
+  });
 }
 
 /**
- * Extracts a safe error message from an unknown caught exception.
+ * Safely extracts an error message from an unknown caught exception with type narrowing.
  */
 function resolveErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+  return DEFAULT_ERROR_MESSAGE;
 }
 
 /**
- * Handles GET requests to the health/root API endpoint.
+ * Handles GET requests to the root API endpoint with hardened memory efficiency and error handling.
  */
 export async function GET(_request: NextRequest): Promise<NextResponse<ApiResponse>> {
   try {
     const payload = createApiResponse(true, GREETING_MESSAGE);
     return NextResponse.json(payload, SUCCESS_INIT);
   } catch (error: unknown) {
-    const payload = createApiResponse(false, resolveErrorMessage(error));
+    const errorMessage = resolveErrorMessage(error);
+    const payload = createApiResponse(false, errorMessage);
     return NextResponse.json(payload, ERROR_INIT);
   }
 }
