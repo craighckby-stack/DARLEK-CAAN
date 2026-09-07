@@ -2,6 +2,7 @@
 
 /**
  * Resolves the global execution context across different JavaScript environments with zero allocation overhead.
+ * @internal
  * @returns {typeof globalThis | undefined} The global context object.
  */
 function resolveGlobalContext() {
@@ -12,11 +13,20 @@ function resolveGlobalContext() {
 }
 
 /**
- * Initializes the React Server Components (RSC) server manifest on the global execution context.
+ * Initializes the React Server Components (RSC) server manifest on the global execution context securely and idempotently.
  */
 !(function initializeRscServerManifest() {
-  const globalContext = resolveGlobalContext();
-  if (globalContext && globalContext.__RSC_SERVER_MANIFEST === void 0) {
-    globalContext.__RSC_SERVER_MANIFEST = '{"node":{},"edge":{},"encryptionKey":"process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY"}';
+  try {
+    const globalContext = resolveGlobalContext();
+    if (globalContext !== void 0 && globalContext.__RSC_SERVER_MANIFEST === void 0) {
+      Object.defineProperty(globalContext, '__RSC_SERVER_MANIFEST', {
+        value: '{"node":{},"edge":{},"encryptionKey":"process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY"}',
+        writable: false,
+        enumerable: false,
+        configurable: true
+      });
+    }
+  } catch {
+    // Fail silently in restricted sandbox environments to maintain execution stability
   }
 })();
