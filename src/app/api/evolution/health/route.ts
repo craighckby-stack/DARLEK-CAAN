@@ -63,7 +63,7 @@ function aggregateMutations(mutations: readonly MutationInput[] = []): Aggregate
 
   for (let i = 0, len = mutations.length; i < len; i++) {
     const mutation = mutations[i];
-    const status = mutation.status;
+    const status = mutation?.status;
 
     if (status === 'pending') {
       pendingMutations++;
@@ -73,7 +73,7 @@ function aggregateMutations(mutations: readonly MutationInput[] = []): Aggregate
       rejectedMutations++;
     }
 
-    const affectedFiles = mutation.affectedFiles;
+    const affectedFiles = mutation?.affectedFiles;
     if (Array.isArray(affectedFiles)) {
       totalAffectedFiles += affectedFiles.length;
     }
@@ -119,33 +119,51 @@ function evaluateThresholds(metrics: SaturationMetrics): ThresholdCounts {
 
   // Structural Change
   const sc = metrics.structuralChange;
-  if (sc > 4) criticalCount++;
-  else if (sc > 3) warningCount++;
+  if (sc > 4) {
+    criticalCount++;
+  } else if (sc > 3) {
+    warningCount++;
+  }
 
   // Semantic Saturation
   const ss = metrics.semanticSaturation;
-  if (ss > 0.28) criticalCount++;
-  else if (ss > 0.21) warningCount++;
+  if (ss > 0.28) {
+    criticalCount++;
+  } else if (ss > 0.21) {
+    warningCount++;
+  }
 
   // Velocity
   const vel = metrics.velocity;
-  if (vel > 4) criticalCount++;
-  else if (vel > 3) warningCount++;
+  if (vel > 4) {
+    criticalCount++;
+  } else if (vel > 3) {
+    warningCount++;
+  }
 
   // Identity Preservation
   const ip = metrics.identityPreservation;
-  if (ip < 0.2) criticalCount++;
-  else if (ip < 0.4) warningCount++;
+  if (ip < 0.2) {
+    criticalCount++;
+  } else if (ip < 0.4) {
+    warningCount++;
+  }
 
   // Capability Alignment
   const ca = metrics.capabilityAlignment;
-  if (ca > 4) criticalCount++;
-  else if (ca > 3) warningCount++;
+  if (ca > 4) {
+    criticalCount++;
+  } else if (ca > 3) {
+    warningCount++;
+  }
 
   // Cross File Impact
   const cfi = metrics.crossFileImpact;
-  if (cfi > 2.4) criticalCount++;
-  else if (cfi > 1.8) warningCount++;
+  if (cfi > 2.4) {
+    criticalCount++;
+  } else if (cfi > 1.8) {
+    warningCount++;
+  }
 
   return { warningCount, criticalCount };
 }
