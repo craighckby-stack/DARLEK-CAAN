@@ -7,7 +7,7 @@ import { twMerge } from "tailwind-merge";
  * @param inputs - A variadic set of class values including strings, arrays, objects, or falsy values.
  * @returns A consolidated, conflict-free class string.
  */
-export function cn(...inputs: ClassValue[]): string {
+export function cn(...inputs: readonly ClassValue[]): string {
   try {
     return twMerge(clsx(inputs));
   } catch {
