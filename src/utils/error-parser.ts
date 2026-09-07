@@ -1,7 +1,7 @@
 /**
  * @file src/utils/error-parser.ts
  * @module ErrorParser
- * @version 4.9.1
+ * @version 4.9.2
  * @description High-performance, type-safe system error parsing and normalization engine.
  */
 
@@ -45,7 +45,7 @@ const isNonEmptyString = (value: unknown): value is string =>
  * Checks whether a raw message string is a potential JSON object (starts with '{').
  */
 const isJsonCandidate = (message: string | undefined | null): message is string =>
-  typeof message === 'string' && message.charCodeAt(0) === 123;
+  typeof message === 'string' && message.length > 0 && message.charCodeAt(0) === 123;
 
 /**
  * Parses an incoming Error object, extracting structured system error payloads if valid JSON,
@@ -54,7 +54,7 @@ const isJsonCandidate = (message: string | undefined | null): message is string 
  * @param error - The raw Error instance to parse.
  * @returns The normalized, type-safe error structure.
  */
-export const parseSystemError = (error: Error): ParsedSystemError => {
+export const parseSystemError = (error: Error | null | undefined): ParsedSystemError => {
   if (!error) {
     return NULL_ERROR_RESULT;
   }
@@ -64,7 +64,7 @@ export const parseSystemError = (error: Error): ParsedSystemError => {
   if (!isJsonCandidate(rawMessage)) {
     return {
       isSystemError: false,
-      message: rawMessage || UNKNOWN_ERROR_MESSAGE,
+      message: isNonEmptyString(rawMessage) ? rawMessage : UNKNOWN_ERROR_MESSAGE,
       path: FALLBACK_PATH,
     };
   }
@@ -72,7 +72,7 @@ export const parseSystemError = (error: Error): ParsedSystemError => {
   try {
     const data = JSON.parse(rawMessage) as SystemErrorPayload;
 
-    if (data && typeof data === 'object') {
+    if (data !== null && typeof data === 'object') {
       const { operationType, error: errorProp, path: pathProp } = data;
       const isSystemError = isNonEmptyString(operationType);
 
