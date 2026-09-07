@@ -1,21 +1,20 @@
-'use client';
+'center';
 
 /**
- * DARLEK CAAN ARCHITECTURAL COMPONENT
+ * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File: src/components/SaturationModal.tsx
  * Role: Saturation alert modal handling 0-diff architectural equilibrium and rotation blacklist.
  */
 
-import React from 'react';
-import { ShieldAlert, Ban, RotateCcw, X, FileCode, AlertCircle, Cpu } from 'lucide-react';
-import { SaturationAlert } from '@/lib/types';
-import { COLORS } from '@/lib/constants';
+import React, { useCallback, useEffect, useId } from 'react';
+import { ShieldAlert, Ban, RotateCcw, X, FileCode, AlertCircle } from 'lucide-react';
+import type { SaturationAlert } from '@/lib/types';
 
-interface SaturationModalProps {
-  alert: SaturationAlert | null;
-  onClose: () => void;
-  onAddToBlacklist: (path: string) => void;
-  onKeepInRotation: () => void;
+export interface SaturationModalProps {
+  readonly alert: SaturationAlert | null;
+  readonly onClose: () => void;
+  readonly onAddToBlacklist: (path: string) => void;
+  readonly onKeepInRotation: () => void;
 }
 
 export const SaturationModal: React.FC<SaturationModalProps> = ({
@@ -24,12 +23,57 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
   onAddToBlacklist,
   onKeepInRotation,
 }) => {
+  const modalTitleId = useId();
+  const modalDescriptionId = useId();
+
+  // Handle ESC key press for accessibility and clean closure
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && alert) {
+        onClose();
+      }
+    },
+    [alert, onClose]
+  );
+
+  useEffect(() => {
+    if (!alert) return;
+
+    window.addEventListener('keydown', handleKeyDown);
+    // Lock body scroll when modal is active
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [alert, handleKeyDown]);
+
   if (!alert) return null;
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  const handleBlacklistAction = () => {
+    try {
+      onAddToBlacklist(alert.path);
+    } catch (error) {
+      console.error('[EMG Core v49] Failed to add path to rotation blacklist:', error);
+    }
+  };
 
   return (
     <div
       id="saturation-backdrop"
-      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={modalTitleId}
+      aria-describedby={modalDescriptionId}
+      onClick={handleBackdropClick}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
@@ -40,11 +84,14 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-red-950/80 bg-[#050000]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+            <div 
+              aria-hidden="true" 
+              className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0"
+            >
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-wide flex items-center gap-2 font-mono">
+              <h2 id={modalTitleId} className="text-sm font-bold text-white tracking-wide flex items-center gap-2 font-mono">
                 NEURAL SATURATION REACHED
               </h2>
               <p className="text-[10px] text-gray-400 font-mono">
@@ -54,7 +101,9 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
           </div>
           <button
             id="btn-close-saturation"
+            type="button"
             onClick={onClose}
+            aria-label="Close Saturation Modal"
             className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -62,7 +111,7 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto font-sans">
+        <div id={modalDescriptionId} className="p-4 sm:p-5 space-y-4 overflow-y-auto font-sans">
           {/* Target File Badge */}
           <div className="p-3 bg-black/60 border border-red-950/60 rounded-lg flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -92,9 +141,9 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
 
           {/* Decision Prompt */}
           <div className="pt-1">
-            <label className="text-[10px] font-bold text-gray-200 font-mono uppercase tracking-wider block mb-1">
+            <span className="text-[10px] font-bold text-gray-200 font-mono uppercase tracking-wider block mb-1">
               Blacklist Decision:
-            </label>
+            </span>
             <p className="text-xs text-gray-400">
               Would you like to add <span className="text-cyan-300 font-mono font-semibold">{alert.path}</span> to the engine blacklist so subsequent autonomous passes skip it?
             </p>
@@ -115,7 +164,7 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
           <button
             id="btn-add-blacklist"
             type="button"
-            onClick={() => onAddToBlacklist(alert.path)}
+            onClick={handleBlacklistAction}
             className="w-full sm:w-auto px-4 py-2 rounded bg-amber-500 hover:bg-amber-400 text-black text-xs font-mono font-bold transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer"
           >
             <Ban className="w-3.5 h-3.5" />
