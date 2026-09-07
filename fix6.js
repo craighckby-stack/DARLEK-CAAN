@@ -7,10 +7,19 @@
 
 'use strict';
 
-const { readFileSync, writeFileSync } = require('node:fs');
-const { resolve } = require('node:path');
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve, normalize } from 'node:path';
 
+/**
+ * Target path resolution configuration.
+ * @type {string}
+ */
 const TARGET_FILE_PATH = resolve('src/app/api/evolution/propose/route.ts');
+
+/**
+ * Allowed base directory boundary.
+ * @type {string}
+ */
 const ALLOWED_BASE_DIRECTORY = resolve('src');
 
 // Pre-compiled global regexes to prevent allocation overhead across execution cycles
@@ -22,11 +31,19 @@ const REGEX_ESCAPE_SECONDARY = /```\$\{fileContent/g;
  * 
  * @param {string} targetPath - The absolute path to validate.
  * @param {string} allowedBase - The designated base directory boundary.
- * @throws {Error} When the target path attempts directory traversal.
+ * @throws {TypeError} When parameters are invalid.
+ * @throws {Error} When the target path attempts directory traversal or escapes the base directory.
  */
 function validatePathSecurity(targetPath, allowedBase) {
-    if (!targetPath.startsWith(allowedBase)) {
-        throw new Error('SECURITY VIOLATION: Target path escapes allowed base directory.');
+    if (typeof targetPath !== 'string' || typeof allowedBase !== 'string') {
+        throw new TypeError('SECURITY VIOLATION: Path parameters must be strings.');
+    }
+
+    const normalizedTarget = normalize(targetPath);
+    const normalizedBase = normalize(allowedBase);
+
+    if (!normalizedTarget.startsWith(normalizedBase)) {
+        throw new Error(`SECURITY VIOLATION: Target path "${normalizedTarget}" escapes allowed base directory "${normalizedBase}".`);
     }
 }
 
@@ -35,9 +52,14 @@ function validatePathSecurity(targetPath, allowedBase) {
  * 
  * @param {string} filePath - Path of the file to read.
  * @returns {string} The raw file contents.
+ * @throws {Error} When file read operations fail.
  */
 function readEvolutionRouteSource(filePath) {
-    return readFileSync(filePath, 'utf8');
+    try {
+        return readFileSync(filePath, { encoding: 'utf8' });
+    } catch (error) {
+        throw new Error(`FAILED_FILE_READ: Unable to read file at "${filePath}". Details: ${error.message}`);
+    }
 }
 
 /**
@@ -45,8 +67,13 @@ function readEvolutionRouteSource(filePath) {
  * 
  * @param {string} sourceCode - The raw source text.
  * @returns {string} The transformed source text.
+ * @throws {TypeError} When source code is not a string.
  */
 function applyTemplateEscapingTransformations(sourceCode) {
+    if (typeof sourceCode !== 'string') {
+        throw new TypeError('TRANSFORMATION ERROR: Source code must be a string.');
+    }
+
     return sourceCode
         .replace(REGEX_ESCAPE_PRIMARY, 'siphonedCodeContext}\n\\`\\`\\`\n${fileContent')
         .replace(REGEX_ESCAPE_SECONDARY, '\\`\\`\\`${fileContent');
@@ -57,21 +84,37 @@ function applyTemplateEscapingTransformations(sourceCode) {
  * 
  * @param {string} filePath - Path of the file to write.
  * @param {string} sourceCode - The updated source text.
+ * @throws {Error} When file write operations fail.
  */
 function saveEvolutionRouteSource(filePath, sourceCode) {
-    writeFileSync(filePath, sourceCode, { encoding: 'utf8', mode: 0o600 });
+    if (typeof sourceCode !== 'string') {
+        throw new TypeError('PERSISTENCE ERROR: Source code payload must be a string.');
+    }
+
+    try {
+        writeFileSync(filePath, sourceCode, { encoding: 'utf8', mode: 0o600, flag: 'w' });
+    } catch (error) {
+        throw new Error(`FAILED_FILE_WRITE: Unable to persist file at "${filePath}". Details: ${error.message}`);
+    }
 }
 
 /**
- * Executes the complete evolution code repair pipeline.
+ * Executes the complete evolution code repair pipeline with fault tolerance.
+ * 
+ * @throws {Error} When any stage of the evolution repair pipeline fails.
  */
 function executeEvolutionCodeRepair() {
-    validatePathSecurity(TARGET_FILE_PATH, ALLOWED_BASE_DIRECTORY);
-    
-    const originalSource = readEvolutionRouteSource(TARGET_FILE_PATH);
-    const repairedSource = applyTemplateEscapingTransformations(originalSource);
-    
-    saveEvolutionRouteSource(TARGET_FILE_PATH, repairedSource);
+    try {
+        validatePathSecurity(TARGET_FILE_PATH, ALLOWED_BASE_DIRECTORY);
+        
+        const originalSource = readEvolutionRouteSource(TARGET_FILE_PATH);
+        const repairedSource = applyTemplateEscapingTransformations(originalSource);
+        
+        saveEvolutionRouteSource(TARGET_FILE_PATH, repairedSource);
+    } catch (error) {
+        console.error(`[EMG CORE v49] Evolution Repair Pipeline Failure: ${error.message}`);
+        throw error;
+    }
 }
 
 executeEvolutionCodeRepair();
