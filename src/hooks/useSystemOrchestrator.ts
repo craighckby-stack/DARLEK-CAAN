@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { SystemState } from '@/lib/types';
+import type { SystemState } from '@/lib/types';
 
 export interface UseSystemOrchestratorReturn {
   readonly isReady: boolean;
   readonly latency: number;
 }
 
-const HANDSHAKE_DELAY_MS = 150;
+const HANDSHAKE_DELAY_MS = 150 as const;
 
 export const useSystemOrchestrator = (state: SystemState): UseSystemOrchestratorReturn => {
   const [isReady, setIsReady] = useState<boolean>(false);
@@ -42,7 +42,7 @@ export const useSystemOrchestrator = (state: SystemState): UseSystemOrchestrator
     }
 
     return () => {
-      if (timeoutId) {
+      if (timeoutId !== null) {
         clearTimeout(timeoutId);
       }
     };
@@ -53,5 +53,5 @@ export const useSystemOrchestrator = (state: SystemState): UseSystemOrchestrator
     return cleanupHandshake;
   }, [state.evolutionCycle, executeHandshake]);
 
-  return { isReady, latency };
+  return { isReady, latency } as const;
 };
