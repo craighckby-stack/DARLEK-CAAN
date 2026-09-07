@@ -5,10 +5,10 @@ import * as TabsPrimitive from "@radix-ui/react-tabs"
 
 import { cn } from "@/lib/utils"
 
-export type TabsProps = React.ComponentProps<typeof TabsPrimitive.Root>
-export type TabsListProps = React.ComponentProps<typeof TabsPrimitive.List>
-export type TabsTriggerProps = React.ComponentProps<typeof TabsPrimitive.Trigger>
-export type TabsContentProps = React.ComponentProps<typeof TabsPrimitive.Content>
+export type TabsProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root>
+export type TabsListProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+export type TabsTriggerProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+export type TabsContentProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
 
 const STYLES = {
   root: "flex flex-col gap-2",
