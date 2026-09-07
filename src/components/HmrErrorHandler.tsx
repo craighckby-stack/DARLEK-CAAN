@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type JSX } from 'react';
 
 const SUPPRESSED_MESSAGE_PATTERNS = [
   'hmr-client',
@@ -13,14 +13,19 @@ const SUPPRESSED_MESSAGE_PATTERNS = [
 const SUPPRESSED_ERROR_NAMES = new Set(['ChunkLoadError']);
 
 interface ErrorObjectLike {
-  message?: unknown;
-  name?: unknown;
+  readonly message?: unknown;
+  readonly name?: unknown;
+}
+
+interface ErrorInfo {
+  readonly message?: string;
+  readonly name?: string;
 }
 
 /**
- * Extracts error details from an unknown rejection reason.
+ * Extracts error details from an unknown rejection reason with strict type narrowing.
  */
-function extractErrorInfo(reason: unknown): { message?: string; name?: string } {
+function extractErrorInfo(reason: unknown): ErrorInfo {
   if (typeof reason === 'string') {
     return { message: reason };
   }
@@ -46,12 +51,16 @@ function shouldSuppressError(reason: unknown): boolean {
 
   const { message, name } = extractErrorInfo(reason);
 
-  if (name && SUPPRESSED_ERROR_NAMES.has(name)) {
+  if (name !== undefined && SUPPRESSED_ERROR_NAMES.has(name)) {
     return true;
   }
 
-  if (message) {
-    return SUPPRESSED_MESSAGE_PATTERNS.some((pattern) => message.includes(pattern));
+  if (message !== undefined) {
+    for (let i = 0; i < SUPPRESSED_MESSAGE_PATTERNS.length; i++) {
+      if (message.includes(SUPPRESSED_MESSAGE_PATTERNS[i])) {
+        return true;
+      }
+    }
   }
 
   return false;
@@ -60,7 +69,7 @@ function shouldSuppressError(reason: unknown): boolean {
 /**
  * Client-side utility that safely intercepts and suppresses noisy HMR and chunk loading rejections.
  */
-export default function HmrErrorHandler(): null {
+export default function HmrErrorHandler(): JSX.Element | null {
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent): void => {
       if (shouldSuppressError(event.reason)) {
