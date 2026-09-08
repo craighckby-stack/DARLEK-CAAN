@@ -6,7 +6,7 @@
  */
 
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, normalize } from 'node:path';
 
 /**
  * System configuration parameters bound to immutable frozen structures.
@@ -15,14 +15,14 @@ const CONFIG = Object.freeze({
     ALLOWED_BASE_DIR: resolve('src/app/api/evolution'),
     RELATIVE_FILE_PATH: 'propose/route.ts',
     MAX_FILE_SIZE_BYTES: 5 * 1024 * 1024, // 5MB limit
-    ENCODING: 'utf8',
+    ENCODING: /** @type {BufferEncoding} */ ('utf8'),
     TARGET_STRING: '}``````tsx// Complete proposed code for the active file goes here.// MUST BE COMPLETE FILE, NO PLACEHOLDERS OR TRUNCATIONS```',
     REPLACEMENT_STRING: '\n`'
 });
 
 /**
  * Validates path security against directory traversal vulnerabilities.
- * Optimized with direct string validation to eliminate unnecessary object allocations.
+ * Optimized with direct string validation and normalized path segments.
  * 
  * @param {string} baseDir - The trusted base directory path.
  * @param {string} relativePath - The relative path to validate and resolve.
@@ -31,10 +31,13 @@ const CONFIG = Object.freeze({
  */
 function resolveAndValidatePath(baseDir, relativePath) {
     const resolvedPath = resolve(baseDir, relativePath);
-    if (!resolvedPath.startsWith(baseDir)) {
+    const normalizedBase = normalize(baseDir);
+    const normalizedTarget = normalize(resolvedPath);
+
+    if (!normalizedTarget.startsWith(normalizedBase)) {
         throw new Error('SECURITY ERROR: Unauthorized file access attempt detected.');
     }
-    return resolvedPath;
+    return normalizedTarget;
 }
 
 /**
@@ -94,7 +97,7 @@ function executeEvolutionaryPromptFix() {
     try {
         const targetPath = resolveAndValidatePath(CONFIG.ALLOWED_BASE_DIR, CONFIG.RELATIVE_FILE_PATH);
         validateFileConstraints(targetPath, CONFIG.MAX_FILE_SIZE_BYTES);
-        sanitizeSourceCode(targetPath, CONFIG.TARGET_STRING, CONFIG.REPLACEMENT_STRING, /** @type {BufferEncoding} */ (CONFIG.ENCODING));
+        sanitizeSourceCode(targetPath, CONFIG.TARGET_STRING, CONFIG.REPLACEMENT_STRING, CONFIG.ENCODING);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[EMG CORE v49 FATAL]: ${errorMessage}`);
