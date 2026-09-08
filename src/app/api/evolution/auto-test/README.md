@@ -1,11 +1,13 @@
 # Auto-Test Runner Architecture
 
 ## Executive Summary
+
 The **Auto-Test Runner** serves as the primary **Coherence Gate** for the DARLEK CANN v3.0 system. It ensures enterprise-grade system stability by enforcing rigorous static analysis, security vetting, and architectural validation on all automated code mutations prior to downstream integration.
 
 ---
 
 ## Table of Contents
+
 1. [Execution Workflow](#execution-workflow)
 2. [Module Integration](#module-integration)
 
@@ -22,8 +24,12 @@ The verification pipeline processes code mutations through four deterministic st
 | **3**| **Gatekeeping**     | Evaluates diagnostic outcomes; any `high`-severity failure triggers an immediate rejection. |
 | **4**| **Telemetry**       | Records execution telemetry and performance metrics to the central evolution dashboard. |
 
+### Pipeline Interface Definition
+
 ```typescript
-// Example invocation signature for the Auto-Test Runner pipeline
+/**
+ * Represents the input payload for the Auto-Test Runner validation pipeline.
+ */
 export interface TestPayload {
   readonly originalCode: string;
   readonly proposedCode: string;
@@ -33,6 +39,12 @@ export interface TestPayload {
   };
 }
 
+/**
+ * Executes the auto-test pipeline on a given mutation payload.
+ * 
+ * @param payload - The structured code mutation payload.
+ * @returns A promise resolving to `true` if all coherence checks pass, otherwise `false`.
+ */
 export declare function runAutoTestPipeline(payload: TestPayload): Promise<boolean>;
 ```
 
