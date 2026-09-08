@@ -36,12 +36,26 @@ const MANIFEST_DATA = Object.freeze({
 const SERIALIZED_MANIFEST = JSON.stringify(MANIFEST_DATA);
 
 /**
+ * Resolves the global execution context across different runtimes (Node.js, Web Workers, Browsers).
+ * @returns {Record<string, any>} The global target object.
+ */
+function resolveGlobalTarget() {
+  if (typeof globalThis !== 'undefined') {
+    return globalThis;
+  }
+  if (typeof self !== 'undefined') {
+    return self;
+  }
+  return {};
+}
+
+/**
  * Safely serializes and freezes the manifest assignment to ensure runtime integrity and immutability.
  * Incorporates robust error boundaries and strict execution context validation.
  * @returns {void}
  */
 function initializeManifest() {
-  const globalTarget = typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : {});
+  const globalTarget = resolveGlobalTarget();
 
   try {
     Object.defineProperty(globalTarget, '__REACT_LOADABLE_MANIFEST', {
@@ -51,14 +65,10 @@ function initializeManifest() {
       enumerable: true
     });
   } catch (error) {
-    /**
-     * Fallback assignment guaranteeing legacy API contract preservation under restricted execution contexts.
-     * Logs non-fatal diagnostic telemetry if console is available.
-     */
     try {
       globalTarget.__REACT_LOADABLE_MANIFEST = SERIALIZED_MANIFEST;
     } catch (fallbackError) {
-      if (typeof console !== 'undefined' && typeof console.error === 'function') {
+      if (typeof console?.error === 'function') {
         console.error('[EMG Core v49] Critical failure initializing __REACT_LOADABLE_MANIFEST:', fallbackError);
       }
     }
