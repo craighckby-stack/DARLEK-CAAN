@@ -51,12 +51,12 @@ Follow this responsible disclosure protocol upon discovering a security vulnerab
 Execute the standard pipeline to analyze, mutate, and verify system modules securely:
 
 ```bash
-# 1. Analyze target modules for optimization vectors
+# 1. Analyze target modules for optimization vectors with strict type-checking
 cann-analyze --target ./modules --type-check=strict
 
-# 2. Apply autonomous evolutionary mutations using the Omega strategy
+# 2. Apply autonomous evolutionary mutations using the Omega strategy in type-safe mode
 cann-evolve --strategy omega --mode=type-safe
 
-# 3. Verify structural and logical integrity with comprehensive coverage reports
+# 3. Verify structural and logical integrity with comprehensive test coverage reports
 npm run test:coverage
 ```
