@@ -6,8 +6,8 @@
 
 ## Quick Navigation
 - [API Endpoints](#api-endpoints)
-- [Integration Requirements](#integration-requirements)
 - [Type Definitions](#type-definitions)
+- [Integration Requirements](#integration-requirements)
 
 ---
 
@@ -65,7 +65,7 @@ export interface ApiResponse {
 
 ## Integration Requirements
 
-Engineered for seamless interfacing with the `Darlek Caan` and `Darlek Caan` repositories.
+Engineered for seamless interfacing with core system repositories.
 
 * **Required Header:** `X-Agent-Context` must be included in all incoming requests to guarantee proper routing.
 
