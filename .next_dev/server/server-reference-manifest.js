@@ -15,7 +15,7 @@ function resolveGlobalContext() {
 /**
  * Initializes the React Server Components (RSC) server manifest on the global execution context securely and idempotently.
  */
-!(function initializeRscServerManifest() {
+(() => {
   try {
     const globalContext = resolveGlobalContext();
     if (globalContext !== void 0 && globalContext.__RSC_SERVER_MANIFEST === void 0) {
