@@ -7,16 +7,24 @@ export interface SafeFetchResult<T> {
   readonly error?: string;
 }
 
-const WHITESPACE_REGEX = /^\s*$/;
 const MAX_ERROR_SNIPPET_LENGTH = 200;
 
 /**
  * Validates whether a string contains actionable content beyond mere whitespace.
+ * Optimized to avoid redundant regex initialization overhead.
  */
 function hasValidContent(str: string | null | undefined): str is string {
   if (typeof str !== 'string') return false;
-  const trimmed = str.trim();
-  return trimmed.length > 0 && !WHITESPACE_REGEX.test(trimmed);
+  let hasContent = false;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    // Check for non-whitespace characters (space, tab, LF, CR)
+    if (code !== 32 && code !== 9 && code !== 10 && code !== 13) {
+      hasContent = true;
+      break;
+    }
+  }
+  return hasContent;
 }
 
 /**
