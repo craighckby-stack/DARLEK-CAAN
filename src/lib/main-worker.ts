@@ -36,7 +36,8 @@ export class MainWorkerPool {
           } else {
             await new Promise<void>((r) => setTimeout(r, 0));
           }
-          resolve(await taskFn());
+          const result = await taskFn();
+          resolve(result);
         } catch (error) {
           reject(error instanceof Error ? error : new Error(String(error)));
         } finally {
