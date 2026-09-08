@@ -26,6 +26,18 @@ const getRootElement = (): HTMLElement => {
 };
 
 /**
+ * Basic HTML sanitizer utility to safeguard against layout injection during fallback rendering.
+ */
+const escapeHtml = (str: string): string => {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+/**
  * Initializes the React root and renders the primary application component tree
  * with enforced immutability, type safety, and optimized lifecycle allocation.
  */
@@ -54,18 +66,6 @@ const mountApplication = (): void => {
       `;
     }
   }
-};
-
-/**
- * Basic HTML sanitizer utility to safeguard against layout injection during fallback rendering.
- */
-const escapeHtml = (str: string): string => {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 };
 
 mountApplication();
