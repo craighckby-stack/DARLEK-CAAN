@@ -52,6 +52,7 @@ export interface SaturationProps {
  * Monitors structural changes and semantic saturation with optimized memoization.
  */
 export const SaturationMetrics: React.FC<SaturationProps> = ({ metrics }) => {
+  // Memoized critical threshold evaluation to prevent unnecessary calculations during high-frequency streams
   const isCritical = useMemo(() => {
     return metrics.structuralChange >= 4.5 || metrics.semanticSaturation >= 0.32;
   }, [metrics]);
