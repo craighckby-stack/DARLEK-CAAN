@@ -49,7 +49,12 @@
 
   try {
     if (globalScope && typeof globalScope === "object") {
-      globalScope.__BUILD_MANIFEST = buildManifest;
+      Object.defineProperty(globalScope, "__BUILD_MANIFEST", {
+        value: buildManifest,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
     }
   } catch {
     // Fail silently if global scope property assignment is restricted
