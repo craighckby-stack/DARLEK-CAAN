@@ -14,7 +14,7 @@ import path from 'node:path';
  */
 
 /** @readonly @type {string} */
-const TARGET_FILE_PATH = path.join('src', 'utils', 'agi-engine.ts');
+const TARGET_FILE_PATH = path.normalize(path.join('src', 'utils', 'agi-engine.ts'));
 
 /**
  * Configuration mapping of regex patterns to their deterministic replacements.
@@ -65,12 +65,17 @@ function makeEngineDeterministic() {
     const originalSource = fs.readFileSync(TARGET_FILE_PATH, 'utf8');
     const sanitizedSource = applyReplacements(originalSource, RANDOMNESS_REPLACEMENTS);
 
+    if (originalSource === sanitizedSource) {
+      console.info(`[EMG Engine] No non-deterministic patterns found in: ${TARGET_FILE_PATH}`);
+      return;
+    }
+
     fs.writeFileSync(TARGET_FILE_PATH, sanitizedSource, 'utf8');
     console.info(`[EMG Engine] Successfully sanitized randomness in: ${TARGET_FILE_PATH}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[EMG Engine] Failed to process file ${TARGET_FILE_PATH}:`, errorMessage);
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
