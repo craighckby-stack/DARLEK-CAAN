@@ -155,10 +155,12 @@ interface WindowTranslate {
 }
 
 /**
- * Changes display language using xnx3/translate runtime
+ * Changes display language using xnx3/translate runtime with rigorous boundary and exception guards.
  */
 export function changeDisplayLanguage(langId: string): boolean {
-  if (typeof window === 'undefined' || !langId) return false;
+  if (typeof window === 'undefined' || !langId || typeof langId !== 'string') {
+    return false;
+  }
   
   try {
     localStorage.setItem(STORAGE_KEY_LANGUAGE, langId);
@@ -168,23 +170,26 @@ export function changeDisplayLanguage(langId: string): boolean {
       win.translate.changeLanguage(langId);
       return true;
     }
-  } catch (err) {
-    console.warn('Could not execute translate.changeLanguage:', err);
+  } catch (err: unknown) {
+    console.warn('Could not execute translate.changeLanguage:', err instanceof Error ? err.message : String(err));
   }
   
   return false;
 }
 
 /**
- * Retrieves the currently selected language
+ * Retrieves the currently selected language with robust storage fallback mechanisms.
  */
 export function getCurrentLanguage(): string {
-  if (typeof window === 'undefined') return 'english';
+  if (typeof window === 'undefined') {
+    return 'english';
+  }
   
   try {
-    return localStorage.getItem(STORAGE_KEY_LANGUAGE) || 'english';
-  } catch (err) {
-    console.warn('Could not access localStorage for current language:', err);
+    const storedLang = localStorage.getItem(STORAGE_KEY_LANGUAGE);
+    return storedLang !== null && storedLang.trim() !== '' ? storedLang : 'english';
+  } catch (err: unknown) {
+    console.warn('Could not access localStorage for current language:', err instanceof Error ? err.message : String(err));
     return 'english';
   }
 }
