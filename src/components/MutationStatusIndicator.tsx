@@ -12,7 +12,7 @@ interface StatusConfiguration {
   readonly label: string;
 }
 
-const MUTATION_STATUS_CONFIGURATIONS: Record<MutationStatus, StatusConfiguration> = Object.freeze({
+const MUTATION_STATUS_CONFIGURATIONS: Readonly<Record<MutationStatus, StatusConfiguration>> = Object.freeze({
   pending: Object.freeze({
     dotClassName: 'bg-yellow-500',
     label: 'pending',
