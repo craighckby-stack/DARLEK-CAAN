@@ -16,6 +16,8 @@
 
 ## Data Governance
 
+The OMEGA Architecture enforces rigorous data handling rules to maintain operational integrity, secure state persistence, and prevent information leakage across distributed runtime nodes.
+
 | Category | Target / Pattern | Handling Rule |
 | :--- | :--- | :--- |
 | **Stateful Artifacts** | `*.consciousness.dump`, `*.quantum.data`, `*.swarm.state` | Must remain strictly local to the runtime environment. |
@@ -24,12 +26,19 @@
 
 ### Example Configuration: Security Ignore Matrix
 
+The following exclusion matrix should be integrated into your version control system configurations (e.g., `.gitignore`) to prevent accidental exposure of sensitive runtime artifacts:
+
 ```gitignore
 # DARLEK CANN v3.0 Exclusion Matrix
+# Runtime state dumps
 *.consciousness.dump
 *.quantum.data
 *.swarm.state
+
+# Evolution history tracking
 .evolution.history
+
+# Cryptographic assets and environment variables
 .vault
 .key
 .env.local
@@ -39,14 +48,14 @@
 
 ## Vulnerability Reporting & Disclosure
 
-To report vulnerabilities within the OMEGA Architecture or DARLEK CANN v3.0 engine securely:
+To report vulnerabilities within the OMEGA Architecture or DARLEK CANN v3.0 engine securely, please adhere to the following responsible disclosure guidelines:
 
-* 🚫 **Do not** open public GitHub issues for sensitive security matters.
-* 🔒 Report directly to maintainers via secure channels defined in internal policy.
-* ⏱️ Allow a reasonable window for verification and patching prior to public disclosure.
+* 🚫 **Do not** open public GitHub issues for sensitive security matters or zero-day vulnerabilities.
+* 🔒 Report vulnerabilities directly to maintainers via the secure communication channels defined in internal policy.
+* ⏱️ Allow a reasonable observation and patching window for maintainers to verify and deploy mitigations prior to any public disclosure.
 
 ---
 
 ## Compliance & Standards
 
-Adheres strictly to the `psr-governance` framework for autonomous, self-modifying systems and distributed AI runtimes.
+The architecture adheres strictly to the `psr-governance` framework designed for autonomous, self-modifying systems and distributed artificial intelligence runtimes.
