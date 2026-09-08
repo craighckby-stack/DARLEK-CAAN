@@ -11,7 +11,7 @@
 /** Primitive value types supported across telemetry events. */
 export type EvolutionPrimitive = string | number | boolean | null | undefined;
 
-/** Recursive telemetry payload value accommodating nested objects and arrays. */
+/** Recursive telemetry payload value accommodating nested objects, arrays, and complex records. */
 export type EvolutionEventValue =
   | EvolutionPrimitive
   | EvolutionPrimitive[]
