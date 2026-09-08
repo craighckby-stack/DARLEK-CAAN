@@ -1,4 +1,4 @@
-import * as React from "react"
+import * as React from "node:react"
 
 /**
  * The standard mobile layout breakpoint query matching screens below 768px.
@@ -61,7 +61,7 @@ export function useIsMobile(): boolean {
         mediaQueryList.removeEventListener("change", handleBreakpointChange)
       }
     } 
-    // Fallback for legacy environments supportingaddListener
+    // Fallback for legacy environments supporting addListener
     else if (typeof (mediaQueryList as MediaQueryList & { addListener?: (listener: (event: MediaQueryListEvent) => void) => void }).addListener === "function") {
       const legacyQuery = mediaQueryList as MediaQueryList & {
         addListener: (listener: (event: MediaQueryListEvent) => void) => void
