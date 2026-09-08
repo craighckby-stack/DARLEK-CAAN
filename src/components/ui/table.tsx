@@ -8,9 +8,13 @@ export interface TableProps extends React.ComponentProps<"table"> {
 }
 
 /**
- * Higher-order utility to create a memoized, ref-forwarded table primitive component.
+ * Higher-order utility to create a memoized, ref-forwarded table primitive component
+ * with hardened type safety and optimized runtime allocation.
  */
-function createTableComponent<TElement extends HTMLElement, TProps extends React.ComponentProps<any>>(
+function createTableComponent<
+  TElement extends HTMLElement,
+  TProps extends React.ComponentProps<any>
+>(
   displayName: string,
   slotName: string,
   baseClassName: string,
