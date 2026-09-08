@@ -10,16 +10,24 @@ export class LifecycleManager {
   private isDestroyed: boolean = false;
 
   /**
+   * Returns whether the lifecycle manager has been destroyed.
+   */
+  public get destroyed(): boolean {
+    return this.isDestroyed;
+  }
+
+  /**
    * Registers a subscription for automated teardown upon destruction.
    * If already destroyed, the subscription is immediately torn down.
    */
-  public register(subscription: SubscriptionTeardown): void {
+  public register<T extends SubscriptionTeardown>(subscription: T): T {
     if (this.isDestroyed) {
       this.safeTeardown(subscription, 'Failed to immediately teardown subscription on destroyed LifecycleManager:');
-      return;
+      return subscription;
     }
     
     this.subscriptions.push(subscription);
+    return subscription;
   }
 
   /**
