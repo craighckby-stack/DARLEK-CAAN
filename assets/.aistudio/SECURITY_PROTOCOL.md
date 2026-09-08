@@ -1,7 +1,7 @@
 # OMEGA ARCHITECTURE SECURITY PROTOCOL
 
 ## Overview
-This protocol defines the strict operational boundaries between the mutable self-improving agent core and the immutable version-controlled repository within the Omega Architecture.
+This protocol defines the strict operational boundaries between the mutable, self-improving agent core and the immutable, version-controlled repository within the Omega Architecture.
 
 ## Governance Rules
 
