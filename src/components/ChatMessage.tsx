@@ -13,7 +13,7 @@ const COLLAPSE_THRESHOLD = 280;
 const PREVIEW_LINES = 3;
 const MAX_CACHE_SIZE = 200;
 
-// Module-level bounded caches to prevent memory leaks while optimizing string truncation
+// Module-level bounded LRU-style caches to prevent memory leaks while optimizing string truncation
 const previewCache = new Map<string, string>();
 const lineCountCache = new Map<string, number>();
 
