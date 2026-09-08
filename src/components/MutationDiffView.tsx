@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, type ChangeEvent } from 'react';
 import type { PendingMutation } from '@/lib/types';
 import { COLORS } from '@/lib/constants';
 import { FileCode, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, XCircle, GitBranch, FolderSync } from 'lucide-react';
 
-interface DebateVote {
+export interface DebateVote {
   agentId?: string;
   agentName?: string;
   structuralProposal?: {
@@ -16,7 +16,7 @@ interface DebateVote {
   [key: string]: unknown;
 }
 
-interface MutationDiffViewProps {
+export interface MutationDiffViewProps {
   mutation: PendingMutation;
   onApprove: (mode: 'stage' | 'commit') => void;
   onReject: () => void;
@@ -35,12 +35,10 @@ export default function MutationDiffView({
   onBranchChange,
   debateVotes 
 }: MutationDiffViewProps) {
-  const [showOriginal, setShowOriginal] = useState(false);
-  const [showProposed, setShowProposed] = useState(false);
+  const [showOriginal, setShowOriginal] = useState<boolean>(false);
+  const [showProposed, setShowProposed] = useState<boolean>(false);
 
-  const riskScore = mutation.riskScore;
-  const originalContent = mutation.originalContent;
-  const proposedCode = mutation.proposedCode;
+  const { riskScore = 0, originalContent = '', proposedCode = '' } = mutation;
 
   const riskLabel = useMemo(() => {
     if (riskScore <= 3) return 'LOW';
@@ -66,28 +64,31 @@ export default function MutationDiffView({
     }
   }, []);
 
-  const originalSize = useMemo(() => ((originalContent?.length ?? 0) / 1024).toFixed(1), [originalContent]);
-  const proposedSize = useMemo(() => ((proposedCode?.length ?? 0) / 1024).toFixed(1), [proposedCode]);
+  const originalSize = useMemo(() => ((originalContent.length) / 1024).toFixed(1), [originalContent]);
+  const proposedSize = useMemo(() => ((proposedCode.length) / 1024).toFixed(1), [proposedCode]);
+  
   const sizeDiff = useMemo(() => {
-    const origLen = originalContent?.length ?? 0;
-    const propLen = proposedCode?.length ?? 0;
+    const origLen = originalContent.length;
+    const propLen = proposedCode.length;
     if (origLen === 0) return '0';
     return Math.abs(((propLen - origLen) / origLen) * 100).toFixed(0);
   }, [originalContent, proposedCode]);
   
-  const sizeDiffSign = useMemo(() => (proposedCode?.length ?? 0) > (originalContent?.length ?? 0) ? '+' : '', [proposedCode, originalContent]);
+  const sizeDiffSign = useMemo(() => proposedCode.length > originalContent.length ? '+' : '', [proposedCode, originalContent]);
 
   const handleToggleOriginal = useCallback(() => setShowOriginal(prev => !prev), []);
   const handleToggleProposed = useCallback(() => setShowProposed(prev => !prev), []);
-  const handlePathInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  
+  const handlePathInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     onPathChange?.(e.target.value);
   }, [onPathChange]);
-  const handleBranchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleBranchInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     onBranchChange?.(e.target.value || '');
   }, [onBranchChange]);
 
   const hasValidDebateProposals = useMemo(() => {
-    if (!debateVotes) return false;
+    if (!debateVotes || debateVotes.length === 0) return false;
     for (let i = 0; i < debateVotes.length; i++) {
       if (debateVotes[i]?.structuralProposal?.newPath) return true;
     }
