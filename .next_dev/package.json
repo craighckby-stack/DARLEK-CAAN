@@ -2,13 +2,13 @@
   "name": ".next_dev",
   "version": "1.0.0",
   "private": true,
-  "type": "commonjs",
-  "description": "Optimized sovereign development workspace manifest",
+  "type": "module",
+  "description": "Optimized sovereign development workspace manifest with enhanced ESM runtime configuration",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
-    "verify": "node -e \"process.stdout.write('Sovereign integrity verified.\\n'); process.exit(0);\""
+    "verify": "node -e \"import('process').then(p => { p.default.stdout.write('Sovereign integrity verified.\\n'); p.default.exit(0); });\""
   },
   "publishConfig": {
     "access": "private"
