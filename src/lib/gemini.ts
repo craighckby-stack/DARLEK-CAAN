@@ -18,7 +18,7 @@ const DEFAULT_MAX_TOKENS = 8192;
 const RELEASE_DELAY_MS = 100;
 const DEFAULT_RETRY_DELAY_MS = 30000;
 const MIN_RETRY_DELAY_SEC = 5;
-const MAX_RETRY_DELAY_sec = 120;
+const MAX_RETRY_DELAY_SEC = 120;
 const MS_PER_SECOND = 1000;
 const INVALID_KEY_COOLDOWN_MS = 60000;
 const GEOBLOCK_COOLDOWN_MS = 300000;
@@ -40,7 +40,7 @@ function parseRetryDelayMs(errorMessage: string): number {
 
   if (match) {
     const seconds = parseFloat(match[1]);
-    if (seconds >= MIN_RETRY_DELAY_SEC && seconds <= MAX_RETRY_DELAY_sec) {
+    if (seconds >= MIN_RETRY_DELAY_SEC && seconds <= MAX_RETRY_DELAY_SEC) {
       return seconds * MS_PER_SECOND;
     }
     return seconds < MIN_RETRY_DELAY_SEC ? 5000 : 120000;
@@ -51,7 +51,7 @@ function parseRetryDelayMs(errorMessage: string): number {
 
 class ConcurrencyLimiter {
   private activeCount = 0;
-  private readonly queue: (() => void)[] = [];
+  private readonly queue: Array<() => void> = [];
   private readonly maxConcurrency: number;
 
   constructor(maxConcurrency = 2) {
