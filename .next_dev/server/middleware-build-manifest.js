@@ -1,18 +1,16 @@
 (function initializeMiddlewareBuildManifest() {
   "use strict";
 
-  const globalScope =
-    typeof globalThis !== "undefined"
-      ? globalThis
-      : typeof self !== "undefined"
-      ? self
-      : typeof window !== "undefined"
-      ? window
-      : {};
+  const getGlobalScope = () => {
+    if (typeof globalThis !== "undefined") return globalThis;
+    if (typeof self !== "undefined") return self;
+    if (typeof window !== "undefined") return window;
+    return {};
+  };
 
-  function resolveBuildId() {
+  const resolveBuildId = () => {
     try {
-      const rawBuildId = typeof process !== "undefined" && process && process.env ? process.env.__NEXT_BUILD_ID : undefined;
+      const rawBuildId = process?.env?.__NEXT_BUILD_ID;
 
       if (typeof rawBuildId !== "string" || rawBuildId === "") {
         return "development";
@@ -23,18 +21,19 @@
     } catch {
       return "development";
     }
-  }
+  };
 
+  const globalScope = getGlobalScope();
   const buildId = resolveBuildId();
-  const staticAssetBasePath = "/static/" + buildId + "/";
+  const staticAssetBasePath = `/static/${buildId}/`;
 
   const buildManifest = Object.freeze({
     polyfillFiles: Object.freeze(["static/chunks/polyfills.js"]),
     devFiles: Object.freeze([]),
     ampDevFiles: Object.freeze([]),
     lowPriorityFiles: Object.freeze([
-      staticAssetBasePath + "_buildManifest.js",
-      staticAssetBasePath + "_ssgManifest.js"
+      `${staticAssetBasePath}_buildManifest.js`,
+      `${staticAssetBasePath}_ssgManifest.js`
     ]),
     rootMainFiles: Object.freeze([
       "static/chunks/webpack.js",
