@@ -1,11 +1,11 @@
 /**
  * @file useSystemBootstrap.ts
  * @module Hooks
- * @description Darlek Caan optimized hook for tracking system bootstrap lifecycle events.
+ * @description EMG Core v49 optimized hook for tracking system bootstrap lifecycle events.
  * Implements strict memory safety, zero-overhead event binding, and explicit type contracts.
  */
 
-import { useEffect, useState, startTransition, useCallback } from 'react';
+import { useEffect, useState, startTransition, useCallback, useRef } from 'react';
 
 /**
  * Custom event name defining the system bootstrap ready state trigger.
@@ -23,28 +23,42 @@ const LISTENER_OPTIONS: AddEventListenerOptions = { passive: true } as const;
 export type UseSystemBootstrapReturn = boolean;
 
 /**
- * Subscribes to the window system readiness lifecycle event with guaranteed reference stability.
+ * Subscribes to the window system readiness lifecycle event with guaranteed reference stability and memoization safety.
  */
 const useSystemReadinessSubscription = (onReady: () => void): void => {
+  const onReadyRef = useRef(onReady);
+
   useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
+
+  useEffect(() => {
+    const handleEvent = (): void => {
+      try {
+        onReadyRef.current();
+      } catch (error: unknown) {
+        console.error('[EMG Core v49] Error executing system readiness handler:', error);
+      }
+    };
+
     try {
-      window.addEventListener(SYSTEM_READY_EVENT, onReady, LISTENER_OPTIONS);
+      window.addEventListener(SYSTEM_READY_EVENT, handleEvent, LISTENER_OPTIONS);
     } catch (error: unknown) {
-      console.error('[EMG Core] Failed to attach system readiness listener:', error);
+      console.error('[EMG Core v49] Failed to attach system readiness listener:', error);
     }
     
     return () => {
       try {
-        window.removeEventListener(SYSTEM_READY_EVENT, onReady, LISTENER_OPTIONS);
+        window.removeEventListener(SYSTEM_READY_EVENT, handleEvent, LISTENER_OPTIONS);
       } catch (error: unknown) {
-        console.error('[EMG Core] Failed to remove system readiness listener:', error);
+        console.error('[EMG Core v49] Failed to remove system readiness listener:', error);
       }
     };
-  }, [onReady]);
+  }, []);
 };
 
 /**
- * Optimally manages and observes the system bootstrap readiness state via window events.
+ * Optimally manages and observes the system bootstrap readiness state via window events with concurrent transitions.
  * 
  * @returns {UseSystemBootstrapReturn} Boolean flag indicating system readiness.
  */
