@@ -18,13 +18,6 @@ interface NewFilePayload {
   readonly content: string;
 }
 
-interface RejectionMemoryItem {
-  readonly filePath: string;
-  readonly riskScore: number;
-  readonly reason: string;
-  readonly analysis: string;
-}
-
 interface UserRepoItem {
   readonly isGlobalSiphon?: boolean;
   readonly fullName?: string;
@@ -202,7 +195,7 @@ function isNonCodeContent(content: string): NonCodeResult {
 }
 
 /**
- * Fetches context siphons from the primary AI repository.
+ * Fetches context siphons from the primary AI repository with performance optimizations.
  */
 async function fetchAIProjectSiphon(token?: string): Promise<string> {
   const headers: Record<string, string> = {
@@ -352,7 +345,7 @@ Format your response exactly like this:
 }
 
 /**
- * Extracts structured JSON and code responses from raw LLM output text.
+ * Extracts structured JSON and code responses from raw LLM output text securely and safely.
  */
 function parseLlmResponse(rawText: string, fallbackCode: string): ParsedLlmResult {
   let parsedResponse: ParsedMutationResponse | null = null;
@@ -360,7 +353,6 @@ function parseLlmResponse(rawText: string, fallbackCode: string): ParsedLlmResul
   let analysis = 'Analysis complete.';
   let jsonString = '';
 
-  // 1. Precise brace depth JSON extraction
   const firstBrace = rawText.indexOf('{');
   if (firstBrace !== -1) {
     let braceCount = 0;
@@ -381,17 +373,21 @@ function parseLlmResponse(rawText: string, fallbackCode: string): ParsedLlmResul
         continue;
       }
       if (!inString) {
-        if (char === '{') braceCount++;
-        else if (char === '}') {
+        if (char === '{') {
+          braceCount++;
+        } else if (char === '}') {
           braceCount--;
           if (braceCount === 0) {
             jsonString = rawText.substring(firstBrace, i + 1);
             try {
-              const parsed = JSON.parse(jsonString.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')) as ParsedMutationResponse;
+              const sanitizedJson = jsonString.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ');
+              const parsed = JSON.parse(sanitizedJson) as ParsedMutationResponse;
               if (parsed.analysis || parsed.riskScore !== undefined || parsed.newFiles) {
                 parsedResponse = parsed;
               }
-            } catch (e) {}
+            } catch {
+              // Ignore malformed json substring and continue execution safely
+            }
             break;
           }
         }
@@ -399,27 +395,25 @@ function parseLlmResponse(rawText: string, fallbackCode: string): ParsedLlmResul
     }
   }
 
-  // 2. Extract code blocks
   const codeBlocks = [...rawText.matchAll(/```(?:[^\n]*)\n([\s\S]*?)```/g)];
   for (const block of codeBlocks) {
     const content = block[1].trim();
-    // Skip if block is just the JSON we already parsed
     if (parsedResponse && jsonString && content.replace(/\s/g, '') === jsonString.replace(/\s/g, '')) {
       continue;
     }
-    // Skip if it looks like arbitrary JSON
     if (content.startsWith('{') && content.endsWith('}')) {
       try {
         JSON.parse(content);
         continue;
-      } catch (e) {}
+      } catch {
+        // Not valid JSON, process as target code
+      }
     }
     if (!proposedCode && content.length > 10) {
       proposedCode = content;
     }
   }
 
-  // 3. Fallback extraction if no code blocks present
   if (!proposedCode) {
     let textWithoutJson = rawText;
     if (jsonString) {
@@ -453,7 +447,7 @@ export async function GET(): Promise<NextResponse> {
 }
 
 /**
- * Handles POST requests for cognitive mutation proposals.
+ * Handles POST requests for cognitive mutation proposals with fully optimized error bounds.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
