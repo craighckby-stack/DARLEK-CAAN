@@ -79,3 +79,17 @@ Line 1, Col 2: Decorators are not valid here.
 Line 1, Col 3: Decorators are not valid here.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on .next_dev/static/chunks/app-pages-internals.js.
+
+### ❌ [2026-09-08] .next_dev/static/chunks/app/layout.js `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 18, Col 1341: ',' expected.
+Line 18, Col 1385: Invalid character.
+Line 20, Col 7: ',' expected.
+Line 40, Col 16648: Unterminated string literal.
+Line 1, Col 1: Decorators are not valid here.
+Line 1, Col 2: Decorators are not valid here.
+Line 1, Col 3: Decorators are not valid here.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on .next_dev/static/chunks/app/layout.js.
