@@ -8,7 +8,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "verify": "node -e \"import('process').then(p => { p.default.stdout.write('Sovereign integrity verified.\\n'); p.default.exit(0); });\""
+    "verify": "node --input-type=module -e \"import process from 'node:process'; process.stdout.write('Sovereign integrity verified.\\n'); process.exit(0);\""
   },
   "publishConfig": {
     "access": "private"
