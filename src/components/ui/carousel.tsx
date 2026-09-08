@@ -59,7 +59,7 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     const emblaOptions = React.useMemo(
       () => ({
         ...opts,
-        axis: orientation === "horizontal" ? "x" : "y" as const,
+        axis: orientation === "horizontal" ? "x" : ("y" as const),
       }),
       [opts, orientation]
     )
