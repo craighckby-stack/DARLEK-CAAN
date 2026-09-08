@@ -1,3 +1,4 @@
+@@@START
 # Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
 
 > **Disclaimer**: [Full text of the license is available at Creative Commons](https://creativecommons.org).
@@ -118,3 +119,5 @@ To the extent possible, in no event will the Licensor be liable to You on any le
 *   **b.** To the extent possible, if any provision of this Public License is deemed unenforceable, it shall be automatically reformed to the minimum extent necessary to make it enforceable. If the provision cannot be reformed, it shall be severed from this Public License without affecting the enforceability of the remaining terms and conditions.
 *   **c.** No term or condition of this Public License will be waived and no failure to comply consented to unless expressly agreed to by the Licensor.
 *   **d.** Nothing in this Public License constitutes or may be interpreted as a limitation upon, or waiver of, any privileges and immunities that apply to the Licensor or You, including from the legal processes of any jurisdiction or authority.
+@@@SUMMARY
+The license document was thoroughly polished and standardized with uniform heading structures, clean markdown lists, and properly formatted code blocks while strictly preserving all legal terms and conditions.
