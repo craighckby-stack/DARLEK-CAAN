@@ -24,7 +24,7 @@ const NEW_STRING = '\\`\\`\\`json\\n{\\n  \\\"analysis\\\": \\\"Specific analysi
  * Validates path security against directory traversal and symlink attacks.
  * @param {string} relativePath - The relative path to validate and resolve.
  * @returns {string} The fully validated, real absolute file path.
- * @throws {Error} If security boundaries are breached or path resolution fails.
+ * @throws {TypeError|Error} If security boundaries are breached or path resolution fails.
  */
 function getValidatedSecurePath(relativePath) {
     if (typeof relativePath !== 'string' || relativePath.length === 0) {
@@ -43,7 +43,8 @@ function getValidatedSecurePath(relativePath) {
     try {
         realPath = fs.realpathSync(resolvedPath);
     } catch (err) {
-        throw new Error(`SECURITY_VIOLATION: Target file does not exist or cannot be accessed at validated path: ${relativePath} (${err.message})`);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        throw new Error(`SECURITY_VIOLATION: Target file does not exist or cannot be accessed at validated path: ${relativePath} (${errorMessage})`);
     }
 
     if (!realPath.startsWith(expectedBaseDir)) {
@@ -96,6 +97,7 @@ function readTargetFile(filePath) {
  * Executes the targeted prompt pattern replacement within the source code.
  * @param {string} code - Original source code content.
  * @returns {string} Modified source code content.
+ * @throws {TypeError} If code content is not a valid string.
  */
 function transformCodeContent(code) {
     if (typeof code !== 'string') {
@@ -115,7 +117,8 @@ function main() {
         
         fs.writeFileSync(securePath, updatedCode, { encoding: 'utf8', flag: 'w' });
     } catch (error) {
-        process.stderr.write(`[EMG-CORE-CRITICAL] Execution Failed: ${error.message}\n`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`[EMG-CORE-CRITICAL] Execution Failed: ${errorMessage}\n`);
         process.exitCode = 1;
     }
 }
