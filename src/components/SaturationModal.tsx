@@ -1,5 +1,3 @@
-'center';
-
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File: src/components/SaturationModal.tsx
