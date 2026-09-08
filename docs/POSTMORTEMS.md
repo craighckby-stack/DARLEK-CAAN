@@ -21,3 +21,11 @@ Line 1, Col 3: Decorators are not valid here.
 Line 204, Col 1: ')' expected.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on .next_dev/server/vendor-chunks/@swc.js.
+
+### ❌ [2026-09-08] .next_dev/server/vendor-chunks/@swc.js `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 211, Col 1: ')' expected.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on .next_dev/server/vendor-chunks/@swc.js.
