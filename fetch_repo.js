@@ -7,8 +7,8 @@
 
 'use strict';
 
-const https = require('https');
-const { URL } = require('url');
+const https = require('node:https');
+const { URL } = require('node:url');
 
 /** @type {Readonly<{url: string, timeout: number, headers: Record<string, string>}>} */
 const DEFAULT_CONFIG = Object.freeze({
@@ -62,7 +62,7 @@ function validateAndParseUrl(inputUrl) {
 
 /**
  * Consumes the response stream safely with pre-allocated buffer sizing and bounds checking.
- * @param {import('http').IncomingMessage} response - The HTTP response stream.
+ * @param {import('node:http').IncomingMessage} response - The HTTP response stream.
  * @returns {Promise<string>} The concatenated response body as a UTF-8 string.
  */
 function consumeResponseStream(response) {
