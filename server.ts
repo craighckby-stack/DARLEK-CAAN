@@ -2,7 +2,7 @@ import http, { IncomingMessage, ServerResponse } from 'http';
 import { parse } from 'url';
 import next from 'next';
 
-const PORT: number = parseInt(process.env.PORT ?? '3000', 10);
+const PORT: number = Number.parseInt(process.env.PORT ?? '3000', 10);
 const HOSTNAME: string = '0.0.0.0';
 const IS_DEVELOPMENT: boolean = process.env.NODE_ENV !== 'production';
 
