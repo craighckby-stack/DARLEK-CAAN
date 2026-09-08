@@ -1,13 +1,13 @@
 /**
  * EMG Core v49 Neural Code Optimizer Engine
  * File: .next_dev/server/app/page_client-reference-manifest.js
- * Optimization Goal: COMPREHENSIVE - Sovereign overhaul for peak performance, memory efficiency, type safety, and robust runtime protection.
+ * Optimization Goal: READABILITY - Pristine modern idioms, descriptive naming, modular decomposition, and clean architectural clarity.
  */
 (() => {
   "use strict";
 
   // ---------------------------------------------------------------------------
-  // Global Environment Resolution (Hardened & Memory-Safe)
+  // Global Environment Resolution
   // ---------------------------------------------------------------------------
 
   const resolveGlobalContext = () => {
@@ -28,7 +28,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Manifest Constants & Empty Sentinels (Frozen for Zero-Allocation)
+  // Manifest Constants & Sentinels
   // ---------------------------------------------------------------------------
 
   const RSC_MANIFEST_REGISTRY_KEY = "__RSC_MANIFEST";
@@ -38,17 +38,9 @@
   const EMPTY_ARRAY = Object.freeze([]);
 
   // ---------------------------------------------------------------------------
-  // Factory Functions for Manifest Descriptors (Optimized & Validated)
+  // Descriptor Factory Functions
   // ---------------------------------------------------------------------------
 
-  /**
-   * Creates a wildcard module export mapping for Server-Side Rendering (SSR) or RSC contexts.
-   *
-   * @param {string} moduleId - Target bundle module identifier
-   * @param {readonly string[]} [chunks] - Associated script/style chunks
-   * @param {boolean} [isAsync=false] - Flag indicating asynchronous evaluation
-   * @returns {Readonly<{ "*": Readonly<{ id: string, name: string, chunks: readonly string[], async: boolean }> }>}
-   */
   const createModuleExportDescriptor = (moduleId, chunks = EMPTY_ARRAY, isAsync = false) =>
     Object.freeze({
       "*": Object.freeze({
@@ -59,14 +51,6 @@
       }),
     });
 
-  /**
-   * Creates a client module reference descriptor.
-   *
-   * @param {string} browserModuleId - Browser-scoped module identifier
-   * @param {readonly string[]} chunks - Associated bundle chunk paths
-   * @param {boolean} [isAsync=false] - Flag indicating asynchronous evaluation
-   * @returns {Readonly<{ id: string, name: string, chunks: readonly string[], async: boolean }>}
-   */
   const createClientReferenceDescriptor = (browserModuleId, chunks = EMPTY_ARRAY, isAsync = false) =>
     Object.freeze({
       id: String(browserModuleId),
@@ -126,14 +110,12 @@
   });
 
   const clientModulesMap = Object.freeze({
-    // Application Modules
     "/app/applet/src/app/globals.css": createClientReferenceDescriptor("(app-pages-browser)/./src/app/globals.css", CHUNKS.LAYOUT),
     "/app/applet/src/components/ui/toaster.tsx": createClientReferenceDescriptor("(app-pages-browser)/./src/components/ui/toaster.tsx", CHUNKS.LAYOUT),
     "/app/applet/src/app/error.tsx": createClientReferenceDescriptor("(app-pages-browser)/./src/app/error.tsx", CHUNKS.ERROR),
     "/app/applet/src/app/not-found.tsx": createClientReferenceDescriptor("(app-pages-browser)/./src/app/not-found.tsx", CHUNKS.NOT_FOUND),
     "/app/applet/src/components/PageClient.tsx": createClientReferenceDescriptor("(app-pages-browser)/./src/components/PageClient.tsx", CHUNKS.PAGE),
 
-    // Next.js Runtime Client Internals
     "/app/applet/node_modules/next/dist/client/components/client-page.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/client-page.js", CHUNKS.INTERNALS),
     "/app/applet/node_modules/next/dist/esm/client/components/client-page.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/client-page.js", CHUNKS.INTERNALS),
     "/app/applet/node_modules/next/dist/client/components/client-segment.js": createClientReferenceDescriptor("(app-pages-browser)/./src/components/client-segment.js", CHUNKS.INTERNALS),
@@ -164,7 +146,7 @@
   });
 
   // ---------------------------------------------------------------------------
-  // Client Reference Manifest Aggregation
+  // Manifest Aggregation & Global Registration
   // ---------------------------------------------------------------------------
 
   const pageClientReferenceManifest = Object.freeze({
@@ -176,10 +158,6 @@
     rscModuleMapping: rscModuleMappings,
     edgeRscModuleMapping: EMPTY_OBJECT,
   });
-
-  // ---------------------------------------------------------------------------
-  // Global Manifest Registration (Safe Guarded & Error Resistant)
-  // ---------------------------------------------------------------------------
 
   try {
     let rscManifestRegistry = globalContext[RSC_MANIFEST_REGISTRY_KEY];
@@ -200,6 +178,6 @@
       configurable: true,
     });
   } catch {
-    // Graceful degradation on immutable or restricted global contexts
+    // Graceful degradation on restricted global contexts
   }
 })();
