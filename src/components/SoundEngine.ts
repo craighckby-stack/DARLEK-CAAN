@@ -6,7 +6,7 @@ let audioContextInstance: AudioContext | null = null;
 const BRACKET_REGEX = /\[.*?\]/g;
 const QUOTE_REGEX = /["'"]/g;
 
-const ARPEGGIO_NOTES = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+const ARPEGGIO_NOTES = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50] as const;
 
 function getAudioContext(): AudioContext {
   if (!audioContextInstance) {
@@ -41,7 +41,7 @@ export function initAudioEngine(): void {
       utterance.volume = 0;
       window.speechSynthesis.speak(utterance);
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.warn('Audio engine initialization failed:', error);
   }
 }
@@ -239,7 +239,7 @@ export function playSynthSound(
         break;
       }
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.warn('Audio context synthesis failed:', error);
   }
 }
@@ -384,7 +384,7 @@ export function speakDalekText(
         speechOscillator.start(now);
 
         speechGainNode.gain.linearRampToValueAtTime(volume * 0.15, now + 0.05);
-      } catch (err) {
+      } catch (err: unknown) {
         console.warn("Failed to activate synchronized Dalek modulation buzz", err);
       }
     };
@@ -416,7 +416,7 @@ export function speakDalekText(
     };
 
     window.speechSynthesis.speak(utterance);
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn("Dalek talk synthesis failed:", err);
     onEndCallback?.();
   }
@@ -497,7 +497,7 @@ export function speakJesusText(
         celestialOscSecondary.start(now);
 
         celestialGainNode.gain.linearRampToValueAtTime(volume * 0.2, now + 0.1);
-      } catch (err) {
+      } catch (err: unknown) {
         console.warn("Failed to activate synchronized celestial drone", err);
       }
     };
@@ -529,7 +529,7 @@ export function speakJesusText(
     };
 
     window.speechSynthesis.speak(utterance);
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn("Jesus talk synthesis failed:", err);
     onEndCallback?.();
   }
