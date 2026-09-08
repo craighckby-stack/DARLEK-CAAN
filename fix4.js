@@ -23,7 +23,8 @@ let stats;
 try {
     stats = statSync(targetPath);
 } catch (error) {
-    throw new Error(`Security Violation: Failed to read file stats for target path: ${error.message}`);
+    const err = error instanceof Error ? error : new Error(String(error));
+    throw new Error(`Security Violation: Failed to read file stats for target path: ${err.message}`);
 }
 
 if (!stats.isFile()) {
@@ -38,19 +39,20 @@ let code;
 try {
     code = readFileSync(targetPath, 'utf8');
 } catch (error) {
-    throw new Error(`Execution Error: Failed to read target file content: ${error.message}`);
+    const err = error instanceof Error ? error : new Error(String(error));
+    throw new Error(`Execution Error: Failed to read target file content: ${err.message}`);
 }
 
 const targetPattern = /siphonedCodeContext\}\r?\n```\r?\n\$\{fileContent/g;
 
 if (targetPattern.test(code)) {
-    // Reset regex lastIndex due to previous test() execution
     targetPattern.lastIndex = 0;
     code = code.replace(targetPattern, 'siphonedCodeContext}\n\\`\\`\\`\n${fileContent');
     
     try {
         writeFileSync(targetPath, code, 'utf8');
     } catch (error) {
-        throw new Error(`Execution Error: Failed to write updated content to target file: ${error.message}`);
+        const err = error instanceof Error ? error : new Error(String(error));
+        throw new Error(`Execution Error: Failed to write updated content to target file: ${err.message}`);
     }
 }
