@@ -7,54 +7,54 @@ import { safeReqJson, safeResponseJson } from '@/lib/safe-json';
 export const dynamic = 'force-dynamic';
 
 interface RepoTreeItem {
-  path?: string;
-  size?: number;
-  type?: string;
+  readonly path?: string;
+  readonly size?: number;
+  readonly type?: string;
 }
 
 interface TreeApiResponse {
-  tree?: RepoTreeItem[];
+  readonly tree?: RepoTreeItem[];
 }
 
 interface RepoFile {
-  path: string;
-  size: number;
+  readonly path: string;
+  readonly size: number;
 }
 
 interface RepoConfig {
-  owner?: string;
-  repo?: string;
-  branch?: string;
+  readonly owner?: string;
+  readonly repo?: string;
+  readonly branch?: string;
 }
 
 interface SystemState {
-  setupComplete?: boolean;
-  evolutionCycle?: number;
-  repoConfig?: RepoConfig;
-  connectionStatus?: Record<string, string>;
-  apiKeys?: {
-    github?: string;
-    gemini?: string;
-    [key: string]: string | undefined;
+  readonly setupComplete?: boolean;
+  readonly evolutionCycle?: number;
+  readonly repoConfig?: RepoConfig;
+  readonly connectionStatus?: Record<string, string>;
+  readonly apiKeys?: {
+    readonly github?: string;
+    readonly gemini?: string;
+    readonly [key: string]: string | undefined;
   };
-  saturation?: {
-    structuralChange?: number;
-    semanticSaturation?: number;
-    velocity?: number;
-    identityPreservation?: number;
-    capabilityAlignment?: number;
-    crossFileImpact?: number;
+  readonly saturation?: {
+    readonly structuralChange?: number;
+    readonly semanticSaturation?: number;
+    readonly velocity?: number;
+    readonly identityPreservation?: number;
+    readonly capabilityAlignment?: number;
+    readonly crossFileImpact?: number;
   };
 }
 
 interface ChatRequestBody {
-  message?: string;
-  history?: Array<{ role: string; content: string }>;
-  systemState?: SystemState;
-  scannedFiles?: Array<{ path: string; size?: number }>;
-  apiKeys?: {
-    gemini?: string;
-    [key: string]: string | undefined;
+  readonly message?: string;
+  readonly history?: ReadonlyArray<{ readonly role: string; readonly content: string }>;
+  readonly systemState?: SystemState;
+  readonly scannedFiles?: ReadonlyArray<{ readonly path: string; readonly size?: number }>;
+  readonly apiKeys?: {
+    readonly gemini?: string;
+    readonly [key: string]: string | undefined;
   };
 }
 
@@ -170,8 +170,8 @@ async function gatherAnalysisContext(
   owner: string,
   repo: string,
   branch: string,
-  scannedFiles?: Array<{ path: string; size?: number }>
-): Promise<{ systemContext: string; fetchedTreeCount: number; fetchedFilesCount: number }> {
+  scannedFiles?: ReadonlyArray<{ readonly path: string; readonly size?: number }>
+): Promise<{ readonly systemContext: string; readonly fetchedTreeCount: number; readonly fetchedFilesCount: number }> {
   let filesList: RepoFile[] = [];
 
   if (scannedFiles && Array.isArray(scannedFiles) && scannedFiles.length > 0) {
@@ -242,7 +242,7 @@ async function gatherReadmeContext(
   owner: string,
   repo: string,
   branch: string
-): Promise<{ systemContext: string; fetchedFilesCount: number }> {
+): Promise<{ readonly systemContext: string; readonly fetchedFilesCount: number }> {
   const readmeContent = await fetchGithubFile(token, owner, repo, branch, 'README.md');
   if (!readmeContent) {
     return { systemContext: '', fetchedFilesCount: 0 };
@@ -326,7 +326,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       temperature: 0.7,
     });
 
-    const fallbackChat = dalekBrainChat(enhancedSystemPrompt, processedMessage, history || []);
+    const fallbackChat = dalekBrainChat(enhancedSystemPrompt, processedMessage, history ? [...history] : []);
     const content = result.text || fallbackChat || 'Processing error. Try again.';
 
     return NextResponse.json({
