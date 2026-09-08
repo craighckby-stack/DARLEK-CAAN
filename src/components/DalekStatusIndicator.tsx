@@ -30,7 +30,6 @@ const resolveStatusConfiguration = (status: DalekStatus): StatusConfiguration =>
     return KNOWN_STATUS_CONFIGS[status];
   }
 
-  // Safe fallback guard against empty strings or malformed runtime inputs
   const safeStatus = typeof status === 'string' && status.length > 0 ? status : 'UNKNOWN';
 
   return {
@@ -43,15 +42,15 @@ export const DalekStatusIndicator: React.FC<DalekStatusIndicatorProps> = memo(({
   status, 
   className = '' 
 }) => {
-  const { text, className: statusClassName } = useMemo(() => resolveStatusConfiguration(status), [status]);
+  const { text, className: statusClassName } = useMemo(
+    () => resolveStatusConfiguration(status), 
+    [status]
+  );
   
-  const combinedClassName = useMemo(() => [
-    BASE_INDICATOR_CLASSES,
-    statusClassName,
-    className,
-  ]
-    .filter(Boolean)
-    .join(' '), [statusClassName, className]);
+  const combinedClassName = useMemo(
+    () => [BASE_INDICATOR_CLASSES, statusClassName, className].filter(Boolean).join(' '),
+    [statusClassName, className]
+  );
 
   return (
     <div 
