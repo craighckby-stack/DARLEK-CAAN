@@ -13,7 +13,7 @@ export interface BrainDnaContainer {
     readonly index: readonly string[];
 }
 
-const EMPTY_INDEX: readonly string[] = Object.freeze([]);
+const EMPTY_INDEX: readonly string[] = Object.freeze([]) as readonly string[];
 
 export const BRAIN_DNA: Readonly<BrainDnaContainer> = Object.freeze({
     version: "2.2.0",
