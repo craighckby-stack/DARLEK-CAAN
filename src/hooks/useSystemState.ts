@@ -1,14 +1,23 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
+/**
+ * System connection states.
+ */
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error' | (string & {});
 
+/**
+ * Core system state interface with extensible index signature.
+ */
 export interface SystemState {
   setupComplete: boolean;
   connectionStatus: ConnectionStatus;
   [key: string]: unknown;
 }
 
-export type StateUpdater = SystemState | ((prevState: SystemState) => SystemState);
+/**
+ * State updater type supporting direct values or functional updates.
+ */
+type StateUpdater = SystemState | ((prevState: SystemState) => SystemState);
 
 const STORAGE_KEY = 'darlek_cann_state';
 
@@ -46,11 +55,13 @@ const writeStoredState = (state: SystemState): void => {
   }
 };
 
+/**
+ * Custom React hook for managing, persisting, and synchronizing system state.
+ */
 export const useSystemState = () => {
   const [systemState, setSystemState] = useState<SystemState>(INITIAL_STATE);
   
-  // Maintain a synchronized reference to avoid stale closures and unnecessary re-renders
-  const stateRef = useRef(systemState);
+  const stateRef = useRef<SystemState>(systemState);
   stateRef.current = systemState;
 
   useEffect(() => {
