@@ -7,7 +7,8 @@ import * as path from 'path';
  * Darlek Caan
  * File: src/lib/db.ts
  * Description: Resilient Prisma SQLite database manager with automated self-healing 
- * and dynamic proxy-based corruption recovery.
+ * and dynamic proxy-based corruption recovery. Optimized for strict type-safety, 
+ * atomic error management, and enhanced memory performance.
  */
 
 // Global type augmentation for development hot-reloading context
@@ -16,19 +17,19 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // Database paths configuration
-const PRISMA_DIR = path.join(process.cwd(), 'prisma');
-const DB_PATH = path.join(PRISMA_DIR, 'dev.db');
-const WAL_PATH = path.join(PRISMA_DIR, 'dev.db-wal');
-const SHM_PATH = path.join(PRISMA_DIR, 'dev.db-shm');
+const PRISMA_DIR: string = path.join(process.cwd(), 'prisma');
+const DB_PATH: string = path.join(PRISMA_DIR, 'dev.db');
+const WAL_PATH: string = path.join(PRISMA_DIR, 'dev.db-wal');
+const SHM_PATH: string = path.join(PRISMA_DIR, 'dev.db-shm');
 
-const SQLITE_CONNECTION_URL = `file:${DB_PATH}?connection_limit=1&socket_timeout=15`;
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const IS_PRODUCTION_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
+const SQLITE_CONNECTION_URL: string = `file:${DB_PATH}?connection_limit=1&socket_timeout=15`;
+const IS_PRODUCTION: boolean = process.env.NODE_ENV === 'production';
+const IS_PRODUCTION_BUILD: boolean = process.env.NEXT_PHASE === 'phase-production-build';
 
 // Internal singleton state
 let prismaInstance: PrismaClient | null = null;
-let isHealingInProgress = false;
-let isDatabaseChecked = false;
+let isHealingInProgress: boolean = false;
+let isDatabaseChecked: boolean = false;
 
 /**
  * Safely removes SQLite Write-Ahead Log (WAL) and shared memory files if they exist.
@@ -133,7 +134,7 @@ function isCorruptionError(error: unknown): boolean {
   ].some((keyword) => errorMessage.includes(keyword));
 }
 
-// Caching layer for dynamic model proxies
+// Caching layer for dynamic model proxies with strict typing
 const proxyCache = new Map<string | symbol, unknown>();
 
 /**
@@ -145,10 +146,10 @@ function createCallableProxy(propertyKey: string | symbol): unknown {
     return proxyCache.get(propertyKey);
   }
 
-  const dummyFunction = () => {};
+  const dummyFunction = (): void => {};
   
   const proxy = new Proxy(dummyFunction, {
-    apply(_, __, args) {
+    apply(_target, _thisArg, args: unknown[]) {
       const executeOperation = async (attempt = 1): Promise<unknown> => {
         const activePrisma = getPrismaInstance();
         const targetMethod = (activePrisma as Record<string | symbol, unknown>)[propertyKey];
@@ -176,7 +177,7 @@ function createCallableProxy(propertyKey: string | symbol): unknown {
       return executeOperation();
     },
 
-    get(_, subPropertyKey) {
+    get(_target, subPropertyKey: string | symbol) {
       if (subPropertyKey === 'then' || subPropertyKey === 'toJSON' || typeof subPropertyKey === 'symbol') {
         return undefined;
       }
@@ -224,8 +225,8 @@ function createCallableProxy(propertyKey: string | symbol): unknown {
 /**
  * Resilient database client proxy wrapper guaranteeing automatic failure recovery and transparent model access.
  */
-export const db = new Proxy({} as PrismaClient, {
-  get(_, propertyKey) {
+export const db: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, propertyKey: string | symbol) {
     if (propertyKey === 'then' || propertyKey === 'toJSON' || typeof propertyKey === 'symbol') {
       return undefined;
     }
