@@ -47,6 +47,16 @@ service cloud.firestore {
       allow update, delete: if false; // Immutable log
     }
 
+    // Dalek RAG Brain Chunks
+    match /dalek_rag_brain/{chunkId} {
+      allow read, write: if true;
+    }
+
+    // Dalek Learning / Bug / Postmortem Logs
+    match /dalek_learning_logs/{logId} {
+      allow read, write: if true;
+    }
+
     // Test connection doc
     match /test/{docId} {
       allow read, write: if true;

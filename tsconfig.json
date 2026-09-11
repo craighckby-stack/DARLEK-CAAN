@@ -39,15 +39,19 @@
     }
   },
   "include": [
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next_dev/types/**/*.ts",
+    "next-env.d.ts",
+    "dist/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "examples",
     "dist",
-    ".next"
+    ".next",
+    "remote_*.ts",
+    "remote_*.tsx"
   ]
 }

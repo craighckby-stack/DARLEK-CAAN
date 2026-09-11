@@ -10,6 +10,7 @@
 import ZAI from 'z-ai-web-dev-sdk';
 import { callGemini, callGeminiMultiTurn } from './gemini';
 import { dalekBrainAnalyze, dalekBrainChat, dalekBrainMultiTurn } from './dalek-brain';
+import { getFormattedConstraints } from './learningLogs';
 
 export interface LlmOptions {
   systemPrompt: string;
@@ -270,18 +271,21 @@ function handleDalekBrainDebate(systemPrompt: string, userPrompt: string): LlmRe
 export async function callLlm(options: LlmOptions): Promise<LlmResult> {
   const { systemPrompt, userPrompt, geminiApiKey, maxTokens, temperature } = options;
 
+  const constraints = await getFormattedConstraints();
+  const enhancedSystemPrompt = constraints ? `${systemPrompt}\n\n${constraints}` : systemPrompt;
+
   // 1. Try Gemini if key is available
   if (geminiApiKey) {
-    const result = await callGeminiPrimary(systemPrompt, userPrompt, geminiApiKey, maxTokens, temperature);
+    const result = await callGeminiPrimary(enhancedSystemPrompt, userPrompt, geminiApiKey, maxTokens, temperature);
     if (result.text) return result;
   }
 
   // 2. SDK fallback
-  const sdkResult = await callSDK(systemPrompt, userPrompt, maxTokens);
+  const sdkResult = await callSDK(enhancedSystemPrompt, userPrompt, maxTokens);
   if (sdkResult.text) return sdkResult;
 
   // 3. Dalek Brain — local, zero-network analysis engine
-  const lowerSystem = systemPrompt.toLowerCase();
+  const lowerSystem = enhancedSystemPrompt.toLowerCase();
   const lowerUser = userPrompt.toLowerCase();
   const isDebate =
     lowerSystem.includes('debate') ||
@@ -289,10 +293,10 @@ export async function callLlm(options: LlmOptions): Promise<LlmResult> {
     lowerUser.includes('vote');
 
   if (isDebate) {
-    return handleDalekBrainDebate(systemPrompt, userPrompt);
+    return handleDalekBrainDebate(enhancedSystemPrompt, userPrompt);
   }
 
-  const brainResult = dalekBrainAnalyze(systemPrompt, userPrompt);
+  const brainResult = dalekBrainAnalyze(enhancedSystemPrompt, userPrompt);
   if (brainResult) return { text: brainResult, provider: 'Dalek Brain', latencyMs: 0 };
 
   return { text: null, provider: 'None' };
@@ -307,11 +311,14 @@ export async function callLlmMultiTurn(
   geminiApiKey?: string,
   maxTokens?: number
 ): Promise<LlmResult> {
+  const constraints = await getFormattedConstraints();
+  const enhancedSystemPrompt = constraints ? `${systemPrompt}\n\n${constraints}` : systemPrompt;
+
   // 1. Try Gemini multi-turn if key available
   if (geminiApiKey) {
     const start = Date.now();
     try {
-      const text = await callGeminiMultiTurn(systemPrompt, contents, geminiApiKey, {
+      const text = await callGeminiMultiTurn(enhancedSystemPrompt, contents, geminiApiKey, {
         maxTokens: maxTokens ?? 1024,
         temperature: 0.7,
       });
@@ -324,11 +331,11 @@ export async function callLlmMultiTurn(
   }
 
   // 2. SDK fallback
-  const sdkResult = await callSDKMultiTurn(systemPrompt, contents);
+  const sdkResult = await callSDKMultiTurn(enhancedSystemPrompt, contents);
   if (sdkResult.text) return sdkResult;
 
   // 3. Dalek Brain multi-turn
-  const brainText = dalekBrainMultiTurn(systemPrompt, contents);
+  const brainText = dalekBrainMultiTurn(enhancedSystemPrompt, contents);
   if (brainText) return { text: brainText, provider: 'Dalek Brain', latencyMs: 0 };
 
   return { text: null, provider: 'None' };
@@ -344,11 +351,14 @@ export async function callLlmChat(
   history: ChatHistoryItem[],
   geminiApiKey?: string
 ): Promise<LlmResult> {
+  const constraints = await getFormattedConstraints();
+  const enhancedSystemPrompt = constraints ? `${systemPrompt}\n\n${constraints}` : systemPrompt;
+
   // 1. Try Gemini
   if (geminiApiKey) {
     const start = Date.now();
     try {
-      const text = await callGemini(systemPrompt, userMessage, geminiApiKey, {
+      const text = await callGemini(enhancedSystemPrompt, userMessage, geminiApiKey, {
         maxTokens: 1024,
         temperature: 0.7,
       });
@@ -360,7 +370,7 @@ export async function callLlmChat(
 
   // 2. SDK fallback with optimized history mapping
   const sdkMessages: SdkMessage[] = [
-    { role: 'system', content: systemPrompt },
+    { role: 'system', content: enhancedSystemPrompt },
   ];
   
   const recentHistory = history.slice(-6);
@@ -373,11 +383,11 @@ export async function callLlmChat(
   }
   sdkMessages.push({ role: 'user', content: userMessage });
 
-  const sdkResult = await callSDK(systemPrompt, userMessage, 1024);
+  const sdkResult = await callSDK(enhancedSystemPrompt, userMessage, 1024);
   if (sdkResult.text) return sdkResult;
 
   // 3. Dalek Brain chat
-  const brainText = dalekBrainChat(systemPrompt, userMessage, history);
+  const brainText = dalekBrainChat(enhancedSystemPrompt, userMessage, history);
   if (brainText) return { text: brainText, provider: 'Dalek Brain', latencyMs: 0 };
 
   return { text: null, provider: 'None' };

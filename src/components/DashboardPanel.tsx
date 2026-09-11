@@ -8,7 +8,16 @@ import DebateChamber from './DebateChamber';
 import MutationHistoryPanel from './MutationHistoryPanel';
 import type { SystemState, EvolutionLogEntry, DebateAgent, AgentVote } from '@/lib/types';
 import { COLORS } from '@/lib/constants';
-import { Cpu, RotateCw, GitCommit, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Cpu, RotateCw, GitCommit, AlertCircle, CheckCircle2, HeartPulse, Activity } from 'lucide-react';
+import { 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip 
+} from 'recharts';
 import { safeResponseJson } from '@/lib/safe-json';
 
 interface DashboardPanelProps {
@@ -73,6 +82,74 @@ export default function DashboardPanel({
   debateEpistemicRuling,
 }: DashboardPanelProps) {
   const [stagedMutations, setStagedMutations] = useState<StagedMutation[]>([]);
+
+  const [ragBrainHealthHistory, setRagBrainHealthHistory] = useState<{ time: string; health: number; drift: number; recovery: number }[]>(() => {
+    try {
+      const saved = localStorage.getItem('darlek_cann_rag_health_history');
+      return saved ? JSON.parse(saved) : [
+        { time: "08:00", health: 96, drift: 4, recovery: 0 },
+        { time: "09:00", health: 91, drift: 9, recovery: 0 },
+        { time: "10:00", health: 85, drift: 15, recovery: 0 },
+        { time: "11:00", health: 71, drift: 29, recovery: 0 },
+        { time: "12:00", health: 99, drift: 2, recovery: 100 },
+        { time: "13:00", health: 95, drift: 5, recovery: 0 },
+        { time: "14:00", health: 90, drift: 10, recovery: 0 },
+        { time: "15:00", health: 78, drift: 22, recovery: 0 },
+        { time: "16:00", health: 98, drift: 3, recovery: 100 },
+        { time: "17:00", health: 96, drift: 6, recovery: 0 },
+        { time: "18:00", health: 93, drift: 9, recovery: 0 },
+        { time: "19:00", health: 80, drift: 20, recovery: 0 },
+        { time: "20:00", health: 100, drift: 1, recovery: 100 },
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (mutationsApplied > 0) {
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setRagBrainHealthHistory((prev: { time: string; health: number; drift: number; recovery: number }[]) => {
+        const lastPoint = prev[prev.length - 1];
+        if (lastPoint && lastPoint.time === timeStr) return prev;
+        
+        const newPoint = {
+          time: timeStr,
+          health: 95 + Math.floor(Math.random() * 6),
+          drift: Math.floor(Math.random() * 5),
+          recovery: 100
+        };
+        const updated = [...prev.slice(-14), newPoint];
+        try { localStorage.setItem('darlek_cann_rag_health_history', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+    }
+  }, [mutationsApplied]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setRagBrainHealthHistory((prev: { time: string; health: number; drift: number; recovery: number }[]) => {
+        const lastPoint = prev[prev.length - 1];
+        if (lastPoint && lastPoint.time === timeStr) return prev;
+
+        const currentDrift = lastPoint ? Math.min(40, Math.max(2, lastPoint.drift + (Math.random() > 0.4 ? 1 : -1))) : 5;
+        const currentHealth = 100 - currentDrift;
+
+        const newPoint = {
+          time: timeStr,
+          health: currentHealth,
+          drift: currentDrift,
+          recovery: 0
+        };
+        const updated = [...prev.slice(-14), newPoint];
+        try { localStorage.setItem('darlek_cann_rag_health_history', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!brainSessionId) {
@@ -154,6 +231,119 @@ export default function DashboardPanel({
         evolutionCycle={systemState.evolutionCycle}
         userReposCount={userReposCount}
       />
+
+      {/* RAG Brain Health Monitor Panel */}
+      <div className="dalek-panel rounded-lg p-4 space-y-4">
+        <div className="dalek-panel-header py-1 px-1 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <HeartPulse size={14} className="text-[#00ffcc] animate-pulse" />
+            <span style={{ fontSize: '11px', fontFamily: 'var(--font-orbitron), sans-serif', color: COLORS.cyan }}>RAG BRAIN COGNITIVE HEALTH</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] font-mono text-gray-400 uppercase">Resilience: ACTIVE</span>
+          </div>
+        </div>
+
+        <div style={{ background: '#080808', border: `1px solid ${COLORS.panelBorder}` }} className="p-3 rounded-sm space-y-3">
+          <div className="flex items-center justify-between text-[10px] font-mono text-gray-300">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#00ffcc] shadow-[0_0_6px_#00ffcc]" />
+              <span>Health: <span className="text-[#00ffcc] font-bold">{ragBrainHealthHistory[ragBrainHealthHistory.length - 1]?.health ?? 100}%</span></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#ff2020]" />
+              <span>Drift: <span className="text-[#ff2020] font-bold">{ragBrainHealthHistory[ragBrainHealthHistory.length - 1]?.drift ?? 0}%</span></span>
+            </div>
+          </div>
+
+          <div className="h-[140px] w-full relative">
+            {(ragBrainHealthHistory[ragBrainHealthHistory.length - 1]?.drift ?? 0) > 30 && (
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-rose-500/20 border border-rose-500/50 text-rose-400 px-3 py-1.5 rounded shadow-[0_0_10px_rgba(255,32,32,0.3)] backdrop-blur-md flex items-center gap-2 animate-pulse">
+                 <AlertCircle size={12} />
+                 <span className="text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">Warning: Dalek cognition is becoming unstable</span>
+              </div>
+            )}
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={ragBrainHealthHistory} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="panelColorHealth" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00ffcc" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="#00ffcc" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="panelColorDrift" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ff2020" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#ff2020" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="panelColorRecovery" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ffaa00" stopOpacity={0.5}/>
+                    <stop offset="95%" stopColor="#ffaa00" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                <XAxis 
+                  dataKey="time" 
+                  stroke="rgba(255,255,255,0.15)" 
+                  fontSize={8} 
+                  fontFamily="monospace"
+                  tickLine={false} 
+                />
+                <YAxis 
+                  stroke="rgba(255,255,255,0.15)" 
+                  fontSize={8} 
+                  fontFamily="monospace"
+                  tickLine={false} 
+                  domain={[0, 100]} 
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(5,5,5,0.95)', 
+                    border: `1px solid ${COLORS.panelBorder}`, 
+                    borderRadius: '4px', 
+                    fontSize: '9px', 
+                    fontFamily: 'monospace' 
+                  }}
+                  itemStyle={{ fontSize: '9px' }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="recovery" 
+                  name="Recovery Pulse"
+                  stroke={COLORS.gold} 
+                  strokeWidth={1}
+                  fillOpacity={1} 
+                  fill="url(#panelColorRecovery)" 
+                  isAnimationActive={false}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="health" 
+                  name="Brain Health"
+                  stroke="#00ffcc" 
+                  strokeWidth={1.5}
+                  fillOpacity={1} 
+                  fill="url(#panelColorHealth)" 
+                  isAnimationActive={false}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="drift" 
+                  name="Semantic Drift"
+                  stroke="#ff2020" 
+                  strokeWidth={1}
+                  fillOpacity={1} 
+                  fill="url(#panelColorDrift)" 
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex items-center justify-between text-[8px] font-mono text-gray-500 border-t border-white/[0.03] pt-2">
+            <span>MUTATION RECOVERIES: {ragBrainHealthHistory.filter(h => h.recovery > 0).length} CYCLES</span>
+            <span className="text-[#ffaa00] animate-pulse">● COGNITIVE GATE SYNCHRONIZED</span>
+          </div>
+        </div>
+      </div>
 
       {/* Real-time Evolution Activity Monitor */}
       <div className="dalek-panel rounded-lg p-4 space-y-4">

@@ -21,8 +21,8 @@ interface CoherenceGateBody {
   originalCode?: string;
   proposedCode?: string;
   filePath?: string;
-  repoFiles?: string[];
-  newFiles?: Array<{ path: string; content?: string }>;
+  repoFiles?: Array<{ path: string; content: string; [key: string]: any }>;
+  newFiles?: Array<{ path: string; content: string; [key: string]: any }>;
 }
 
 export const dynamic = 'force-dynamic';
@@ -40,7 +40,14 @@ const DEFAULT_SATURATION = Object.freeze({
   crossFileImpact: 0,
 });
 
-type NormalizedSaturation = typeof DEFAULT_SATURATION;
+interface NormalizedSaturation {
+  structuralChange: number;
+  semanticSaturation: number;
+  velocity: number;
+  identityPreservation: number;
+  capabilityAlignment: number;
+  crossFileImpact: number;
+}
 
 function normalizeSaturation(saturation: SaturationMetrics = {}): NormalizedSaturation {
   return {
@@ -57,8 +64,8 @@ async function collectSanityViolations(
   originalCode?: string,
   proposedCode?: string,
   filePath?: string,
-  repoFiles: string[] = [],
-  newFiles: Array<{ path: string; content?: string }> = []
+  repoFiles: Array<{ path: string; content: string; [key: string]: any }> = [],
+  newFiles: Array<{ path: string; content: string; [key: string]: any }> = []
 ): Promise<string[]> {
   if (!originalCode || !proposedCode || !filePath) {
     return [];
@@ -131,7 +138,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const riskScore = typeof body.riskScore === 'number' ? body.riskScore : 0;
     const saturation = normalizeSaturation(body.saturation);
     const affectedFiles = Array.isArray(body.affectedFiles) ? body.affectedFiles : [];
-    const { bypassGate, originalCode, proposedCode, filePath, repoFiles = [], newFiles = [] } = body;
+    const { bypassGate, originalCode, proposedCode, filePath } = body;
+    const repoFiles = Array.isArray(body.repoFiles) ? body.repoFiles : [];
+    const newFiles = Array.isArray(body.newFiles) ? body.newFiles : [];
 
     const failures: string[] = [];
     let saturationWarning = false;
@@ -143,15 +152,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (bypassGate) {
       const hasFailures = failures.length > 0;
-      return NextResponse.json({
+      const responseData: CoherenceGateResult & { failures?: string[] } = {
         passed: true,
         reason: hasFailures
           ? `COHERENCE GATE PASSED (OVERRIDE): Approved by operator with warnings [${failures.join('; ')}].`
           : 'COHERENCE GATE PASSED: Approved by system operator.',
         riskScore,
         saturationWarning: saturationWarning || hasFailures,
-        failures: hasFailures ? failures : undefined,
-      } satisfies CoherenceGateResult & { failures?: string[] });
+      };
+      if (hasFailures) {
+        responseData.failures = failures;
+      }
+      return NextResponse.json(responseData);
     }
 
     if (riskScore > MAX_SAFE_RISK_SCORE) {

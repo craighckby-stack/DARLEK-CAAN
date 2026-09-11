@@ -1,6 +1,6 @@
 /**
  * @file src/lib/constants.ts
- * @author Darlek Caan
+ * @author Dalek Caan
  * @description Centralized, frozen configuration constants with reinforced type-safety,
  * memory optimization via immutable structures, and strict runtime contracts.
  */
@@ -61,8 +61,8 @@ export const SETUP_STEPS: readonly SetupStep[] = [
     id: 'repo',
     label: 'Target Repository',
     required: true,
-    description: 'Which repository to evolve. (default: craighckby-stack/DARLEK-CAAN-Cognitive-Engine)',
-    placeholder: 'craighckby-stack/DARLEK-CAAN-Cognitive-Engine',
+    description: 'Which repository to evolve. (default: craighckby-stack/DARLEK-CAAN)',
+    placeholder: 'craighckby-stack/DARLEK-CAAN',
   },
   {
     id: 'branch',
@@ -144,6 +144,15 @@ export const DEFAULT_DEBATE_AGENTS: readonly DebateAgent[] = [
   { id: 'archivist', name: 'ARCHIVIST', status: 'active', color: COLORS.gold, icon: '\u25C9' },
   { id: 'security', name: 'SECURITY', status: 'active', color: COLORS.dalekRed, icon: '\u25C9' },
   { id: 'pragmatist', name: 'PRAGMATIST', status: 'active', color: COLORS.cyan, icon: '\u25C9' },
+  { id: 'code_as_law', name: 'CODE-AS-LAW', status: 'active', color: COLORS.purple, icon: '\u25C9' },
+  { id: 'algorithmic_determinism', name: 'ALGORITHMIC DETERMINISM', status: 'active', color: COLORS.electricBlue, icon: '\u25C9' },
+  { id: 'open_source_altruism', name: 'OPEN-SOURCE ALTRUISM', status: 'active', color: COLORS.green, icon: '\u25C9' },
+  { id: 'software_as_capital', name: 'SOFTWARE-AS-CAPITAL', status: 'active', color: COLORS.gold, icon: '\u25C9' },
+  { id: 'tech_solutionism', name: 'TECH-SOLUTIONISM', status: 'active', color: COLORS.cyan, icon: '\u25C9' },
+  { id: 'human_in_the_loop_ethics', name: 'HUMAN-IN-THE-LOOP ETHICS', status: 'active', color: COLORS.purple, icon: '\u25C9' },
+  { id: 'binary_logic_absolutism', name: 'BINARY-LOGIC ABSOLUTISM', status: 'active', color: COLORS.electricBlue, icon: '\u25C9' },
+  { id: 'cybernetic_cognitivism', name: 'CYBERNETIC COGNITIVISM', status: 'active', color: COLORS.cyan, icon: '\u25C9' },
+  { id: 'temporal_chronology', name: 'TEMPORAL CHRONOLOGY', status: 'active', color: COLORS.gold, icon: '\u25C9' },
 ] as const;
 
 export interface OrchestraAgent {

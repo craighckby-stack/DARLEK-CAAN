@@ -1,14 +1,1 @@
-{
-  "/api/brain/route": "app/api/brain/route.js",
-  "/api/setup/test-connection/route": "app/api/setup/test-connection/route.js",
-  "/api/github/user-repos/route": "app/api/github/user-repos/route.js",
-  "/api/github/scan/route": "app/api/github/scan/route.js",
-  "/api/github/read-file/route": "app/api/github/read-file/route.js",
-  "/api/evolution/propose/route": "app/api/evolution/propose/route.js",
-  "/api/evolution/debate/route": "app/api/evolution/debate/route.js",
-  "/api/evolution/coherence-gate/route": "app/api/evolution/coherence-gate/route.js",
-  "/api/github/write-file/route": "app/api/github/write-file/route.js",
-  "/api/evolution/auto-test/route": "app/api/evolution/auto-test/route.js",
-  "/api/evolution/analyze-impact/route": "app/api/evolution/analyze-impact/route.js",
-  "/page": "app/page.js"
-}
+{}

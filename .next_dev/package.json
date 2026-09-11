@@ -1,16 +1,1 @@
-{
-  "name": ".next_dev",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Optimized sovereign development workspace manifest with enhanced ESM runtime configuration",
-  "engines": {
-    "node": ">=20.0.0"
-  },
-  "scripts": {
-    "verify": "node --input-type=module -e \"import process from 'node:process'; process.stdout.write('Sovereign integrity verified.\\n'); process.exit(0);\""
-  },
-  "publishConfig": {
-    "access": "private"
-  }
-}
+{"type": "commonjs"}

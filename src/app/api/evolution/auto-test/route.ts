@@ -96,9 +96,9 @@ function runImportValidation(code: string, filePath: string): AutoTestResult[] {
   const imports = [...code.matchAll(/import\s+.*?from\s+['"](.+?)['"]/g)].map(m => m[1]);
 
   // Check for relative imports that might break
-  const relativeImports = imports.filter(i => i.startsWith('.'));
+  const relativeImports = imports.filter((i): i is string => typeof i === 'string' && i.startsWith('.'));
   const depth = filePath.split('/').length;
-  const excessiveDepth = relativeImports.filter(i => {
+  const excessiveDepth = relativeImports.filter((i): i is string => {
     const upLevels = (i.match(/\.\.\//g) || []).length;
     return upLevels > depth - 1;
   });
@@ -114,7 +114,7 @@ function runImportValidation(code: string, filePath: string): AutoTestResult[] {
   }
 
   // Check for @/ alias usage consistency
-  const hasAtImports = imports.some(i => i.startsWith('@/'));
+  const hasAtImports = imports.some(i => typeof i === 'string' && i.startsWith('@/'));
   const hasRelative = relativeImports.length > 0;
   if (hasAtImports && hasRelative) {
     results.push({
@@ -127,7 +127,7 @@ function runImportValidation(code: string, filePath: string): AutoTestResult[] {
   }
 
   // Check for Node.js built-in imports
-  const nodeImports = imports.filter(i => ['fs', 'path', 'os', 'crypto', 'util', 'stream', 'http', 'https'].includes(i));
+  const nodeImports = imports.filter((i): i is string => typeof i === 'string' && ['fs', 'path', 'os', 'crypto', 'util', 'stream', 'http', 'https'].includes(i));
   if (nodeImports.length > 0 && !filePath.includes('api/')) {
     results.push({
       category: 'IMPORTS',
@@ -169,7 +169,7 @@ function runExportValidation(code: string, filePath: string): AutoTestResult[] {
   }
 
   // Check for duplicate exports
-  const exportNames = exports.map(e => e.toLowerCase());
+  const exportNames = exports.filter((e): e is string => typeof e === 'string').map(e => e.toLowerCase());
   const duplicates = exportNames.filter((name, idx) => exportNames.indexOf(name) !== idx);
   if (duplicates.length > 0) {
     results.push({
@@ -253,7 +253,7 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
         const line = code.slice(lineStart, index + m[0].length);
         return !line.includes('interface') && !line.includes('type ') && !line.includes('placeholder') && !line.includes('TODO');
       });
-      if (realSecrets.length > 0) {
+      if (realSecrets.length > 0 && realSecrets[0]?.[0]) {
         results.push({
           category: 'SECURITY',
           test: 'Hardcoded secret detection',
@@ -390,12 +390,12 @@ export async function GET(): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse<AutoTestResponse>> {
   try {
-    const body = await safeReqJson(req, {});
-    const originalCode = typeof body.originalCode === 'string' ? body.originalCode : '';
-    const proposedCode = typeof body.proposedCode === 'string' ? body.proposedCode : '';
-    const filePath = typeof body.filePath === 'string' ? body.filePath : '';
-    const repoFiles = Array.isArray(body.repoFiles) ? body.repoFiles : [];
-    const newFiles = Array.isArray(body.newFiles) ? body.newFiles : [];
+    const body = await safeReqJson(req, {} as Record<string, any>);
+    const originalCode = typeof body['originalCode'] === 'string' ? body['originalCode'] : '';
+    const proposedCode = typeof body['proposedCode'] === 'string' ? body['proposedCode'] : '';
+    const filePath = typeof body['filePath'] === 'string' ? body['filePath'] : '';
+    const repoFiles = Array.isArray(body['repoFiles']) ? body['repoFiles'] : [];
+    const newFiles = Array.isArray(body['newFiles']) ? body['newFiles'] : [];
 
     const results: AutoTestResult[] = [];
 

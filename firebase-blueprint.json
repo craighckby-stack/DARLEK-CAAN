@@ -171,6 +171,37 @@
         }
       },
       "required": ["timestamp", "agentId", "action", "preStateHash", "allowedByCommitGate"]
+    },
+    "LearningLog": {
+      "title": "Learning Log",
+      "description": "Representing cognitive findings, compiled lessons, bug postmortems, or negative constraints to reinforce the autonomous RAG brain.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["learning", "bug", "postmortem"] },
+        "title": { "type": "string", "maxLength": 256 },
+        "symptom": { "type": "string", "maxLength": 1024 },
+        "evidence": { "type": "string", "maxLength": 8192 },
+        "constraint": { "type": "string", "maxLength": 4096 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "title", "timestamp"]
+    },
+    "BrainChunk": {
+      "title": "Brain Chunk",
+      "description": "A compressed knowledge snippet stored within the RAG context.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "sourceName": { "type": "string", "maxLength": 256 },
+        "fileName": { "type": "string", "maxLength": 256 },
+        "binaryCode": { "type": "string" },
+        "generation": { "type": "integer" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sourceName", "fileName", "binaryCode", "generation", "timestamp"]
     }
   },
   "entities": {
@@ -182,6 +213,12 @@
     },
     "AuditLog": {
       "$ref": "#/definitions/AuditLog"
+    },
+    "LearningLog": {
+      "$ref": "#/definitions/LearningLog"
+    },
+    "BrainChunk": {
+      "$ref": "#/definitions/BrainChunk"
     }
   },
   "firestore": {
@@ -196,6 +233,14 @@
     "/audit_logs/{logId}": {
       "schema": { "$ref": "#/definitions/AuditLog" },
       "description": "Append-only immutable history collection of agent interactions."
+    },
+    "/dalek_rag_brain/{chunkId}": {
+      "schema": { "$ref": "#/definitions/BrainChunk" },
+      "description": "Autonomous RAG code chunks used for mutation synthesis context."
+    },
+    "/dalek_learning_logs/{logId}": {
+      "schema": { "$ref": "#/definitions/LearningLog" },
+      "description": "Learning, bug, and postmortem logs loaded by RAG before LLM generations."
     }
   }
 }

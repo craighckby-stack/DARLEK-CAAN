@@ -286,7 +286,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalysisRespo
       'Analyze impact and coherence.'
     ].join('\n');
 
-    const geminiKey = apiKeys?.gemini || getDefaultGeminiKey();
+    const geminiKey = apiKeys?.['gemini'] || getDefaultGeminiKey();
 
     const llmResult = await callLlm({
       systemPrompt: ARCHITECTURAL_VERIFIER_SYSTEM_PROMPT,

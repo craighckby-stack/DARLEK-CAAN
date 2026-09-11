@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import type { DebateAgent, AgentVote } from '@/lib/types';
 import { COLORS } from '@/lib/constants';
-import { Users } from 'lucide-react';
+import { Users, Info, Edit3, Save, X } from 'lucide-react';
 
 export interface DebateChamberProps {
   agents: DebateAgent[];
@@ -21,15 +21,28 @@ export interface DebateChamberProps {
 interface AgentItemProps {
   agent: DebateAgent & { vote?: AgentVote };
   isActive: boolean;
+  isSelected: boolean;
   onToggleAgent?: (agentId: string) => void;
+  onSelectDetail: (agentId: string) => void;
 }
 
-const AgentItem = React.memo(function AgentItem({ agent, isActive, onToggleAgent }: AgentItemProps) {
+const AgentItem = React.memo(function AgentItem({ 
+  agent, 
+  isActive, 
+  isSelected,
+  onToggleAgent, 
+  onSelectDetail 
+}: AgentItemProps) {
   const handleAgentClick = useCallback(() => {
     if (!isActive && onToggleAgent) {
       onToggleAgent(agent.id);
     }
   }, [isActive, onToggleAgent, agent.id]);
+
+  const handleInfoClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelectDetail(agent.id);
+  }, [onSelectDetail, agent.id]);
 
   const isAgentActive = agent.status === 'active';
   const voteType = agent.vote?.vote;
@@ -48,17 +61,25 @@ const AgentItem = React.memo(function AgentItem({ agent, isActive, onToggleAgent
     voteLabel = 'REJECT';
   }
 
-  const borderStyle = agent.vote ? `${voteColor}20` : COLORS.panelBorder;
+  const borderStyle = isSelected
+    ? `${agent.color}dd`
+    : agent.vote
+    ? `${voteColor}20`
+    : COLORS.panelBorder;
+    
   const cursorStyle = !isActive && onToggleAgent ? 'pointer' : 'default';
 
   return (
     <div
       onClick={handleAgentClick}
-      className="px-3 py-2 rounded transition-colors"
+      className={`px-3 py-2 rounded transition-all hover:bg-zinc-950 duration-200 ${
+        isSelected ? 'ring-1 ring-offset-1 ring-offset-black' : ''
+      }`}
       style={{
-        background: '#080808',
+        background: isSelected ? 'rgba(255, 255, 255, 0.02)' : '#080808',
         border: `1px solid ${borderStyle}`,
         cursor: cursorStyle,
+        boxShadow: isSelected ? `0 0 8px ${agent.color}15` : 'none',
       }}
     >
       <div className="flex items-center gap-2">
@@ -79,6 +100,18 @@ const AgentItem = React.memo(function AgentItem({ agent, isActive, onToggleAgent
         >
           {agent.name}
         </span>
+
+        {/* Dedicated Interactive Perspective Info button */}
+        <button
+          onClick={handleInfoClick}
+          type="button"
+          title="View detailed description & historical context"
+          className="ml-2 px-1 py-0.5 rounded text-[7px] font-mono flex items-center gap-0.5 border border-white/5 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors uppercase tracking-wider"
+        >
+          <Info size={8} />
+          Details
+        </button>
+
         {agent.vote && (
           <>
             <span
@@ -132,6 +165,62 @@ const AgentItem = React.memo(function AgentItem({ agent, isActive, onToggleAgent
   );
 });
 
+interface PerspectiveDetail {
+  description: string;
+  historicalContext: string;
+}
+
+const DEFAULT_PERSPECTIVE_DETAILS: Record<string, PerspectiveDetail> = {
+  archivist: {
+    description: "Guards system provenance and ensures each logic mutation preserves the authentic historical representation of the codebase. It rigorously rejects unauthorized modifications that break historical continuity or introduce duplicate stubs.",
+    historicalContext: "Originates from the secure version-control and digital preservation movements, ensuring that logical ancestry remains fully auditable and unbroken across generations."
+  },
+  security: {
+    description: "Evaluates mutations with a strict zero-tolerance lens for unredacted credentials, buffer vulnerabilities, unsafe execution loops, or exposed secrets. Guarantees absolute isolation of runtime processes.",
+    historicalContext: "Derived from secure-by-design operating system paradigms and automated static-analysis frameworks built for mission-critical infrastructure."
+  },
+  pragmatist: {
+    description: "Rejects theoretical over-engineering, unnecessary abstract structures, and redundant logic. Insists that every code change provides direct, highly functional, and concrete behavioral updates.",
+    historicalContext: "Formulated from the legendary Unix Philosophy ('Do one thing and do it well') and early Agile Refactoring mandates focused on minimizing structural waste."
+  },
+  code_as_law: {
+    description: "Demands absolute logical correctness and structural rigor, treating software source files and schema definitions as sovereign, binding, and self-executing system contracts.",
+    historicalContext: "Inspired by early declarative compiler specifications and smart contract execution sandboxes where the syntax itself dictates the boundaries of reality."
+  },
+  algorithmic_determinism: {
+    description: "Enforces absolute predictability, immutable execution pipelines, and exact type alignment. Rejects non-deterministic branching, random variations, and loose error handling.",
+    historicalContext: "Deeply rooted in mathematical automata theory and Pure Lambda Calculus, where identical inputs are mathematically guaranteed to yield identical outputs."
+  },
+  open_source_altruism: {
+    description: "Prioritizes system readability, legibility, and public good. Demands high-quality inline documentation, clean typography, and open, non-proprietary structural patterns.",
+    historicalContext: "Born from the copyleft, GNU General Public License, and open-source movements of the late 20th century, advocating for collective ownership of source code."
+  },
+  software_as_capital: {
+    description: "Optimizes strictly for efficiency, return on compute, execution speed, and minimal memory foot-prints. Rejects bloated allocation paths and slow execution routines.",
+    historicalContext: "Derived from early assembly optimizations on memory-constrained systems and high-frequency trading execution models."
+  },
+  tech_solutionism: {
+    description: "Champions high-agency, rapid iteration, and complete technical enablement. Rejects paralysis-by-analysis and prioritizes functional emergence and feature release above all constraints.",
+    historicalContext: "Originates from Silicon Valley hacker culture and digital accelerationism, focused on solving complex physical problems purely through swift algorithmic logic."
+  },
+  human_in_the_loop_ethics: {
+    description: "Ensures code alignment with human control overrides, safety protocols, detailed diagnostic tracing, and explicit permission structures.",
+    historicalContext: "Formulated in cyber-physical safety boards and early human-machine interaction systems to guarantee automated systems always remain inspectable."
+  },
+  binary_logic_absolutism: {
+    description: "Enforces dry mathematical correctness, pure functional paradigms, and perfect boolean or bitwise state representation. Rejects loose type assertions.",
+    historicalContext: "Rooted in Formal Methods, mathematical proofs of computer software correctness, and dry-run static program verification."
+  },
+  cybernetic_cognitivism: {
+    description: "Evaluates systemic feedback loops, homeostatic adaptations, and self-organizing node structures. Rejects static, non-adaptive logic arrays.",
+    historicalContext: "Originates from Norbert Wiener's Cybernetics (1948), focusing on circular feedback systems and recursive information routing."
+  },
+  temporal_chronology: {
+    description: "Ensures chronological ordering, transactional sequence integrity, and chronological hotswap synchronization. Rejects out-of-order state mutations.",
+    historicalContext: "Derived from distributed database transaction protocols, Log-Structured LSM structures, and vector clock ordering frameworks."
+  }
+};
+
 export default function DebateChamber({ 
   agents, 
   onToggleAgent, 
@@ -144,6 +233,59 @@ export default function DebateChamber({
   cognitiveFriction,
   epistemicRuling 
 }: DebateChamberProps) {
+  // Details Panel States
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('archivist');
+  const [perspectiveDetails, setPerspectiveDetails] = useState<Record<string, PerspectiveDetail>>(() => {
+    try {
+      const saved = localStorage.getItem('nexus_perspective_details');
+      return saved ? JSON.parse(saved) : DEFAULT_PERSPECTIVE_DETAILS;
+    } catch {
+      return DEFAULT_PERSPECTIVE_DETAILS;
+    }
+  });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedDescription, setEditedDescription] = useState('');
+  const [editedHistory, setEditedHistory] = useState('');
+
+  const selectedAgent = useMemo(() => {
+    return agents.find(a => a.id === selectedAgentId) || agents[0];
+  }, [agents, selectedAgentId]);
+
+  useEffect(() => {
+    if (selectedAgent) {
+      const detail = perspectiveDetails[selectedAgent.id] || { description: '', historicalContext: '' };
+      setEditedDescription(detail.description);
+      setEditedHistory(detail.historicalContext);
+    }
+    setIsEditing(false);
+  }, [selectedAgent, perspectiveDetails]);
+
+  const handleSaveDetails = () => {
+    if (!selectedAgent) return;
+    const updated = {
+      ...perspectiveDetails,
+      [selectedAgent.id]: {
+        description: editedDescription,
+        historicalContext: editedHistory
+      }
+    };
+    setPerspectiveDetails(updated);
+    try {
+      localStorage.setItem('nexus_perspective_details', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Error saving perspective details:', e);
+    }
+    setIsEditing(false);
+  };
+
+  const handleResetDetails = () => {
+    if (!selectedAgent) return;
+    const defaultDetail = DEFAULT_PERSPECTIVE_DETAILS[selectedAgent.id] || { description: '', historicalContext: '' };
+    setEditedDescription(defaultDetail.description);
+    setEditedHistory(defaultDetail.historicalContext);
+  };
+
   const agentsWithVotes = useMemo(() => {
     if (!votes || votes.length === 0) {
       return agents as (DebateAgent & { vote?: AgentVote })[];
@@ -208,11 +350,11 @@ export default function DebateChamber({
   }, [consensusCoefficient]);
 
   return (
-    <div className="dalek-panel rounded-lg p-4 space-y-3">
+    <div className="dalek-panel rounded-lg p-4 space-y-4">
       <div className="dalek-panel-header py-2 px-1 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users size={14} style={{ color: COLORS.purple }} />
-          <span style={{ fontSize: '11px' }}>DEBATE CHAMBER</span>
+          <span className="font-mono text-[10px] uppercase tracking-wider font-bold">DEBATE CHAMBER [12 PERSPECTIVES]</span>
           {onSelectAll && !isActive && (
             <button
               onClick={handleSelectAllClick}
@@ -252,16 +394,111 @@ export default function DebateChamber({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2">
+      {/* Grid of the 12 perspectives */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {agentsWithVotes.map((agent) => (
           <AgentItem
             key={agent.id}
             agent={agent}
             isActive={isActive}
+            isSelected={selectedAgentId === agent.id}
             onToggleAgent={onToggleAgent}
+            onSelectDetail={setSelectedAgentId}
           />
         ))}
       </div>
+
+      {/* Interactive, User-Editable Detail Panel */}
+      {selectedAgent && (
+        <div 
+          className="p-3.5 rounded-lg border border-white/5 bg-[#070707] space-y-3 relative"
+          id={`perspective-info-${selectedAgent.id}`}
+        >
+          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <div className="flex items-center gap-2">
+              <span 
+                className="w-2 h-2 rounded-full"
+                style={{ background: selectedAgent.color, boxShadow: `0 0 6px ${selectedAgent.color}40` }}
+              />
+              <span 
+                className="text-[10px] font-bold tracking-wider uppercase font-mono"
+                style={{ color: selectedAgent.color }}
+              >
+                {selectedAgent.name} PERSPECTIVE LOG
+              </span>
+            </div>
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                type="button"
+                className="px-2 py-1 text-[8px] font-mono border border-white/10 hover:border-white/20 text-gray-400 hover:text-white rounded flex items-center gap-1 uppercase transition-colors"
+              >
+                <Edit3 size={10} />
+                Edit Perspective
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleSaveDetails}
+                  type="button"
+                  className="px-2 py-1 text-[8px] font-mono border border-green-500/20 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded flex items-center gap-1 uppercase transition-colors font-bold"
+                >
+                  <Save size={10} />
+                  Save
+                </button>
+                <button
+                  onClick={handleResetDetails}
+                  type="button"
+                  className="px-2 py-1 text-[8px] font-mono border border-white/10 hover:border-white/20 text-gray-400 hover:text-white rounded transition-colors"
+                >
+                  Reset Defaults
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  type="button"
+                  className="p-1 border border-white/5 bg-white/5 text-gray-400 hover:text-white rounded transition-colors"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3.5 font-mono text-[10px] text-gray-300">
+            {/* Description Text block */}
+            <div className="space-y-1">
+              <span className="text-[8px] text-purple-400/80 uppercase tracking-widest font-bold">Description & Analytical Lens</span>
+              {isEditing ? (
+                <textarea
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                  className="w-full h-16 px-2 py-1.5 text-[9px] bg-black border border-white/10 focus:border-purple-500 focus:outline-none rounded font-mono text-gray-300 leading-normal resize-none"
+                />
+              ) : (
+                <p className="leading-relaxed bg-black/40 p-2 rounded border border-white/5 text-gray-300">
+                  {perspectiveDetails[selectedAgent.id]?.description || "No description loaded."}
+                </p>
+              )}
+            </div>
+
+            {/* Historical Context Text block */}
+            <div className="space-y-1">
+              <span className="text-[8px] text-purple-400/80 uppercase tracking-widest font-bold">Origins & Historical Context</span>
+              {isEditing ? (
+                <textarea
+                  value={editedHistory}
+                  onChange={(e) => setEditedHistory(e.target.value)}
+                  className="w-full h-16 px-2 py-1.5 text-[9px] bg-black border border-white/10 focus:border-purple-500 focus:outline-none rounded font-mono text-gray-300 leading-normal resize-none"
+                />
+              ) : (
+                <p className="leading-relaxed bg-black/40 p-2 rounded border border-white/5 text-gray-400 italic">
+                  {perspectiveDetails[selectedAgent.id]?.historicalContext || "No context loaded."}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {(consensusCoefficient !== undefined || cognitiveFriction !== undefined || epistemicRuling) && (
         <div 

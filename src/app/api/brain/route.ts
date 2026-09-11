@@ -16,7 +16,7 @@ export async function GET() {
 // Create a new session or return the latest active one
 export async function POST(req: NextRequest) {
   try {
-    const body = await safeReqJson(req, {});
+    const body = await safeReqJson(req, {} as { action?: string; [key: string]: any });
     const { action } = body;
 
     switch (action) {

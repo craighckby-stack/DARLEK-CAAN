@@ -5828,7 +5828,7 @@ export default function Home() {
                 <div className="pt-3 border-t border-white/5 space-y-2 text-[11px] font-mono text-gray-400">
                   <span className="text-[#ff9900] font-bold text-[10px]" style={{ fontFamily: 'var(--font-orbitron), sans-serif', letterSpacing: '0.05em' }}>CONTRAST WITH ENTERPRISE BOTS</span>
                   <p className="leading-relaxed">
-                    Enterprise setups (like automated PR review bots such as Coderabbit or Mend) focus purely on passive analysis of PRs that humans already wrote. They do not proactively draft the evolutionary steps themselves. DARLEK CANN closes that loop by being both the generator (Mutation Engine) and the gatekeeper (Multi-Agent Debate Chamber).
+                    Enterprise setups (like automated PR review bots such as Coderabbit or Mend) focus purely on passive analysis of PRs that humans already wrote. They do not proactively draft the evolutionary steps themselves. DALEK CAAN closes that loop by being both the generator (Mutation Engine) and the gatekeeper (Multi-Agent Debate Chamber).
                   </p>
                 </div>
               </div>
@@ -6024,7 +6024,7 @@ export default function Home() {
               letterSpacing: '0.1em',
             }}
           >
-            DARLEK CAAN v3.1
+            DALEK CAAN v3.1
           </span>
           {mutationsApplied > 0 && (
             <span
