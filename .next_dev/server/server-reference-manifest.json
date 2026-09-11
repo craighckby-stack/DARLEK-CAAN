@@ -1,7 +1,5 @@
 {
-  "$schema": "https://json.schemastore.org/partial-manifest.json",
-  "version": 2,
   "node": {},
   "edge": {},
-  "encryptionKey": "kUAcmjGjUurDOOAbPEn4kspeoviQG1O4TCl+YdcoQTw="
+  "encryptionKey": "/8FNDZAkyz9HaWOTbF9mMMOoszjSZmG1irZM35urXoE="
 }

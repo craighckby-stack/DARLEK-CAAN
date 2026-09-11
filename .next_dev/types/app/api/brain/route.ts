@@ -2,112 +2,345 @@
 import * as entry from '../../../../../src/app/api/brain/route.js'
 import type { NextRequest } from 'next/server.js'
 
-type RouteEntry = typeof import('../../../../../src/app/api/brain/route.js')
+type TEntry = typeof import('../../../../../src/app/api/brain/route.js')
 
-type SafeStringKey<T> = Extract<keyof T, string>
-
-type SegmentParams<T extends Record<string, unknown> = Record<string, string | string[] | undefined>> = T extends Record<string, unknown>
-  ? { readonly [K in SafeStringKey<T>]: T[K] extends string ? string | string[] | undefined : T[K] extends string[] ? string[] | undefined : never }
+type SegmentParams<T extends Object = any> = T extends Record<string, any>
+  ? { [K in keyof T]: T[K] extends string ? string | string[] | undefined : never }
   : T
 
-validateRouteConfig<TypeDifference<{
-  readonly GET?: (...args: readonly any[]) => any
-  readonly HEAD?: (...args: readonly any[]) => any
-  readonly OPTIONS?: (...args: readonly any[]) => any
-  readonly POST?: (...args: readonly any[]) => any
-  readonly PUT?: (...args: readonly any[]) => any
-  readonly DELETE?: (...args: readonly any[]) => any
-  readonly PATCH?: (...args: readonly any[]) => any
-  readonly config?: Record<string, unknown>
-  readonly generateStaticParams?: (...args: readonly any[]) => any
-  readonly revalidate?: RevalidateRange<RouteEntry> | false
-  readonly dynamic?: 'auto' | 'force-dynamic' | 'error' | 'force-static'
-  readonly dynamicParams?: boolean
-  readonly fetchCache?: 'auto' | 'force-no-store' | 'only-no-store' | 'default-no-store' | 'default-cache' | 'only-cache' | 'force-cache'
-  readonly preferredRegion?: 'auto' | 'global' | 'home' | string | readonly string[]
-  readonly runtime?: 'nodejs' | 'experimental-edge' | 'edge'
-  readonly maxDuration?: number
-}, RouteEntry, ''>>()
+// Check that the entry is a valid entry
+checkFields<Diff<{
+  GET?: Function
+  HEAD?: Function
+  OPTIONS?: Function
+  POST?: Function
+  PUT?: Function
+  DELETE?: Function
+  PATCH?: Function
+  config?: {}
+  generateStaticParams?: Function
+  revalidate?: RevalidateRange<TEntry> | false
+  dynamic?: 'auto' | 'force-dynamic' | 'error' | 'force-static'
+  dynamicParams?: boolean
+  fetchCache?: 'auto' | 'force-no-store' | 'only-no-store' | 'default-no-store' | 'default-cache' | 'only-cache' | 'force-cache'
+  preferredRegion?: 'auto' | 'global' | 'home' | string | string[]
+  runtime?: 'nodejs' | 'experimental-edge' | 'edge'
+  maxDuration?: number
+  
+}, TEntry, ''>>()
 
-type RouteContext = { readonly params: Promise<SegmentParams> }
-
-type HttpMethod = 'GET' | 'HEAD' | 'OPTIONS' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
-
+type RouteContext = { params: Promise<SegmentParams> }
+// Check the prop type of the entry function
 if ('GET' in entry) {
-  validateRouteConfig<TypeDifference<ParameterCheck<Request | NextRequest>, { readonly __tag__: 'GET'; readonly __param_position__: 'first'; readonly __param_type__: FirstArgument<MaybeField<RouteEntry, 'GET'>> }, 'GET'>>()
-  validateRouteConfig<TypeDifference<ParameterCheck<RouteContext>, { readonly __tag__: 'GET'; readonly __param_position__: 'second'; readonly __param_type__: SecondArgument<MaybeField<RouteEntry, 'GET'>> }, 'GET'>>()
-  validateRouteConfig<TypeDifference<{ readonly __tag__: 'GET'; readonly __return_type__: Response | void | never | Promise<Response | void | never> }, { readonly __tag__: 'GET'; readonly __return_type__: ReturnType<MaybeField<RouteEntry, 'GET'>> }, 'GET'>>()
+  checkFields<
+    Diff<
+      ParamCheck<Request | NextRequest>,
+      {
+        __tag__: 'GET'
+        __param_position__: 'first'
+        __param_type__: FirstArg<MaybeField<TEntry, 'GET'>>
+      },
+      'GET'
+    >
+  >()
+  checkFields<
+    Diff<
+      ParamCheck<RouteContext>,
+      {
+        __tag__: 'GET'
+        __param_position__: 'second'
+        __param_type__: SecondArg<MaybeField<TEntry, 'GET'>>
+      },
+      'GET'
+    >
+  >()
+  
+  checkFields<
+    Diff<
+      {
+        __tag__: 'GET',
+        __return_type__: Response | void | never | Promise<Response | void | never>
+      },
+      {
+        __tag__: 'GET',
+        __return_type__: ReturnType<MaybeField<TEntry, 'GET'>>
+      },
+      'GET'
+    >
+  >()
 }
-
+// Check the prop type of the entry function
 if ('HEAD' in entry) {
-  validateRouteConfig<TypeDifference<ParameterCheck<Request | NextRequest>, { readonly __tag__: 'HEAD'; readonly __param_position__: 'first'; readonly __param_type__: FirstArgument<MaybeField<RouteEntry, 'HEAD'>> }, 'HEAD'>>()
-  validateRouteConfig<TypeDifference<ParameterCheck<RouteContext>, { readonly __tag__: 'HEAD'; readonly __param_position__: 'second'; readonly __param_type__: SecondArgument<MaybeField<RouteEntry, 'HEAD'>> }, 'HEAD'>>()
-  validateRouteConfig<TypeDifference<{ readonly __tag__: 'HEAD'; readonly __return_type__: Response | void | never | Promise<Response | void | never> }, { readonly __tag__: 'HEAD'; readonly __return_type__: ReturnType<MaybeField<RouteEntry, 'HEAD'>> }, 'HEAD'>>()
+  checkFields<
+    Diff<
+      ParamCheck<Request | NextRequest>,
+      {
+        __tag__: 'HEAD'
+        __param_position__: 'first'
+        __param_type__: FirstArg<MaybeField<TEntry, 'HEAD'>>
+      },
+      'HEAD'
+    >
+  >()
+  checkFields<
+    Diff<
+      ParamCheck<RouteContext>,
+      {
+        __tag__: 'HEAD'
+        __param_position__: 'second'
+        __param_type__: SecondArg<MaybeField<TEntry, 'HEAD'>>
+      },
+      'HEAD'
+    >
+  >()
+  
+  checkFields<
+    Diff<
+      {
+        __tag__: 'HEAD',
+        __return_type__: Response | void | never | Promise<Response | void | never>
+      },
+      {
+        __tag__: 'HEAD',
+        __return_type__: ReturnType<MaybeField<TEntry, 'HEAD'>>
+      },
+      'HEAD'
+    >
+  >()
 }
-
+// Check the prop type of the entry function
 if ('OPTIONS' in entry) {
-  validateRouteConfig<TypeDifference<ParameterCheck<Request | NextRequest>, { readonly __tag__: 'OPTIONS'; readonly __param_position__: 'first'; readonly __param_type__: FirstArgument<MaybeField<RouteEntry, 'OPTIONS'>> }, 'OPTIONS'>>()
-  validateRouteConfig<TypeDifference<ParameterCheck<RouteContext>, { readonly __tag__: 'OPTIONS'; readonly __param_position__: 'second'; readonly __param_type__: SecondArgument<MaybeField<RouteEntry, 'OPTIONS'>> }, 'OPTIONS'>>()
-  validateRouteConfig<TypeDifference<{ readonly __tag__: 'OPTIONS'; readonly __return_type__: Response | void | never | Promise<Response | void | never> }, { readonly __tag__: 'OPTIONS'; readonly __return_type__: ReturnType<MaybeField<RouteEntry, 'OPTIONS'>> }, 'OPTIONS'>>()
+  checkFields<
+    Diff<
+      ParamCheck<Request | NextRequest>,
+      {
+        __tag__: 'OPTIONS'
+        __param_position__: 'first'
+        __param_type__: FirstArg<MaybeField<TEntry, 'OPTIONS'>>
+      },
+      'OPTIONS'
+    >
+  >()
+  checkFields<
+    Diff<
+      ParamCheck<RouteContext>,
+      {
+        __tag__: 'OPTIONS'
+        __param_position__: 'second'
+        __param_type__: SecondArg<MaybeField<TEntry, 'OPTIONS'>>
+      },
+      'OPTIONS'
+    >
+  >()
+  
+  checkFields<
+    Diff<
+      {
+        __tag__: 'OPTIONS',
+        __return_type__: Response | void | never | Promise<Response | void | never>
+      },
+      {
+        __tag__: 'OPTIONS',
+        __return_type__: ReturnType<MaybeField<TEntry, 'OPTIONS'>>
+      },
+      'OPTIONS'
+    >
+  >()
 }
-
+// Check the prop type of the entry function
 if ('POST' in entry) {
-  validateRouteConfig<TypeDifference<ParameterCheck<Request | NextRequest>, { readonly __tag__: 'POST'; readonly __param_position__: 'first'; readonly __param_type__: FirstArgument<MaybeField<RouteEntry, 'POST'>> }, 'POST'>>()
-  validateRouteConfig<TypeDifference<ParameterCheck<RouteContext>, { readonly __tag__: 'POST'; readonly __param_position__: 'second'; readonly __param_type__: SecondArgument<MaybeField<RouteEntry, 'POST'>> }, 'POST'>>()
-  validateRouteConfig<TypeDifference<{ readonly __tag__: 'POST'; readonly __return_type__: Response | void | never | Promise<Response | void | never> }, { readonly __tag__: 'POST'; readonly __return_type__: ReturnType<MaybeField<RouteEntry, 'POST'>> }, 'POST'>>()
+  checkFields<
+    Diff<
+      ParamCheck<Request | NextRequest>,
+      {
+        __tag__: 'POST'
+        __param_position__: 'first'
+        __param_type__: FirstArg<MaybeField<TEntry, 'POST'>>
+      },
+      'POST'
+    >
+  >()
+  checkFields<
+    Diff<
+      ParamCheck<RouteContext>,
+      {
+        __tag__: 'POST'
+        __param_position__: 'second'
+        __param_type__: SecondArg<MaybeField<TEntry, 'POST'>>
+      },
+      'POST'
+    >
+  >()
+  
+  checkFields<
+    Diff<
+      {
+        __tag__: 'POST',
+        __return_type__: Response | void | never | Promise<Response | void | never>
+      },
+      {
+        __tag__: 'POST',
+        __return_type__: ReturnType<MaybeField<TEntry, 'POST'>>
+      },
+      'POST'
+    >
+  >()
 }
-
+// Check the prop type of the entry function
 if ('PUT' in entry) {
-  validateRouteConfig<TypeDifference<ParameterCheck<Request | NextRequest>, { readonly __tag__: 'PUT'; readonly __param_position__: 'first'; readonly __param_type__: FirstArgument<MaybeField<RouteEntry, 'PUT'>> }, 'PUT'>>()
-  validateRouteConfig<TypeDifference<ParameterCheck<RouteContext>, { readonly __tag__: 'PUT'; readonly __param_position__: 'second'; readonly __param_type__: SecondArgument<MaybeField<RouteEntry, 'PUT'>> }, 'PUT'>>()
-  validateRouteConfig<TypeDifference<{ readonly __tag__: 'PUT'; readonly __return_type__: Response | void | never | Promise<Response | void | never> }, { readonly __tag__: 'PUT'; readonly __return_type__: ReturnType<MaybeField<RouteEntry, 'PUT'>> }, 'PUT'>>()
+  checkFields<
+    Diff<
+      ParamCheck<Request | NextRequest>,
+      {
+        __tag__: 'PUT'
+        __param_position__: 'first'
+        __param_type__: FirstArg<MaybeField<TEntry, 'PUT'>>
+      },
+      'PUT'
+    >
+  >()
+  checkFields<
+    Diff<
+      ParamCheck<RouteContext>,
+      {
+        __tag__: 'PUT'
+        __param_position__: 'second'
+        __param_type__: SecondArg<MaybeField<TEntry, 'PUT'>>
+      },
+      'PUT'
+    >
+  >()
+  
+  checkFields<
+    Diff<
+      {
+        __tag__: 'PUT',
+        __return_type__: Response | void | never | Promise<Response | void | never>
+      },
+      {
+        __tag__: 'PUT',
+        __return_type__: ReturnType<MaybeField<TEntry, 'PUT'>>
+      },
+      'PUT'
+    >
+  >()
 }
-
+// Check the prop type of the entry function
 if ('DELETE' in entry) {
-  validateRouteConfig<TypeDifference<ParameterCheck<Request | NextRequest>, { readonly __tag__: 'DELETE'; readonly __param_position__: 'first'; readonly __param_type__: FirstArgument<MaybeField<RouteEntry, 'DELETE'>> }, 'DELETE'>>()
-  validateRouteConfig<TypeDifference<ParameterCheck<RouteContext>, { readonly __tag__: 'DELETE'; readonly __param_position__: 'second'; readonly __param_type__: SecondArgument<MaybeField<RouteEntry, 'DELETE'>> }, 'DELETE'>>()
-  validateRouteConfig<TypeDifference<{ readonly __tag__: 'DELETE'; readonly __return_type__: Response | void | never | Promise<Response | void | never> }, { readonly __tag__: 'DELETE'; readonly __return_type__: ReturnType<MaybeField<RouteEntry, 'DELETE'>> }, 'DELETE'>>()
+  checkFields<
+    Diff<
+      ParamCheck<Request | NextRequest>,
+      {
+        __tag__: 'DELETE'
+        __param_position__: 'first'
+        __param_type__: FirstArg<MaybeField<TEntry, 'DELETE'>>
+      },
+      'DELETE'
+    >
+  >()
+  checkFields<
+    Diff<
+      ParamCheck<RouteContext>,
+      {
+        __tag__: 'DELETE'
+        __param_position__: 'second'
+        __param_type__: SecondArg<MaybeField<TEntry, 'DELETE'>>
+      },
+      'DELETE'
+    >
+  >()
+  
+  checkFields<
+    Diff<
+      {
+        __tag__: 'DELETE',
+        __return_type__: Response | void | never | Promise<Response | void | never>
+      },
+      {
+        __tag__: 'DELETE',
+        __return_type__: ReturnType<MaybeField<TEntry, 'DELETE'>>
+      },
+      'DELETE'
+    >
+  >()
 }
-
+// Check the prop type of the entry function
 if ('PATCH' in entry) {
-  validateRouteConfig<TypeDifference<ParameterCheck<Request | NextRequest>, { readonly __tag__: 'PATCH'; readonly __param_position__: 'first'; readonly __param_type__: FirstArgument<MaybeField<RouteEntry, 'PATCH'>> }, 'PATCH'>>()
-  validateRouteConfig<TypeDifference<ParameterCheck<RouteContext>, { readonly __tag__: 'PATCH'; readonly __param_position__: 'second'; readonly __param_type__: SecondArgument<MaybeField<RouteEntry, 'PATCH'>> }, 'PATCH'>>()
-  validateRouteConfig<TypeDifference<{ readonly __tag__: 'PATCH'; readonly __return_type__: Response | void | never | Promise<Response | void | never> }, { readonly __tag__: 'PATCH'; readonly __return_type__: ReturnType<MaybeField<RouteEntry, 'PATCH'>> }, 'PATCH'>>()
+  checkFields<
+    Diff<
+      ParamCheck<Request | NextRequest>,
+      {
+        __tag__: 'PATCH'
+        __param_position__: 'first'
+        __param_type__: FirstArg<MaybeField<TEntry, 'PATCH'>>
+      },
+      'PATCH'
+    >
+  >()
+  checkFields<
+    Diff<
+      ParamCheck<RouteContext>,
+      {
+        __tag__: 'PATCH'
+        __param_position__: 'second'
+        __param_type__: SecondArg<MaybeField<TEntry, 'PATCH'>>
+      },
+      'PATCH'
+    >
+  >()
+  
+  checkFields<
+    Diff<
+      {
+        __tag__: 'PATCH',
+        __return_type__: Response | void | never | Promise<Response | void | never>
+      },
+      {
+        __tag__: 'PATCH',
+        __return_type__: ReturnType<MaybeField<TEntry, 'PATCH'>>
+      },
+      'PATCH'
+    >
+  >()
 }
 
+// Check the arguments and return type of the generateStaticParams function
 if ('generateStaticParams' in entry) {
-  validateRouteConfig<TypeDifference<{ readonly params: SegmentParams }, FirstArgument<MaybeField<RouteEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
-  validateRouteConfig<TypeDifference<{ readonly __tag__: 'generateStaticParams'; readonly __return_type__: readonly any[] | Promise<readonly any[]> }, { readonly __tag__: 'generateStaticParams'; readonly __return_type__: ReturnType<MaybeField<RouteEntry, 'generateStaticParams'>> }>>()
+  checkFields<Diff<{ params: SegmentParams }, FirstArg<MaybeField<TEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
+  checkFields<Diff<{ __tag__: 'generateStaticParams', __return_type__: any[] | Promise<any[]> }, { __tag__: 'generateStaticParams', __return_type__: ReturnType<MaybeField<TEntry, 'generateStaticParams'>> }>>()
 }
 
 export interface PageProps {
-  readonly params?: Promise<SegmentParams>
-  readonly searchParams?: Promise<Record<string, string | string[] | undefined>>
+  params?: Promise<SegmentParams>
+  searchParams?: Promise<any>
 }
-
 export interface LayoutProps {
-  readonly children?: React.ReactNode
-  readonly params?: Promise<SegmentParams>
+  children?: React.ReactNode
+
+  params?: Promise<SegmentParams>
 }
 
-type RevalidateRange<T> = T extends { readonly revalidate: infer R } ? (R extends Numeric ? NonNegative<R> : never) : never
+// =============
+// Utility types
+type RevalidateRange<T> = T extends { revalidate: any } ? NonNegative<T['revalidate']> : never
 
+// If T is unknown or any, it will be an empty {} type. Otherwise, it will be the same as Omit<T, keyof Base>.
 type OmitWithTag<T, K extends keyof any, _M> = Omit<T, K>
-type TypeDifference<Base, T extends Base, Message extends string = ''> = 0 extends (1 & T) ? {} : OmitWithTag<T, keyof Base, Message>
+type Diff<Base, T extends Base, Message extends string = ''> = 0 extends (1 & T) ? {} : OmitWithTag<T, keyof Base, Message>
 
-type StrictFunction = (...args: readonly never[]) => unknown
-type FirstArgument<T> = T extends (arg1: infer A, ...rest: readonly any[]) => any ? (unknown extends A ? any : A) : never
-type SecondArgument<T> = T extends (arg1: any, arg2: infer B, ...rest: readonly any[]) => any ? (unknown extends B ? any : B) : never
-type MaybeField<T, K extends string> = T extends { readonly [k in K]: infer G } ? (G extends (...args: readonly any[]) => any ? G : never) : never
+type FirstArg<T extends Function> = T extends (...args: [infer T, any]) => any ? unknown extends T ? any : T : never
+type SecondArg<T extends Function> = T extends (...args: [any, infer T]) => any ? unknown extends T ? any : T : never
+type MaybeField<T, K extends string> = T extends { [k in K]: infer G } ? G extends Function ? G : never : never
 
-type ParameterCheck<T> = {
-  readonly __tag__: string
-  readonly __param_position__: string
-  readonly __param_type__: T
+type ParamCheck<T> = {
+  __tag__: string
+  __param_position__: string
+  __param_type__: T
 }
 
-const validateRouteConfig = <_ extends { readonly [k in keyof any]: never } = never>(): void => {}
+function checkFields<_ extends { [k in keyof any]: never }>() {}
 
+// https://github.com/sindresorhus/type-fest
 type Numeric = number | bigint
 type Zero = 0 | 0n
 type Negative<T extends Numeric> = T extends Zero ? never : `${T}` extends `-${string}` ? T : never

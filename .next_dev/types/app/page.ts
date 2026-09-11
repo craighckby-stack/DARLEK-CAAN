@@ -2,81 +2,83 @@
 import * as entry from '../../../src/app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
-type PageModuleEntry = typeof import('../../../src/app/page.js')
+type TEntry = typeof import('../../../src/app/page.js')
 
-type SafeKey<KeyType> = KeyType extends '__proto__' | 'prototype' | 'constructor' ? never : KeyType
+type SegmentParams<T extends Object = any> = T extends Record<string, any>
+  ? { [K in keyof T]: T[K] extends string ? string | string[] | undefined : never }
+  : T
 
-type SegmentParams<TargetObject extends object = Record<string, string | string[] | undefined>> = TargetObject extends Record<string, any>
-  ? { [Key in keyof TargetObject as SafeKey<Key>]: TargetObject[Key] extends string ? string | string[] | undefined : TargetObject[Key] extends string[] ? string[] | undefined : never }
-  : TargetObject
-
-validateModuleFields<TypeDifference<{
-  default: (...args: any[]) => any
-  config?: Record<string, unknown>
-  generateStaticParams?: (...args: any[]) => any
-  revalidate?: RevalidateRange<PageModuleEntry> | false
+// Check that the entry is a valid entry
+checkFields<Diff<{
+  default: Function
+  config?: {}
+  generateStaticParams?: Function
+  revalidate?: RevalidateRange<TEntry> | false
   dynamic?: 'auto' | 'force-dynamic' | 'error' | 'force-static'
   dynamicParams?: boolean
   fetchCache?: 'auto' | 'force-no-store' | 'only-no-store' | 'default-no-store' | 'default-cache' | 'only-cache' | 'force-cache'
   preferredRegion?: 'auto' | 'global' | 'home' | string | string[]
   runtime?: 'nodejs' | 'experimental-edge' | 'edge'
   maxDuration?: number
+  
   metadata?: any
-  generateMetadata?: (...args: any[]) => any
+  generateMetadata?: Function
   viewport?: any
-  generateViewport?: (...args: any[]) => any
+  generateViewport?: Function
   experimental_ppr?: boolean
-}, PageModuleEntry, ''>>()
+  
+}, TEntry, ''>>()
 
-validateModuleFields<TypeDifference<PageProps, FirstArgument<PageModuleEntry['default']>, 'default'>>()
 
+// Check the prop type of the entry function
+checkFields<Diff<PageProps, FirstArg<TEntry['default']>, 'default'>>()
+
+// Check the arguments and return type of the generateMetadata function
 if ('generateMetadata' in entry) {
-  validateModuleFields<TypeDifference<PageProps, FirstArgument<MaybeField<PageModuleEntry, 'generateMetadata'>>, 'generateMetadata'>>()
-  validateModuleFields<TypeDifference<ResolvingMetadata, SecondArgument<MaybeField<PageModuleEntry, 'generateMetadata'>>, 'generateMetadata'>>()
+  checkFields<Diff<PageProps, FirstArg<MaybeField<TEntry, 'generateMetadata'>>, 'generateMetadata'>>()
+  checkFields<Diff<ResolvingMetadata, SecondArg<MaybeField<TEntry, 'generateMetadata'>>, 'generateMetadata'>>()
 }
 
+// Check the arguments and return type of the generateViewport function
 if ('generateViewport' in entry) {
-  validateModuleFields<TypeDifference<PageProps, FirstArgument<MaybeField<PageModuleEntry, 'generateViewport'>>, 'generateViewport'>>()
-  validateModuleFields<TypeDifference<ResolvingViewport, SecondArgument<MaybeField<PageModuleEntry, 'generateViewport'>>, 'generateViewport'>>()
+  checkFields<Diff<PageProps, FirstArg<MaybeField<TEntry, 'generateViewport'>>, 'generateViewport'>>()
+  checkFields<Diff<ResolvingViewport, SecondArg<MaybeField<TEntry, 'generateViewport'>>, 'generateViewport'>>()
 }
 
+// Check the arguments and return type of the generateStaticParams function
 if ('generateStaticParams' in entry) {
-  validateModuleFields<TypeDifference<{ params: SegmentParams }, FirstArgument<MaybeField<PageModuleEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
-  validateModuleFields<TypeDifference<{ __tag__: 'generateStaticParams', __return_type__: any[] | Promise<any[]> }, { __tag__: 'generateStaticParams', __return_type__: ReturnType<MaybeField<PageModuleEntry, 'generateStaticParams'>> }>>()
+  checkFields<Diff<{ params: SegmentParams }, FirstArg<MaybeField<TEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
+  checkFields<Diff<{ __tag__: 'generateStaticParams', __return_type__: any[] | Promise<any[]> }, { __tag__: 'generateStaticParams', __return_type__: ReturnType<MaybeField<TEntry, 'generateStaticParams'>> }>>()
 }
 
 export interface PageProps {
   params?: Promise<SegmentParams>
   searchParams?: Promise<any>
 }
-
 export interface LayoutProps {
   children?: React.ReactNode
+
   params?: Promise<SegmentParams>
 }
 
-type RevalidateRange<T> = T extends { revalidate: any } ? NonNegativeNumeric<T['revalidate']> : never
+// =============
+// Utility types
+type RevalidateRange<T> = T extends { revalidate: any } ? NonNegative<T['revalidate']> : never
 
-type OmitWithTag<ObjectType, KeysToOmit extends keyof any, _Tag> = Omit<ObjectType, KeysToOmit & keyof ObjectType>
-type TypeDifference<BaseType, DerivedType extends BaseType, ErrorMessage extends string = ''> = 0 extends (1 & DerivedType) ? {} : OmitWithTag<DerivedType, keyof BaseType, ErrorMessage>
+// If T is unknown or any, it will be an empty {} type. Otherwise, it will be the same as Omit<T, keyof Base>.
+type OmitWithTag<T, K extends keyof any, _M> = Omit<T, K>
+type Diff<Base, T extends Base, Message extends string = ''> = 0 extends (1 & T) ? {} : OmitWithTag<T, keyof Base, Message>
 
-type FirstArgument<FuncType> = FuncType extends (firstParam: infer FirstArgType, ...rest: any[]) => any
-  ? unknown extends FirstArgType ? any : FirstArgType
-  : never
+type FirstArg<T extends Function> = T extends (...args: [infer T, any]) => any ? unknown extends T ? any : T : never
+type SecondArg<T extends Function> = T extends (...args: [any, infer T]) => any ? unknown extends T ? any : T : never
+type MaybeField<T, K extends string> = T extends { [k in K]: infer G } ? G extends Function ? G : never : never
 
-type SecondArgument<FuncType> = FuncType extends (firstParam: any, secondParam: infer SecondArgType, ...rest: any[]) => any
-  ? unknown extends SecondArgType ? any : SecondArgType
-  : never
 
-type MaybeField<ModuleType, FieldName extends string> = ModuleType extends { [Key in FieldName]?: infer FieldValue }
-  ? [FieldValue] extends [(...args: any[]) => any]
-    ? FieldValue
-    : never
-  : never
 
-const validateModuleFields = <_FieldsValidation extends { [Key in keyof any]: never }>(..._args: unknown[]): void => {}
+function checkFields<_ extends { [k in keyof any]: never }>() {}
 
+// https://github.com/sindresorhus/type-fest
 type Numeric = number | bigint
 type Zero = 0 | 0n
-type NegativeNumeric<T extends Numeric> = T extends Zero ? never : `${T}` extends `-${string}` ? T : never
-type NonNegativeNumeric<T extends Numeric> = T extends Zero ? T : NegativeNumeric<T> extends never ? (number extends T ? T : T) : '__invalid_negative_number__'
+type Negative<T extends Numeric> = T extends Zero ? never : `${T}` extends `-${string}` ? T : never
+type NonNegative<T extends Numeric> = T extends Zero ? T : Negative<T> extends never ? T : '__invalid_negative_number__'

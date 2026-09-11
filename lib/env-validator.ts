@@ -13,9 +13,9 @@ export interface SystemEnvironmentConfig {
   readonly NODE_ENV: EnvironmentType;
   readonly DATABASE_URL: string;
   readonly GEMINI_API_KEY: string;
-  readonly OPENAI_API_KEY?: string;
-  readonly ANTHROPIC_API_KEY?: string;
-  readonly DEEPSEEK_API_KEY?: string;
+  readonly OPENAI_API_KEY?: string | undefined;
+  readonly ANTHROPIC_API_KEY?: string | undefined;
+  readonly DEEPSEEK_API_KEY?: string | undefined;
   readonly OLLAMA_BASE_URL: string;
   readonly MEMORY_DIR: string;
   readonly CONSENSUS_WEIGHT_THRESHOLD: number;
@@ -82,7 +82,7 @@ export class EnvironmentValidator {
     const env = process.env;
 
     const nodeEnv = this.validateEnum(
-      env.NODE_ENV,
+      env['NODE_ENV'],
       'development',
       ALLOWED_NODE_ENVS_SET,
       ALLOWED_NODE_ENVS,
@@ -90,7 +90,7 @@ export class EnvironmentValidator {
     );
 
     const sandboxIsolation = this.validateEnum(
-      env.SANDBOX_ISOLATION_LEVEL,
+      env['SANDBOX_ISOLATION_LEVEL'],
       'zero-leak',
       ALLOWED_SANDBOX_LEVELS_SET,
       ALLOWED_SANDBOX_LEVELS,
@@ -98,28 +98,28 @@ export class EnvironmentValidator {
     );
 
     const logLevel = this.validateEnum(
-      env.LOG_LEVEL,
+      env['LOG_LEVEL'],
       'info',
       ALLOWED_LOG_LEVELS_SET,
       ALLOWED_LOG_LEVELS,
       'LOG_LEVEL'
     );
 
-    const consensusWeight = this.parseNumeric(env.CONSENSUS_WEIGHT_THRESHOLD, 0.75);
-    const port = this.parseNumeric(env.PORT, 3000, true);
+    const consensusWeight = this.parseNumeric(env['CONSENSUS_WEIGHT_THRESHOLD'], 0.75);
+    const port = this.parseNumeric(env['PORT'], 3000, true);
 
     return {
       NODE_ENV: nodeEnv,
-      DATABASE_URL: env.DATABASE_URL ?? 'file:./dev.db',
-      GEMINI_API_KEY: env.GEMINI_API_KEY ?? '',
-      OPENAI_API_KEY: env.OPENAI_API_KEY,
-      ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
-      DEEPSEEK_API_KEY: env.DEEPSEEK_API_KEY,
-      OLLAMA_BASE_URL: env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
-      MEMORY_DIR: env.MEMORY_DIR ?? './memory',
+      DATABASE_URL: env['DATABASE_URL'] ?? 'file:./dev.db',
+      GEMINI_API_KEY: env['GEMINI_API_KEY'] ?? '',
+      OPENAI_API_KEY: env['OPENAI_API_KEY'],
+      ANTHROPIC_API_KEY: env['ANTHROPIC_API_KEY'],
+      DEEPSEEK_API_KEY: env['DEEPSEEK_API_KEY'],
+      OLLAMA_BASE_URL: env['OLLAMA_BASE_URL'] ?? 'http://localhost:11434',
+      MEMORY_DIR: env['MEMORY_DIR'] ?? './memory',
       CONSENSUS_WEIGHT_THRESHOLD: consensusWeight,
       SANDBOX_ISOLATION_LEVEL: sandboxIsolation,
-      DIAGNOSTICS_ENABLED: env.DIAGNOSTICS_ENABLED !== 'false',
+      DIAGNOSTICS_ENABLED: env['DIAGNOSTICS_ENABLED'] !== 'false',
       LOG_LEVEL: logLevel,
       PORT: port,
     };
