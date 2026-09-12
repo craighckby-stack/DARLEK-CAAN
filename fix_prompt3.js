@@ -19,7 +19,7 @@ const REPLACEMENT_SUBSTRING = "\\`\\`\\`json\\n{\\n  \\\"analysis\\\": \\\"Speci
 
 /**
  * Validates the security boundaries of a target file path relative to the current working directory.
- * Optimized with pre-cached working directory lookup.
+ * Optimized with pre-cached working directory lookup and strict boundary checks.
  * 
  * @param {string} relativeTargetPath - The relative path to validate.
  * @returns {string} The fully resolved, validated absolute file path.
@@ -35,8 +35,9 @@ function resolveAndValidatePath(relativeTargetPath) {
     }
 
     const resolvedFilePath = path.resolve(BASE_DIRECTORY, relativeTargetPath);
+    const normalizedBase = path.resolve(BASE_DIRECTORY);
 
-    if (!resolvedFilePath.startsWith(BASE_DIRECTORY)) {
+    if (!resolvedFilePath.startsWith(normalizedBase + path.sep) && resolvedFilePath !== normalizedBase) {
         throw new Error('[EMG Core v49] Security Violation: Resolved path escapes root boundary.');
     }
 
