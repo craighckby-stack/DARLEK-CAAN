@@ -9,7 +9,9 @@ export type SeparatorProps = React.ComponentProps<typeof SeparatorPrimitive.Root
 
 const SEPARATOR_BASE_STYLES = "bg-border shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px" as const
 
-export const Separator = React.forwardRef<
+export const Separator: React.ForwardRefExoticComponent<
+  SeparatorProps & React.RefAttributes<React.ElementRef<typeof SeparatorPrimitive.Root>>
+> = React.forwardRef<
   React.ElementRef<typeof SeparatorPrimitive.Root>,
   SeparatorProps
 >(function Separator(
@@ -21,7 +23,7 @@ export const Separator = React.forwardRef<
   },
   ref
 ) {
-  const computedClassName = React.useMemo(
+  const computedClassName: string = React.useMemo(
     () => cn(SEPARATOR_BASE_STYLES, className),
     [className]
   )
