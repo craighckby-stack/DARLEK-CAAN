@@ -1,3 +1,10 @@
+/**
+ * DARLEK CANN ARCHITECTURAL HEADER
+ * File: src/app/api/chat/route.ts
+ * Role: Core system component participating in autonomous cognitive evolution cycles.
+ * Architecture: Type-safe modular unit with resilient state interfaces.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { callLlm, getDefaultGeminiKey } from '@/lib/llm-provider';
 import { dalekBrainChat } from '@/lib/dalek-brain';
