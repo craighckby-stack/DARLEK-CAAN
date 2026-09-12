@@ -30,12 +30,9 @@ export async function loadRemoteBlobs() {
       return [];
     }
 
-    return parsed.filter(
-      (item) => item !== null && typeof item === 'object' && typeof item.path === 'string'
-    );
+    return parsed.filter(isValidRemoteBlob);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('CRITICAL: Failed to read or parse remote_blobs.json:', errorMessage);
+    console.error('CRITICAL: Failed to read or parse remote_blobs.json:', formatErrorMessage(error));
     return [];
   }
 }
@@ -52,7 +49,11 @@ export function getSanitizedFilePath(rawPath) {
   const rootPath = process.cwd();
   const absoluteTarget = path.resolve(rootPath, normalized);
 
-  if (!absoluteTarget.startsWith(rootPath) || normalized.includes('\0') || normalized.startsWith('..')) {
+  const isOutsideRoot = !absoluteTarget.startsWith(rootPath);
+  const containsNullByte = normalized.includes('\0');
+  const attemptsTraversal = normalized.startsWith('..');
+
+  if (isOutsideRoot || containsNullByte || attemptsTraversal) {
     return null;
   }
 
@@ -88,7 +89,7 @@ export async function fetchRemoteContent(url) {
     }
 
     const contentLength = response.headers.get('content-length');
-    if (contentLength && parseInt(contentLength, 10) > MAX_CONTENT_LENGTH) {
+    if (contentLength && Number.parseInt(contentLength, 10) > MAX_CONTENT_LENGTH) {
       throw new Error(`Response exceeds maximum size bounds (${contentLength} bytes)`);
     }
 
@@ -146,16 +147,15 @@ async function mapConcurrent(items, limit, workerFn) {
  */
 export async function processBlobsSequentially() {
   const remoteBlobs = await loadRemoteBlobs();
-  const changedFilesList = [];
 
-  const processSingleBlob = async (fileObj) => {
-    if (!fileObj || typeof fileObj.path !== 'string') {
+  const syncSingleBlob = async (blob) => {
+    if (!blob || typeof blob.path !== 'string') {
       return null;
     }
 
-    const sanitizedPath = getSanitizedFilePath(fileObj.path);
+    const sanitizedPath = getSanitizedFilePath(blob.path);
     if (!sanitizedPath) {
-      console.warn(`Warning: Skipped unsafe or malformed path: "${fileObj.path}"`);
+      console.warn(`Warning: Skipped unsafe or malformed path: "${blob.path}"`);
       return null;
     }
 
@@ -179,29 +179,22 @@ export async function processBlobsSequentially() {
         // Guarantee target directory structure exists prior to writing
         await fs.mkdir(path.dirname(sanitizedPath), { recursive: true });
         await fs.writeFile(sanitizedPath, remoteContent, 'utf8');
-        return fileObj;
+        return blob;
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.warn(`Warning: Failed to process path "${fileObj.path}":`, errorMessage);
+      console.warn(`Warning: Failed to process path "${blob.path}":`, formatErrorMessage(error));
     }
     return null;
   };
 
-  const results = await mapConcurrent(remoteBlobs, CONCURRENCY_LIMIT, processSingleBlob);
-
-  for (const item of results) {
-    if (item) {
-      changedFilesList.push(item);
-    }
-  }
+  const results = await mapConcurrent(remoteBlobs, CONCURRENCY_LIMIT, syncSingleBlob);
+  const changedFilesList = results.filter(Boolean);
 
   try {
     await fs.writeFile('changed_files.json', JSON.stringify(changedFilesList, null, 2), 'utf8');
     console.log(`Found ${changedFilesList.length} changed files.`);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('CRITICAL: Failed to write changed_files.json:', errorMessage);
+    console.error('CRITICAL: Failed to write changed_files.json:', formatErrorMessage(error));
   }
 }
 
