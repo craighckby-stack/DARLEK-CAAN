@@ -24,7 +24,7 @@ const SkeletonComponent = React.forwardRef<HTMLDivElement, SkeletonProps>(
       return inlineStyles
     }, [width, height, style])
 
-    const computedClassName = React.useMemo(() => {
+    const computedClassName = React.useMemo<string>(() => {
       return cn("bg-accent animate-pulse rounded-md", className)
     }, [className])
 
