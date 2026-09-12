@@ -617,3 +617,12 @@ Line 20, Col 6: Property declaration is missing its type annotation.
 Line 37, Col 13: Type alias declaration is missing a type definition after '='.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/hooks/use-toast.ts.
+
+### ❌ [2026-09-12] src/lib/validator.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 70, Col 38: '}' expected.
+[OUTPUT_LIKELY_TRUNCATED] The output is < 80% of original length and syntactically invalid. The model likely hit its output token limit.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/lib/validator.ts.
