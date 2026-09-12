@@ -1,3 +1,10 @@
+/**
+ * DARLEK CANN ARCHITECTURAL HEADER
+ * File: src/app/api/evolution/coherence-gate/route.ts
+ * Role: Core system component participating in autonomous cognitive evolution cycles.
+ * Architecture: Type-safe modular unit with resilient state interfaces.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import type { CoherenceGateResult } from '@/lib/types';
 import { SATURATION_THRESHOLDS } from '@/lib/constants';
