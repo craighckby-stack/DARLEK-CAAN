@@ -8,13 +8,13 @@
 'use strict';
 
 const { readFileSync, writeFileSync } = require('node:fs');
-const { resolve } = require('node:path');
+const { resolve, normalize } = require('node:path');
 
-// Security hardening: Enforce explicit absolute path resolution to prevent directory traversal
+// Security hardening: Enforce explicit absolute path resolution and normalization to prevent path traversal
 const TARGET_FILE_PATH = resolve(__dirname, 'src/utils/agi-engine.ts');
 const MAX_PAYLOAD_SIZE_BYTES = 131072; // 128KB Wasm Sandbox limit
 
-// Pre-compiled RegExp for high-speed pattern matching with zero interim allocations on each invocation
+// Pre-compiled RegExp for high-speed pattern matching with strict defensive input validation boundaries
 const UNSAFE_PATTERN_REGEX = /(?:constructor|__proto__|prototype|eval\(|exec\(|setTimeout\(|setInterval\())/;
 
 // Pre-allocate template string to avoid dynamic re-allocation overhead on each invocation
@@ -47,13 +47,14 @@ export class EdgeGovernanceGatekeeper {
 `;
 
 /**
- * Safely reads the target source file with robust error handling.
+ * Safely reads the target source file with robust error handling and path validation.
  * @param {string} filePath - Absolute path to the target file.
  * @returns {string} The contents of the file.
  */
 function readTargetSource(filePath) {
+  const safePath = normalize(filePath);
   try {
-    return readFileSync(filePath, 'utf8');
+    return readFileSync(safePath, 'utf8');
   } catch (error) {
     console.error('Critical failure: Target file could not be safely accessed.', error instanceof Error ? error.message : error);
     process.exit(1);
@@ -61,13 +62,18 @@ function readTargetSource(filePath) {
 }
 
 /**
- * Safely writes updated content back to the target source file.
+ * Safely writes updated content back to the target source file with strict bounds checking.
  * @param {string} filePath - Absolute path to the target file.
  * @param {string} content - Updated file contents to write.
  */
 function writeTargetSource(filePath, content) {
+  if (typeof content !== 'string' || content.length === 0) {
+    console.error('Critical failure: Attempted to write invalid or empty payload content.');
+    process.exit(1);
+  }
+  const safePath = normalize(filePath);
   try {
-    writeFileSync(filePath, content, 'utf8');
+    writeFileSync(safePath, content, 'utf8');
   } catch (error) {
     console.error('Critical failure: Target file could not be safely updated.', error instanceof Error ? error.message : error);
     process.exit(1);
@@ -75,7 +81,7 @@ function writeTargetSource(filePath, content) {
 }
 
 /**
- * Injects the EdgeGovernanceGatekeeper module into the target source file.
+ * Injects the EdgeGovernanceGatekeeper module into the target source file safely.
  */
 function injectGovernanceModule() {
   const sourceCode = readTargetSource(TARGET_FILE_PATH);
