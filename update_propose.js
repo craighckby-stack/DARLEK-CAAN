@@ -1,7 +1,7 @@
 /**
  * @file update_propose.js
  * @module EMG-Core-v49-Optimizer
- * @description Sovereign optimized transformer for mutating the propose API route code.
+ * @description Sovereign optimized transformer for mutating the propose API route code with strict bounds checking and defensive input validation.
  */
 
 'use strict';
@@ -13,7 +13,7 @@ const path = require('node:path');
  * Resolved absolute path for the targeted evolution propose route file.
  * @type {string}
  */
-const TARGET_FILE_PATH = path.freeze(
+const TARGET_FILE_PATH = path.normalize(
   path.resolve(process.cwd(), 'src', 'app', 'api', 'evolution', 'propose', 'route.ts')
 );
 
@@ -29,23 +29,31 @@ const REPO_FILES_CONTEXT_DECLARATION = `const repoFilesContext = Array.isArray((
       : '';\n    $1`;
 
 /**
- * Safely extracts repoFiles from an arbitrary body payload with type checking.
+ * Safely extracts repoFiles from an arbitrary body payload with strict type checking and array bounds limitation.
  * 
  * @param {unknown} body - The request body payload.
- * @returns {string[]} The array of repository files or an empty array.
+ * @returns {string[]} The array of validated repository files or an empty array.
  */
 function useAnyRepoFiles(body) {
-  if (body !== null && typeof body === 'object' && 'repoFiles' in body) {
+  if (body !== null && typeof body === 'object' && Object.prototype.hasOwnProperty.call(body, 'repoFiles')) {
     const files = /** @type {Record<string, unknown>} */ (body).repoFiles;
     if (Array.isArray(files)) {
-      return /** @type {string[]} */ (files);
+      const sanitizedFiles = [];
+      const limit = Math.min(files.length, 1000);
+      for (let i = 0; i < limit; i++) {
+        const item = files[i];
+        if (typeof item === 'string') {
+          sanitizedFiles.push(item);
+        }
+      }
+      return sanitizedFiles;
     }
   }
   return [];
 }
 
 /**
- * Injects repository files context extraction and template injection into the prompt code.
+ * Injects repository files context extraction and template injection into the prompt code with strict validation.
  * 
  * @throws {TypeError} If sourceCode is invalid or not a string.
  * @param {string} sourceCode - Raw source code of the target API route.
@@ -62,7 +70,7 @@ function injectRepoFilesContext(sourceCode) {
 }
 
 /**
- * Main execution driver for updating the propose route source file with robust error handling.
+ * Main execution driver for updating the propose route source file with robust error handling and path sanitization.
  * 
  * @throws {NodeJS.ErrnoException} If file reading or writing fails.
  * @returns {void}
