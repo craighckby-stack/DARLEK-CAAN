@@ -58,15 +58,33 @@ export default function StatusBar({
   }, [sessionStart]);
 
   const targetRepoLabel = useMemo(() => {
-    return repoConfig.owner && repoConfig.repo
-      ? `${repoConfig.owner}/${repoConfig.repo}`
+    const owner = typeof repoConfig?.owner === 'string' ? repoConfig.owner.replace(/[<>]/g, '') : '';
+    const repo = typeof repoConfig?.repo === 'string' ? repoConfig.repo.replace(/[<>]/g, '') : '';
+    return owner && repo
+      ? `${owner}/${repo}`
       : 'NOT CONFIGURED';
-  }, [repoConfig.owner, repoConfig.repo]);
+  }, [repoConfig?.owner, repoConfig?.repo]);
+
+  const branchLabel = useMemo(() => {
+    return typeof repoConfig?.branch === 'string' ? repoConfig.branch.replace(/[<>]/g, '') : '';
+  }, [repoConfig?.branch]);
 
   const healthColor = useMemo(
     () => HEALTH_STATUS_COLORS[overallHealth] || COLORS.textMuted,
     [overallHealth]
   );
+
+  const safeEvolutionCycle = useMemo(() => {
+    return typeof evolutionCycle === 'number' && Number.isFinite(evolutionCycle)
+      ? Math.max(0, Math.floor(evolutionCycle))
+      : 0;
+  }, [evolutionCycle]);
+
+  const safeUserReposCount = useMemo(() => {
+    return typeof userReposCount === 'number' && Number.isFinite(userReposCount)
+      ? Math.max(0, Math.floor(userReposCount))
+      : undefined;
+  }, [userReposCount]);
 
   return (
     <div className="dalek-panel rounded-lg p-4 space-y-4">
@@ -89,7 +107,7 @@ export default function StatusBar({
         </span>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {PROVIDERS.map(({ id, label }) => {
-            const status = connectionStatus[id];
+            const status = connectionStatus?.[id];
             const statusColor = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.default;
             const statusText = STATUS_TEXTS[status as keyof typeof STATUS_TEXTS] || STATUS_TEXTS.default;
             const isConnected = status === 'connected';
@@ -152,16 +170,16 @@ export default function StatusBar({
           >
             {targetRepoLabel}
           </span>
-          {repoConfig.branch && (
+          {branchLabel && (
             <span className="ml-auto" style={{ fontSize: '9px', color: COLORS.textMuted }}>
-              {repoConfig.branch}
+              {branchLabel}
             </span>
           )}
         </div>
       </div>
 
       {/* Portfolio Status */}
-      {typeof userReposCount === 'number' && userReposCount > 0 && (
+      {typeof safeUserReposCount === 'number' && safeUserReposCount > 0 && (
         <div className="space-y-2 animate-fade-in">
           <span
             style={{
@@ -185,7 +203,7 @@ export default function StatusBar({
                 fontFamily: 'var(--font-share-tech-mono), monospace',
               }}
             >
-              {userReposCount} GLOBAL/USER SIPHONS
+              {safeUserReposCount} GLOBAL/USER SIPHONS
             </span>
             <span
               className="ml-auto text-emerald-500/80 uppercase"
@@ -224,7 +242,7 @@ export default function StatusBar({
               fontFamily: 'var(--font-orbitron), sans-serif',
             }}
           >
-            {evolutionCycle}
+            {safeEvolutionCycle}
           </span>
         </div>
         <div
