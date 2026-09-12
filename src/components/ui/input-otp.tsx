@@ -14,8 +14,7 @@ export interface InputOTPSlotProps extends React.ComponentProps<"div"> {
   index: number
 }
 
-// Pre-allocate static design token strings for performance and maintainability
-const STYLES = {
+const UI_TOKENS = {
   container: "flex items-center gap-2 has-disabled:opacity-50",
   input: "disabled:cursor-not-allowed",
   group: "flex items-center",
@@ -35,13 +34,13 @@ const STYLES = {
 const InputOTP = React.memo(
   React.forwardRef<React.ElementRef<typeof OTPInput>, InputOTPProps>(
     function InputOTP({ className, containerClassName, ...props }, ref) {
-      const mergedContainerClassName = React.useMemo(
-        () => cn(STYLES.container, containerClassName),
+      const resolvedContainerClassName = React.useMemo(
+        () => cn(UI_TOKENS.container, containerClassName),
         [containerClassName]
       )
       
-      const mergedClassName = React.useMemo(
-        () => cn(STYLES.input, className),
+      const resolvedClassName = React.useMemo(
+        () => cn(UI_TOKENS.input, className),
         [className]
       )
 
@@ -49,8 +48,8 @@ const InputOTP = React.memo(
         <OTPInput
           ref={ref}
           data-slot="input-otp"
-          containerClassName={mergedContainerClassName}
-          className={mergedClassName}
+          containerClassName={resolvedContainerClassName}
+          className={resolvedClassName}
           {...props}
         />
       )
@@ -62,8 +61,8 @@ InputOTP.displayName = "InputOTP"
 const InputOTPGroup = React.memo(
   React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
     function InputOTPGroup({ className, ...props }, ref) {
-      const mergedClassName = React.useMemo(
-        () => cn(STYLES.group, className),
+      const resolvedClassName = React.useMemo(
+        () => cn(UI_TOKENS.group, className),
         [className]
       )
 
@@ -71,7 +70,7 @@ const InputOTPGroup = React.memo(
         <div
           ref={ref}
           data-slot="input-otp-group"
-          className={mergedClassName}
+          className={resolvedClassName}
           {...props}
         />
       )
@@ -92,8 +91,8 @@ const InputOTPSlot = React.memo(
       const slot = context.slots?.[index]
       const { char: character, hasFakeCaret, isActive } = slot ?? {}
 
-      const mergedClassName = React.useMemo(
-        () => cn(STYLES.slot, className),
+      const resolvedClassName = React.useMemo(
+        () => cn(UI_TOKENS.slot, className),
         [className]
       )
 
@@ -102,13 +101,13 @@ const InputOTPSlot = React.memo(
           ref={ref}
           data-slot="input-otp-slot"
           data-active={isActive}
-          className={mergedClassName}
+          className={resolvedClassName}
           {...props}
         >
           {character}
           {hasFakeCaret && (
-            <div className={STYLES.caretContainer}>
-              <div className={STYLES.caretInner} />
+            <div className={UI_TOKENS.caretContainer}>
+              <div className={UI_TOKENS.caretInner} />
             </div>
           )}
         </div>
