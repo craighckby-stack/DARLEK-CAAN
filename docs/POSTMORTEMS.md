@@ -122,3 +122,11 @@ Line 3, Col 1017: Unclosed opening delimiter '('.
 Line 3, Col 969: Unclosed opening delimiter '{'.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_synthesizer.sh.
+
+### ❌ [2026-09-12] robust_parser.js `source: mutation-cycle`
+**Symptom:** Active Linter / Compiler Gate Rejection on LLM Output (Option B)
+**EVIDENCE (Machine-Copied Fact):**
+```
+[LINT REJECT: NO_UNVERIFIABLE_SELF_PRAISE] Detected unsubstantiated self-description in commentary: "Hardened". Output must adhere to neutral, factual documentation without marketing adjectives.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on robust_parser.js.
