@@ -565,7 +565,7 @@ export default function QuickActions({
                 })}
                 <select
                   aria-label="Variable debate cycles selector"
-                  value={PRESET_CYCLES.includes(cycleAmount as any) ? '' : cycleAmount}
+                  value={PRESET_CYCLES.includes(cycleAmount as (1 | 5 | 10)) ? '' : cycleAmount}
                   onChange={handleCycleSelectChange}
                   className="py-1 px-1 rounded text-[8px] font-mono bg-[#050000] border border-transparent hover:border-white/10 text-gray-400 cursor-pointer text-center outline-none"
                   style={{ width: '45px' }}
