@@ -4,18 +4,18 @@ import { safeReqJson } from '@/lib/safe-json';
 
 export const dynamic = 'force-dynamic';
 
-const GITHUB_API_BASE_URL = 'https://api.github.com';
-const GITHUB_API_VERSION_HEADER = 'application/vnd.github.v3+json';
+const GITHUB_API_BASE_URL: string = 'https://api.github.com';
+const GITHUB_API_VERSION_HEADER: string = 'application/vnd.github.v3+json';
 
-const MAX_OWNER_LENGTH = 100;
-const MAX_REPO_LENGTH = 100;
-const MAX_BRANCH_LENGTH = 255;
-const MAX_TOKEN_LENGTH = 500;
-const MAX_TREE_ITEMS = 50000;
+const MAX_OWNER_LENGTH: number = 100;
+const MAX_REPO_LENGTH: number = 100;
+const MAX_BRANCH_LENGTH: number = 255;
+const MAX_TOKEN_LENGTH: number = 500;
+const MAX_TREE_ITEMS: number = 50000;
 
-const SAFE_NAME_REGEX = /^[a-zA-Z0-9_.-]+$/;
+const SAFE_NAME_REGEX: RegExp = /^[a-zA-Z0-9_.-]+$/;
 
-const EXCLUDED_DIRECTORIES = Object.freeze([
+const EXCLUDED_DIRECTORIES: readonly string[] = Object.freeze([
   'node_modules/',
   '.git/',
   'dist/',
@@ -25,7 +25,7 @@ const EXCLUDED_DIRECTORIES = Object.freeze([
   '.svn/',
 ]);
 
-const EXCLUDED_FILES_SET = Object.freeze(
+const EXCLUDED_FILES_SET: ReadonlySet<string> = Object.freeze(
   new Set([
     '.env',
     '.env.local',
@@ -36,14 +36,14 @@ const EXCLUDED_FILES_SET = Object.freeze(
 );
 
 interface GitHubTreeItem {
-  path: string;
-  size: number;
-  type: string;
-  sha: string;
+  readonly path: string;
+  readonly size: number;
+  readonly type: string;
+  readonly sha: string;
 }
 
 interface GitHubTreeResponse {
-  tree?: GitHubTreeItem[];
+  readonly tree?: GitHubTreeItem[];
 }
 
 /**
@@ -54,7 +54,7 @@ function isValidBlobItem(item: GitHubTreeItem): boolean {
     return false;
   }
 
-  const { path } = item;
+  const { path }: GitHubTreeItem = item;
   if (path.length > 1024 || path.includes('..') || path.startsWith('/')) {
     return false;
   }
@@ -65,8 +65,8 @@ function isValidBlobItem(item: GitHubTreeItem): boolean {
     }
   }
 
-  const lastSlashIndex = path.lastIndexOf('/');
-  const fileName = lastSlashIndex === -1 ? path : path.substring(lastSlashIndex + 1);
+  const lastSlashIndex: number = path.lastIndexOf('/');
+  const fileName: string = lastSlashIndex === -1 ? path : path.substring(lastSlashIndex + 1);
 
   return !EXCLUDED_FILES_SET.has(fileName);
 }
@@ -83,7 +83,7 @@ export async function GET(): Promise<NextResponse> {
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const body = await safeReqJson<ScanRepoBody>(req, {} as ScanRepoBody);
+    const body: ScanRepoBody = await safeReqJson<ScanRepoBody>(req, {} as ScanRepoBody);
     const { token, owner, repo, branch } = body;
 
     if (!token || !owner || !repo || !branch) {
@@ -105,9 +105,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const repositoryTreeUrl = `${GITHUB_API_BASE_URL}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+    const repositoryTreeUrl: string = `${GITHUB_API_BASE_URL}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
 
-    const githubResponse = await fetch(repositoryTreeUrl, {
+    const githubResponse: Response = await fetch(repositoryTreeUrl, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: GITHUB_API_VERSION_HEADER,
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (!githubResponse.ok) {
-      const errorDetails = await githubResponse.text();
+      const errorDetails: string = await githubResponse.text();
       return NextResponse.json(
         { error: `GitHub API error: ${errorDetails}` },
         { status: githubResponse.status }
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const filteredFiles: GitHubFile[] = [];
-    let repoTotal = 0;
+    let repoTotal: number = 0;
 
     for (let i = 0; i < tree.length; i++) {
       const item = tree[i];
@@ -162,9 +162,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       total: filteredFiles.length,
       repoTotal,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Scan repo error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage: string = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
