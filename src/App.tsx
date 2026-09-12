@@ -1,3 +1,10 @@
+/**
+ * DARLEK CANN ARCHITECTURAL HEADER
+ * File: src/App.tsx
+ * Role: Core system component participating in autonomous cognitive evolution cycles.
+ * Architecture: Type-safe modular unit with resilient state interfaces.
+ */
+
 // EVOLUTION SIG: [GEN 14] [2026-07-17T09:36:00.000Z] - FIREBASE RAG BRAIN ENHANCEMENT.
 import React, { useState, useEffect, useRef } from 'react';
 import { 
