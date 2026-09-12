@@ -1,4 +1,3 @@
-@@@START
 # DALEK CAAN v3.1: Evolution Protocol
 
 > **SECURITY WARNING:** This protocol manages dynamic runtime DOM injection and filesystem modifications. Unauthorized access, improper configuration, or a lack of strict boundary enforcement can lead to severe memory corruption, DOM-based Cross-Site Scripting (XSS), or arbitrary code execution vulnerabilities. Always adhere to secure coding guidelines.
@@ -95,5 +94,3 @@ export function RenderDalekUI(): JSX.Element {
 }
 // DALEK_UI_END
 ```
-@@@SUMMARY
-Ensured strict type-safety and explicit language tag formatting across all code blocks within the Evolution Protocol documentation.
