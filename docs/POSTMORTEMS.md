@@ -349,3 +349,13 @@ Line 276, Col 3: Declaration or statement expected.
 Line 371, Col 1: Declaration or statement expected.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/AgiDosConsoleModal.tsx.
+
+### ❌ [2026-09-12] src/components/ChessBoard.tsx `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 28, Col 8: Property declaration is missing its type annotation.
+Line 40, Col 8: Property declaration is missing its type annotation.
+Line 257, Col 8: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/ChessBoard.tsx.
