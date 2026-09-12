@@ -201,3 +201,19 @@ Line 160, Col 19: Type annotations can only be used in TypeScript files.
 Line 65, Col 1: Unexpected closing delimiter '}' with no matching opening pair.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on firestore.rules.
+
+### ❌ [2026-09-12] fix_synthesizer.sh `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 25, Col 5: Unclosed single-quote string literal.
+Line 28, Col 1: Unclosed single-quote string literal.
+Line 34, Col 1179: Unclosed single-quote string literal.
+Line 34, Col 1018: Unclosed opening delimiter '{'.
+Line 34, Col 1017: Unclosed opening delimiter '('.
+Line 34, Col 969: Unclosed opening delimiter '{'.
+Line 27, Col 1018: Unclosed opening delimiter '{'.
+Line 27, Col 1017: Unclosed opening delimiter '('.
+Line 27, Col 969: Unclosed opening delimiter '{'.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_synthesizer.sh.
