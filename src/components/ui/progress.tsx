@@ -1,4 +1,3 @@
-
 /**
  * @file src/components/ui/progress.tsx
  * @description Accessible, highly performant progress bar component built on Radix UI primitives.
@@ -15,15 +14,21 @@ export interface ProgressProps extends React.ComponentPropsWithoutRef<typeof Pro
   max?: number
 }
 
-const ZERO_PERCENT_TRANSFORM: string = "translateX(-100%)"
+const ZERO_PERCENT_TRANSFORM = "translateX(-100%)"
 
 /**
  * Clamps and normalizes a progress value within valid boundaries with strict type guards.
  */
 function clampProgressValue(value: number | null | undefined, max: number): number {
-  if (value == null || Number.isNaN(value)) return 0
-  if (value <= 0) return 0
-  if (value >= max) return max
+  if (value == null || Number.isNaN(value)) {
+    return 0
+  }
+  if (value <= 0) {
+    return 0
+  }
+  if (value >= max) {
+    return max
+  }
   return value
 }
 
@@ -31,7 +36,9 @@ function clampProgressValue(value: number | null | undefined, max: number): numb
  * Computes the translateX percentage string for the progress indicator element.
  */
 function getIndicatorTransform(percentage: number): string {
-  if (percentage === 0) return ZERO_PERCENT_TRANSFORM
+  if (percentage === 0) {
+    return ZERO_PERCENT_TRANSFORM
+  }
   return `translateX(-${100 - percentage}%)`
 }
 
@@ -40,16 +47,16 @@ const Progress = React.memo(
     React.ElementRef<typeof ProgressPrimitive.Root>,
     ProgressProps
   >(({ className, value, max = 100, ...props }, ref) => {
-    const validMax: number = max > 0 ? max : 100
-    const clampedValue: number = clampProgressValue(value, validMax)
+    const validMax = max > 0 ? max : 100
+    const clampedValue = clampProgressValue(value, validMax)
     
-    const percentage: number = clampedValue === 0 
+    const percentage = clampedValue === 0 
       ? 0 
       : clampedValue === validMax 
         ? 100 
         : (clampedValue / validMax) * 100
 
-    const indicatorTransform: string = getIndicatorTransform(percentage)
+    const indicatorTransform = getIndicatorTransform(percentage)
 
     return (
       <ProgressPrimitive.Root
