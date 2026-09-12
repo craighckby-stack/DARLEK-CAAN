@@ -9,7 +9,7 @@ export interface StatusBarProps {
   readonly connectionStatus: ConnectionStatus;
   readonly repoConfig: RepoConfig;
   readonly evolutionCycle: number;
-  overallHealth: 'healthy' | 'warning' | 'critical';
+  readonly overallHealth: 'healthy' | 'warning' | 'critical';
   readonly sessionStart: Date | string | number;
   readonly userReposCount?: number;
 }
