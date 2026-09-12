@@ -9,7 +9,7 @@ export interface TableProps extends React.ComponentProps<"table"> {
 
 /**
  * Higher-order utility to create a memoized, ref-forwarded table primitive component
- * with hardened type safety and optimized runtime allocation.
+ * with explicit type safety and runtime allocation.
  */
 function createTableComponent<
   TElement extends HTMLElement,
@@ -31,7 +31,7 @@ function createTableComponent<
 }
 
 /**
- * Optimized, memoized table container and root component.
+ * Memoized table container and root component.
  */
 const Table = createTableComponent<HTMLTableElement, TableProps>(
   "Table",
@@ -53,7 +53,7 @@ const Table = createTableComponent<HTMLTableElement, TableProps>(
 )
 
 /**
- * Optimized, memoized table header section component.
+ * Memoized table header section component.
  */
 const TableHeader = createTableComponent<HTMLTableSectionElement, React.ComponentProps<"thead">>(
   "TableHeader",
@@ -70,7 +70,7 @@ const TableHeader = createTableComponent<HTMLTableSectionElement, React.Componen
 )
 
 /**
- * Optimized, memoized table body section component.
+ * Memoized table body section component.
  */
 const TableBody = createTableComponent<HTMLTableSectionElement, React.ComponentProps<"tbody">>(
   "TableBody",
@@ -87,7 +87,7 @@ const TableBody = createTableComponent<HTMLTableSectionElement, React.ComponentP
 )
 
 /**
- * Optimized, memoized table footer section component.
+ * Memoized table footer section component.
  */
 const TableFooter = createTableComponent<HTMLTableSectionElement, React.ComponentProps<"tfoot">>(
   "TableFooter",
@@ -107,7 +107,7 @@ const TableFooter = createTableComponent<HTMLTableSectionElement, React.Componen
 )
 
 /**
- * Optimized, memoized interactive table row component.
+ * Memoized interactive table row component.
  */
 const TableRow = createTableComponent<HTMLTableRowElement, React.ComponentProps<"tr">>(
   "TableRow",
@@ -127,7 +127,7 @@ const TableRow = createTableComponent<HTMLTableRowElement, React.ComponentProps<
 )
 
 /**
- * Optimized, memoized table column header cell component.
+ * Memoized table column header cell component.
  */
 const TableHead = createTableComponent<HTMLTableCellElement, React.ComponentProps<"th">>(
   "TableHead",
@@ -147,7 +147,7 @@ const TableHead = createTableComponent<HTMLTableCellElement, React.ComponentProp
 )
 
 /**
- * Optimized, memoized standard table data cell component.
+ * Memoized standard table data cell component.
  */
 const TableCell = createTableComponent<HTMLTableCellElement, React.ComponentProps<"td">>(
   "TableCell",
@@ -167,7 +167,7 @@ const TableCell = createTableComponent<HTMLTableCellElement, React.ComponentProp
 )
 
 /**
- * Optimized, memoized descriptive table caption component.
+ * Memoized descriptive table caption component.
  */
 const TableCaption = createTableComponent<HTMLTableCaptionElement, React.ComponentProps<"caption">>(
   "TableCaption",
