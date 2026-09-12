@@ -1,8 +1,7 @@
 /**
- * DARLEK CANN ARCHITECTURAL HEADER
  * File: fix_propose.js
  * Role: Core system component participating in autonomous cognitive evolution cycles.
- * Architecture: Type-safe modular unit with resilient state interfaces.
+ * Architecture: Modular unit with resilient state interfaces.
  * Optimized via EMG Core v49 Neural Code and Documentation Optimizer Engine.
  */
 
@@ -11,16 +10,10 @@
 const { readFileSync, writeFileSync } = require('node:fs');
 const { normalize } = require('node:path');
 
-/** @type {string} */
 const TARGET_ROUTE_PATH = normalize('src/app/api/evolution/propose/route.ts');
-
-/** @type {BufferEncoding} */
 const ENCODING_UTF8 = 'utf8';
-
-/** @type {RegExp} */
 const SANITIZE_PATTERN = /```json|```tsx|}\n```\n|\n```\nRisk/g;
 
-/** @type {Readonly<Record<string, string>>} */
 const MARKDOWN_ESCAPE_MAP = Object.freeze({
     '```json': '\\`\\`\\`json',
     '```tsx': '\\`\\`\\`tsx',
@@ -43,7 +36,6 @@ function sanitizeMarkdownCodeBlocks(sourceCode) {
 /**
  * Executes the file transformation routine for the target route.
  * @returns {void}
- * @throws {Error} Terminates process execution if file I/O operations fail.
  */
 function applyProposalRouteFix() {
     try {
@@ -52,7 +44,7 @@ function applyProposalRouteFix() {
         writeFileSync(TARGET_ROUTE_PATH, optimizedSourceCode, ENCODING_UTF8);
     } catch (caughtError) {
         const errorMessage = caughtError instanceof Error ? caughtError.message : String(caughtError);
-        process.stderr.write(`[DARLEK-CANN-ERROR] Failed to process proposal route fix: ${errorMessage}\n`);
+        process.stderr.write(`[ERROR] Failed to process proposal route fix: ${errorMessage}\n`);
         process.exitCode = 1;
         process.exit(1);
     }
