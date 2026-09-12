@@ -33,6 +33,15 @@ export interface AutoTestResponse {
   error?: string;
 }
 
+// Security Bounds Constants
+const MAX_CODE_LENGTH = 1_048_576; // 1MB limit for safety against DoS/memory expansion attacks
+const MAX_FILE_PATH_LENGTH = 512;
+
+function sanitizeStringInput(val: unknown, maxLength: number): string {
+  if (typeof val !== 'string') return '';
+  return val.slice(0, maxLength);
+}
+
 function runTypeScriptSyntaxCheck(code: string, _filePath: string): AutoTestResult[] {
   const results: AutoTestResult[] = [];
 
@@ -391,11 +400,13 @@ export async function GET(): Promise<NextResponse> {
 export async function POST(req: NextRequest): Promise<NextResponse<AutoTestResponse>> {
   try {
     const body = await safeReqJson(req, {} as Record<string, any>);
-    const originalCode = typeof body['originalCode'] === 'string' ? body['originalCode'] : '';
-    const proposedCode = typeof body['proposedCode'] === 'string' ? body['proposedCode'] : '';
-    const filePath = typeof body['filePath'] === 'string' ? body['filePath'] : '';
-    const repoFiles = Array.isArray(body['repoFiles']) ? body['repoFiles'] : [];
-    const newFiles = Array.isArray(body['newFiles']) ? body['newFiles'] : [];
+    
+    // Strict input bounds checking and sanitization to prevent injection and buffer/memory overflow anomalies
+    const originalCode = sanitizeStringInput(body['originalCode'], MAX_CODE_LENGTH);
+    const proposedCode = sanitizeStringInput(body['proposedCode'], MAX_CODE_LENGTH);
+    const filePath = sanitizeStringInput(body['filePath'], MAX_FILE_PATH_LENGTH);
+    const repoFiles = Array.isArray(body['repoFiles']) ? body['repoFiles'].slice(0, 500) : [];
+    const newFiles = Array.isArray(body['newFiles']) ? body['newFiles'].slice(0, 100) : [];
 
     const results: AutoTestResult[] = [];
 
