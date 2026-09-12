@@ -81,6 +81,18 @@ function createGitHubHeaders(token: string): Record<string, string> {
   };
 }
 
+/** Validates owner, repo, and branch identifiers against strict pattern matching to prevent injection */
+function validateGitHubIdentifiers(owner?: string, repo?: string, branch?: string): boolean {
+  if (!owner || !repo || !branch) return false;
+  const safeIdentifierRegex = /^[a-zA-Z0-9_.-]+$/;
+  const safeBranchRegex = /^[a-zA-Z0-9_./-]+$/;
+  return (
+    safeIdentifierRegex.test(owner) &&
+    safeIdentifierRegex.test(repo) &&
+    safeBranchRegex.test(branch)
+  );
+}
+
 async function ensureRepositoryExists(
   owner: string,
   repo: string,
@@ -185,7 +197,7 @@ function collectTreeItemsAndDetails(
     for (const customFile of files) {
       if (!customFile?.path || typeof customFile.content !== 'string') continue;
       
-      const cleanPath = customFile.path.replace(/^\/+|\/+$/g, '');
+      const cleanPath = customFile.path.replace(/^\/+|\/+$/g, '').replace(/\.\./g, '');
       const { sanitized: safeContent } = sanitizeContent(customFile.content);
 
       try {
@@ -255,6 +267,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!token || !owner || !repo || !branch) {
       return NextResponse.json(
         { error: 'All fields required: token, owner, repo, branch' },
+        { status: 400 }
+      );
+    }
+
+    if (!validateGitHubIdentifiers(owner, repo, branch)) {
+      return NextResponse.json(
+        { error: 'Invalid character sequence detected in repository parameters' },
         { status: 400 }
       );
     }
