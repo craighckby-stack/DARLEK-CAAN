@@ -1,15 +1,15 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "test-greedy.js"
- * Optimization Goal: COMPREHENSIVE - Sovereign overhaul for performance, memory efficiency, and type safety.
+ * Optimization Goal: SECURITY - Defensive input validation, bounds checking, and safe processing.
  */
 
 /**
- * Validates and extracts JSON object blocks from mixed raw text streams with strict error handling.
+ * Validates and extracts JSON object blocks from mixed raw text streams with strict error handling and bounds checks.
  * 
  * @param {string} inputSource - The raw text payload containing embedded JSON and code.
- * @returns {{ match: string; replaced: string }} The extracted JSON substring and remaining code.
- * @throws {TypeError} If inputSource is not a valid string.
+ * @returns {{ match: string; replaced: string; a: number }} The extracted JSON substring, remaining code, and metadata.
+ * @throws {TypeError} If inputSource is not a valid string or exceeds safe length bounds.
  * @throws {Error} If no valid object pattern can be matched.
  */
 export function myFunc(inputSource = `{
@@ -22,8 +22,14 @@ export function myFunc() {
     throw new TypeError(`[EMG-ERR-400]: Expected string input, received ${typeof inputSource}`);
   }
 
-  // Optimized regex matching with pre-compiled pattern for better memory and execution performance
-  const jsonPattern = /\{[\s\S]*\}/;
+  // Defensive bounds check to prevent excessive memory consumption and regex denial of service (ReDoS)
+  const MAX_INPUT_LENGTH = 1048576; // 1MB limit
+  if (inputSource.length > MAX_INPUT_LENGTH) {
+    throw new TypeError(`[EMG-ERR-401]: Input size exceeds safe execution bounds (${inputSource.length} > ${MAX_INPUT_LENGTH})`);
+  }
+
+  // Safe bounded regex matching to prevent catastrophic backtracking
+  const jsonPattern = /\{[\s\S]{0,1048576}?\}/;
   const jsonMatch = inputSource.match(jsonPattern);
 
   if (!jsonMatch || typeof jsonMatch[0] !== 'string') {
@@ -40,7 +46,7 @@ export function myFunc() {
   };
 }
 
-// Execution block separated for deterministic runtime evaluation
+// Execution block separated for deterministic runtime evaluation with error isolation
 try {
   const executionResult = myFunc();
   console.log("MATCH:", executionResult.match);
