@@ -29,6 +29,20 @@ const GITHUB_API_VERSION_HEADER = 'application/vnd.github.v3+json';
 
 const HEADERS_CACHE = new Map<string, Record<string, string>>();
 
+const ALPHA_NUMERIC_HYPHEN_UNDERSCORE_REGEX = /^[a-zA-Z0-9\-_]+$/;
+
+function validateOwnerOrRepo(value: string): boolean {
+  return typeof value === 'string' && value.length > 0 && value.length <= 100 && ALPHA_NUMERIC_HYPHEN_UNDERSCORE_REGEX.test(value);
+}
+
+function validateBranch(value: string): boolean {
+  return typeof value === 'string' && value.length > 0 && value.length <= 255;
+}
+
+function validateToken(value: string): boolean {
+  return typeof value === 'string' && value.length > 0 && value.length <= 500;
+}
+
 function buildGitHubHeaders(token: string, includeJsonContentType = false): Record<string, string> {
   const cacheKey = `${token}_${includeJsonContentType ? 1 : 0}`;
   let cached = HEADERS_CACHE.get(cacheKey);
@@ -46,8 +60,11 @@ function buildGitHubHeaders(token: string, includeJsonContentType = false): Reco
 }
 
 function sanitizePath(filePath: string): string {
+  if (typeof filePath !== 'string') {
+    return '';
+  }
   const segments = filePath.split('/');
-  const filteredSegments = segments.filter(segment => segment.length > 0);
+  const filteredSegments = segments.filter(segment => segment.length > 0 && segment !== '.' && segment !== '..');
   
   if (filteredSegments.length === 0) {
     return '';
@@ -65,6 +82,9 @@ async function getFileSha(
 ): Promise<string | null> {
   try {
     const encodedPath = sanitizePath(filePath);
+    if (!encodedPath) {
+      return null;
+    }
     const endpoint = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`;
     
     const response = await fetch(endpoint, {
@@ -77,7 +97,7 @@ async function getFileSha(
     }
 
     const data = (await response.json()) as GitHubContentResponse;
-    return data.sha ?? null;
+    return typeof data?.sha === 'string' ? data.sha : null;
   } catch {
     return null;
   }
@@ -123,6 +143,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { error: 'All fields are required: token, owner, repo, branch, path.' },
         { status: 400 }
       );
+    }
+
+    if (!validateToken(token)) {
+      return NextResponse.json({ error: 'Invalid token format.' }, { status: 400 });
+    }
+
+    if (!validateOwnerOrRepo(owner)) {
+      return NextResponse.json({ error: 'Invalid owner format.' }, { status: 400 });
+    }
+
+    if (!validateOwnerOrRepo(repo)) {
+      return NextResponse.json({ error: 'Invalid repo format.' }, { status: 400 });
+    }
+
+    if (!validateBranch(branch)) {
+      return NextResponse.json({ error: 'Invalid branch format.' }, { status: 400 });
     }
 
     const resolvedSha = sha ?? (await getFileSha(token, owner, repo, branch, filePath));
