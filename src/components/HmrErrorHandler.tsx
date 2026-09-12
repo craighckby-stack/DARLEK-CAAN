@@ -1,10 +1,9 @@
-'use type-safe';
 'use client';
 
 import { useEffect, type JSX } from 'react';
 
 /**
- * Immutable tuple of patterns used to identify noisy HMR and chunk loading errors.
+ * Immutable collection of string tokens matching noisy HMR and chunk loading failures.
  */
 const SUPPRESSED_MESSAGE_PATTERNS = [
   'hmr-client',
@@ -15,12 +14,12 @@ const SUPPRESSED_MESSAGE_PATTERNS = [
 ] as const;
 
 /**
- * Optimized lookup Set for explicit error class names to suppress.
+ * Set of exception class names designated for silent interception.
  */
 const SUPPRESSED_ERROR_NAMES = new Set<string>(['ChunkLoadError']);
 
 /**
- * Structural interface representing candidate error objects safely.
+ * Candidate structure representing generic error objects safely.
  */
 interface ErrorObjectLike {
   readonly message?: unknown;
@@ -28,7 +27,7 @@ interface ErrorObjectLike {
 }
 
 /**
- * Normalized error information payload.
+ * Normalized representation of error attributes.
  */
 interface ErrorInfo {
   readonly message?: string;
@@ -36,8 +35,7 @@ interface ErrorInfo {
 }
 
 /**
- * Extracts error details from an unknown rejection reason with strict type narrowing
- * and optimal memory efficiency.
+ * Safely extracts textual attributes from an unknown rejection source.
  */
 function extractErrorInfo(reason: unknown): ErrorInfo {
   if (typeof reason === 'string') {
@@ -56,8 +54,7 @@ function extractErrorInfo(reason: unknown): ErrorInfo {
 }
 
 /**
- * Evaluates whether an unhandled promise rejection reason matches suppression criteria
- * utilizing high-performance iteration bounds and O(1) set lookups.
+ * Evaluates whether an unhandled promise rejection matches defined suppression criteria.
  */
 function shouldSuppressError(reason: unknown): boolean {
   if (reason == null) {
@@ -71,9 +68,8 @@ function shouldSuppressError(reason: unknown): boolean {
   }
 
   if (message !== undefined) {
-    const patterns = SUPPRESSED_MESSAGE_PATTERNS;
-    for (let i = 0, len = patterns.length; i < len; i++) {
-      if (message.includes(patterns[i]!)) {
+    for (const pattern of SUPPRESSED_MESSAGE_PATTERNS) {
+      if (message.includes(pattern)) {
         return true;
       }
     }
@@ -83,8 +79,7 @@ function shouldSuppressError(reason: unknown): boolean {
 }
 
 /**
- * Client-side utility that safely intercepts and suppresses noisy HMR and chunk loading rejections
- * with zero-cost memory allocations and passive event listeners.
+ * Intercepts and manages unhandled promise rejections originating from HMR or chunk loader events.
  */
 export default function HmrErrorHandler(): JSX.Element | null {
   useEffect(() => {
