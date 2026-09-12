@@ -2,7 +2,7 @@
  * DARLEK CANN ARCHITECTURAL HEADER
  * File: fix_prompt2.js
  * Role: Core system component participating in autonomous cognitive evolution cycles.
- * Architecture: Type-safe modular unit with resilient state interfaces.
+ * Architecture: Modular unit with resilient state verification.
  * Optimized by: EMG Core v49 Neural Code and Documentation Optimizer Engine.
  */
 
@@ -61,10 +61,10 @@ function getValidatedSecurePath(relativePath) {
  * @throws {Error} If file constraints, size limits, or I/O checks fail.
  */
 function readTargetFile(filePath) {
-    let fd;
+    let fileDescriptor;
     try {
-        fd = fs.openSync(filePath, 'r');
-        const stats = fs.fstatSync(fd);
+        fileDescriptor = fs.openSync(filePath, 'r');
+        const stats = fs.fstatSync(fileDescriptor);
 
         if (!stats.isFile()) {
             throw new Error('SECURITY_VIOLATION: Target path does not resolve to a standard file.');
@@ -74,18 +74,17 @@ function readTargetFile(filePath) {
             throw new Error('SECURITY_VIOLATION: File size exceeds safety bounds limit.');
         }
 
-        // Handle empty files safely without allocating buffers
         if (stats.size === 0) {
             return '';
         }
 
         const buffer = Buffer.allocUnsafe(stats.size);
-        fs.readSync(fd, buffer, 0, stats.size, 0);
+        fs.readSync(fileDescriptor, buffer, 0, stats.size, 0);
         return buffer.toString('utf8');
     } finally {
-        if (fd !== undefined) {
+        if (fileDescriptor !== undefined) {
             try {
-                fs.closeSync(fd);
+                fs.closeSync(fileDescriptor);
             } catch {
                 // Suppress secondary cleanup exceptions during error propagation
             }
