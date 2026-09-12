@@ -1,5 +1,5 @@
 /**
- * DARLEK CANN ARCHITECTURAL SERVICE
+ * DARLEK CAAN ARCHITECTURAL SERVICE
  * File: src/lib/githubLogSync.ts
  * Role: Full-time background synchronization daemon that automatically persists
  *       all Firebase, RAG brain, system telemetry, and learning logs to GitHub in a
@@ -52,9 +52,9 @@ function generatePostmortemsMarkdown(logs: readonly LearningLog[]): string {
  */
 function generateTelemetryLogText(dosLines: readonly { time: string; addr: string; tag: string; message: string }[]): string {
   const timestamp = new Date().toISOString();
-  let text = `======================================================================\n`;
+  let text = '======================================================================\n';
   text += `DARLEK CAAN CONTINUOUS TELEMETRY LOG BUFFER [SYNCED: ${timestamp}]\n`;
-  text += `======================================================================\n\n`;
+  text += '======================================================================\n\n';
 
   dosLines.forEach((line) => {
     text += `[${line.time}] [${line.addr}] [${line.tag.padEnd(10, ' ')}] ${line.message}\n`;
@@ -209,13 +209,14 @@ export async function syncAllLogsToGitHub(configOverride?: {
       commitSha: data.commitSha,
       timestamp: lastSyncTimestamp,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
     console.warn('[GitHub Log Sync] Log sync error:', err);
     return {
       success: false,
       syncedFiles: [],
       totalLogsCount: 0,
-      error: err?.message || String(err),
+      error: errorMessage,
       timestamp: new Date().toISOString(),
     };
   } finally {
@@ -227,7 +228,7 @@ export async function syncAllLogsToGitHub(configOverride?: {
  * Schedules a debounced background sync so rapid log additions batch efficiently
  * and persistently sync to GitHub without spamming the API.
  */
-export function scheduleGitHubLogSync(debounceMs = 4000) {
+export function scheduleGitHubLogSync(debounceMs = 4000): void {
   if (syncTimeout) {
     clearTimeout(syncTimeout);
   }
