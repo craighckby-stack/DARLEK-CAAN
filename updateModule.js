@@ -2,7 +2,6 @@ import { readFileSync, writeFileSync } from 'fs';
 
 const TARGET_FILE = 'src/App.tsx';
 
-// Cached string contents to prevent duplicate allocations during startup
 const TARGET_CONTENT = `            {/* Dalek insentient Speech bubble area */}
             <div className="relative bg-black/80 rounded-xl border border-white/[0.06] p-4 font-mono text-xs flex flex-col gap-3 min-h-[140px] text-justify">
               <AnimatePresence mode="wait">
@@ -136,13 +135,17 @@ const REPLACEMENT_CONTENT = `            {/* Dynamic AI Speech Module */}
               </AnimatePresence>
             </div>`;
 
-// Optimized execution pipeline using destructuring imports and safe early validation
 const executePatch = () => {
-  let data = readFileSync(TARGET_FILE, 'utf8');
-  
-  if (data.includes(TARGET_CONTENT.substring(0, 100))) {
-    data = data.replace(TARGET_CONTENT, REPLACEMENT_CONTENT);
-    writeFileSync(TARGET_FILE, data, 'utf8');
+  try {
+    const data = readFileSync(TARGET_FILE, 'utf8');
+    const prefix = TARGET_CONTENT.substring(0, 100);
+    
+    if (typeof data === 'string' && data.includes(prefix)) {
+      const updatedData = data.replace(TARGET_CONTENT, REPLACEMENT_CONTENT);
+      writeFileSync(TARGET_FILE, updatedData, 'utf8');
+    }
+  } catch (err) {
+    console.error('Failed to execute patch safely:', err);
   }
 };
 
