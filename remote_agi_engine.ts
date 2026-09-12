@@ -1,3 +1,10 @@
+/**
+ * DARLEK CANN ARCHITECTURAL HEADER
+ * File: remote_agi_engine.ts
+ * Role: Core system component participating in autonomous cognitive evolution cycles.
+ * Architecture: Type-safe modular unit with resilient state interfaces.
+ */
+
 // =============================================================================
 // agi-engine.ts — Fully Typed AGI Core & Alignment V3 Engine
 // =============================================================================
