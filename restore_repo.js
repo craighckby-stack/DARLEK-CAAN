@@ -30,7 +30,7 @@ const REPOSITORY_CONFIG = Object.freeze({
 });
 
 /**
- * Performs an optimized HTTPS GET request with pre-allocated buffer sizing and strict error boundaries.
+ * Performs an HTTPS GET request with pre-allocated buffer sizing and strict error boundaries.
  * @param {string} url - Target URL.
  * @returns {Promise<string>} Response body payload.
  */
