@@ -7,32 +7,24 @@
 'use strict';
 
 /**
- * @typedef {Object} EvolutionPayload
- * @property {string} fileContent
- * @property {string} filePath
- * @property {Record<string, string>} apiKeys
- * @property {string} sessionId
- */
-
-/**
  * Executes an evolution proposal request to the local API endpoint.
  * 
  * @async
  * @function proposeEvolution
- * @param {Partial<EvolutionPayload>} [overrides={}] - Optional overrides for the payload.
- * @returns {Promise<any>} The parsed JSON response from the server.
+ * @param {Object} [overrides={}] - Optional overrides for the payload.
+ * @returns {Promise<Object>} The parsed JSON response from the server.
  * @throws {Error} Throws an error if the network request fails or returns a non-2xx status code.
  */
 async function proposeEvolution(overrides = {}) {
   const endpoint = 'http://localhost:3000/api/evolution/propose';
   const timeoutMs = 10000;
 
-  const defaultPayload = {
+  const defaultPayload = Object.freeze({
     fileContent: "/**\n * Header\n */\nexport const hello = 'world';",
     filePath: "src/test.ts",
     apiKeys: Object.freeze({}),
     sessionId: "test-session"
-  };
+  });
 
   const payload = { ...defaultPayload, ...overrides };
 
