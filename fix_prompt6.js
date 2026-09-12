@@ -101,7 +101,7 @@ function applyPromptPatch(sourceCode) {
 }
 
 /**
- * Main execution routine for file transformation with hardened error handling.
+ * Main execution routine for file transformation with robust error handling.
  */
 function main() {
   const TARGET_FILE_RELATIVE = 'src/app/api/evolution/propose/route.ts';
