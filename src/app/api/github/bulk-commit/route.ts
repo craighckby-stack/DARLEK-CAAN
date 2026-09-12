@@ -54,7 +54,7 @@ const GITHUB_API_BASE = 'https://api.github.com';
 const projectRoot = resolve(process.cwd());
 
 /**
- * Creates standard HTTP headers for GitHub API communication.
+ * Creates standard HTTP headers for GitHub API communication with security constraints.
  */
 function createGitHubHeaders(token: string): Record<string, string> {
   return {
@@ -62,6 +62,18 @@ function createGitHubHeaders(token: string): Record<string, string> {
     Accept: 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
   };
+}
+
+/**
+ * Validates that owner, repo, and branch names contain only allowed characters to prevent injection.
+ */
+function validateGitIdentifiers(owner: string, repo: string, branch: string): boolean {
+  const safeIdentifierRegex = /^[a-zA-Z0-9_.-]+$/;
+  return (
+    safeIdentifierRegex.test(owner) &&
+    safeIdentifierRegex.test(repo) &&
+    safeIdentifierRegex.test(branch)
+  );
 }
 
 /**
@@ -75,7 +87,7 @@ function sanitizeCommittableFiles(files: CommittableFile[]): CommittableFile[] {
 
     const { sanitized, findings } = sanitizeContent(file.content);
     if (findings.length > 0) {
-      console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${file.path.replace(/error/gi, 'err')} before bulk commit.`);
+      console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in safe file payload before bulk commit.`);
     }
 
     return {
@@ -165,7 +177,7 @@ async function resolveBranchCommitSha(
     const errorText = await refResponse.text();
     return {
       errorResponse: NextResponse.json(
-        { error: `Could not fetch or create branch ref (${branch}): ${errorText}` },
+        { error: `Could not fetch or create branch ref: ${errorText}` },
         { status: refResponse.status }
       ),
     };
@@ -224,7 +236,7 @@ async function resolveBaseTreeSha(
 }
 
 /**
- * Writes committable files to local disk asynchronously with error shielding.
+ * Writes committable files to local disk asynchronously with strict path bounds checking.
  */
 async function writeFilesToLocalDisk(files: CommittableFile[]): Promise<void> {
   try {
@@ -234,7 +246,7 @@ async function writeFilesToLocalDisk(files: CommittableFile[]): Promise<void> {
       const cleanPath = file.path.replace(/^\/+|\/+$/g, '');
       const localFilePath = resolve(projectRoot, cleanPath);
       
-      if (localFilePath.startsWith(projectRoot)) {
+      if (localFilePath.startsWith(projectRoot) && !localFilePath.includes('..')) {
         const parentDir = dirname(localFilePath);
         await fs.mkdir(parentDir, { recursive: true });
         await fs.writeFile(localFilePath, file.content, 'utf-8');
@@ -260,6 +272,11 @@ async function generateTreeItems(
 
   try {
     const treeItemsPromises = files.map(async (file): Promise<GitTreeItem> => {
+      const sanitizedPath = file.path.replace(/^\/+|\/+$/g, '');
+      if (sanitizedPath.includes('..')) {
+        throw new Error('Invalid file path traversal detected.');
+      }
+
       const blobResponse = await fetch(blobUrl, {
         method: 'POST',
         headers,
@@ -271,16 +288,16 @@ async function generateTreeItems(
 
       if (!blobResponse.ok) {
         const errorMsg = await blobResponse.text();
-        throw new Error(`Failed to create git blob for file ${file.path}: ${errorMsg}`);
+        throw new Error(`Failed to create git blob: ${errorMsg}`);
       }
 
       const blobData = (await blobResponse.json()) as GitHubBlobResponse;
       if (!blobData.sha) {
-        throw new Error(`Git blob API did not return SHA for file ${file.path}`);
+        throw new Error('Git blob API did not return SHA for file.');
       }
 
       return {
-        path: file.path.replace(/^\/+|\/+$/g, ''),
+        path: sanitizedPath,
         mode: '100644',
         type: 'blob',
         sha: blobData.sha,
@@ -309,6 +326,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!token || !owner || !repo || !branch) {
       return NextResponse.json(
         { error: 'All connection fields are required: token, owner, repo, branch.' },
+        { status: 400 }
+      );
+    }
+
+    if (!validateGitIdentifiers(owner, repo, branch)) {
+      return NextResponse.json(
+        { error: 'Invalid repository, owner, or branch format detected.' },
         { status: 400 }
       );
     }
