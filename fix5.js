@@ -26,7 +26,7 @@ const CONFIG = Object.freeze({
   REPLACEMENT_STRING: 'siphonedCodeContext}\\`\\`\\`${fileContent',
 });
 
-// Cache resolved base directory to minimize path allocation overhead
+// Cache resolved base directory and target path to minimize path allocation overhead
 const BASE_DIR = path.resolve(process.cwd());
 const TARGET_PATH = path.resolve(BASE_DIR, CONFIG.RELATIVE_TARGET_PATH);
 
