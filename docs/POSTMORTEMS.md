@@ -785,3 +785,11 @@ Line 482, Col 8: Property declaration is missing its type annotation.
 Line 68, Col 16: Type alias declaration is missing a type definition after '='.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/types/omega-core.d.ts.
+
+### ❌ [2026-09-12] firestore.rules `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 65, Col 1: Unexpected closing delimiter '}' with no matching opening pair.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on firestore.rules.
