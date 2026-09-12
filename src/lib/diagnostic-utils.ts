@@ -1,13 +1,13 @@
 /**
  * EMG Core v49 Neural Code and Documentation Optimizer Engine
  * File Path: "src/lib/diagnostic-utils.ts"
- * Optimized for peak performance, extreme type-safety, zero-allocation caching, and robust defensive execution.
+ * Optimized for readability, modern TypeScript idioms, and robust defensive execution.
  */
 
 const EVOLUTION_LOG_PREFIX = '[DARLEK-CANN-EVOLUTION]' as const;
 const INVALID_MESSAGE_WARNING = `${EVOLUTION_LOG_PREFIX}: Invalid message type passed to logEvolution` as const;
 
-// Global pre-compiled regex instance for zero-reallocation parsing performance under extreme load
+// Global pre-compiled regex instance for zero-reallocation parsing performance
 const SINGLE_LINE_COMMENT_PATTERN: RegExp = /\/\/[^\r\n]*(\r?\n|$)/g;
 
 /**
