@@ -1,6 +1,6 @@
 /**
  * @file test-pdf.js
- * @version 4.3.0
+ * @version 4.4.0
  * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
  * @description Diagnostic module for validating PDF parsing capabilities and executing test extractions with enhanced type safety and robust memory efficiency.
  */
