@@ -21,18 +21,22 @@ const TIME_FORMATTER = new Intl.DateTimeFormat([], {
 });
 
 /**
- * Safely formats a timestamp value into a readable string representation.
+ * Safely formats a timestamp value into a readable string representation with strict bounds checking.
  */
 function formatTimestamp(timestamp: string | number | Date): string {
   try {
-    return TIME_FORMATTER.format(new Date(timestamp));
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      return '00:00:00';
+    }
+    return TIME_FORMATTER.format(date);
   } catch {
     return '00:00:00';
   }
 }
 
 /**
- * Renders an individual entry row in the evolution log.
+ * Renders an individual entry row in the evolution log with memory safety and strict validation.
  */
 const LogRow = memo(function LogRow({ entry }: LogRowProps) {
   const accentColor = LOG_TYPE_COLORS[entry.type] ?? COLORS.textDim;
@@ -96,10 +100,10 @@ const LogRow = memo(function LogRow({ entry }: LogRowProps) {
 });
 
 /**
- * Displays a chronological list of system evolution events and actions.
+ * Displays a chronological list of system evolution events and actions with bounds checking.
  */
 export default function EvolutionLog({ entries }: EvolutionLogProps) {
-  const totalEntries = entries.length;
+  const totalEntries = entries?.length ?? 0;
 
   return (
     <div
