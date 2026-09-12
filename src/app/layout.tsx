@@ -51,7 +51,7 @@ export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
                 translate.selectLanguageTag.show = false;
                 try {
                   var savedLang = localStorage.getItem('darlek_cann_language');
-                  if (savedLang && savedLang !== 'english') {
+                  if (savedLang && typeof savedLang === 'string' && savedLang.length < 32 && savedLang !== 'english') {
                     translate.to = savedLang;
                   }
                 } catch (e) {}
