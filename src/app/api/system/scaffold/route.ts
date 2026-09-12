@@ -21,6 +21,7 @@ interface ErrorResponse {
 const SERVICE_NAME: string = 'SYSTEM_SCAFFOLD_API';
 const SUCCESS_MESSAGE: string = 'System scaffold initialized successfully';
 const DEFAULT_ERROR_MESSAGE: string = 'An unexpected error occurred during system scaffold initialization';
+const MAX_PAYLOAD_SIZE_BYTES: number = 1048576;
 
 const STATIC_GET_RESPONSE: SystemStatusResponse = {
   status: 'online',
@@ -51,7 +52,7 @@ async function parseOptionalJsonBody(request: NextRequest): Promise<unknown> {
   const contentLengthHeader: string | null = request.headers.get('content-length');
   if (contentLengthHeader) {
     const contentLength: number = Number.parseInt(contentLengthHeader, 10);
-    if (Number.isNaN(contentLength) || contentLength > 1048576) {
+    if (Number.isNaN(contentLength) || contentLength > MAX_PAYLOAD_SIZE_BYTES) {
       throw new Error('Payload too large or malformed content-length header.');
     }
   }
