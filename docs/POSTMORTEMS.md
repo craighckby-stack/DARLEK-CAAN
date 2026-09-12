@@ -323,3 +323,11 @@ Line 18, Col 12: Unclosed single-quote string literal.
 Line 36, Col 1: Unclosed single-quote string literal.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_synthesizer.sh.
+
+### ❌ [2026-09-12] src/app/api/brain/route.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 207, Col 8: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/brain/route.ts.
