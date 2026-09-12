@@ -13,7 +13,6 @@ interface LoadingScreenProperties {
  * during client-side hydration and dynamic bundle resolution.
  */
 const LoadingScreen = memo(function LoadingScreen({ message }: LoadingScreenProperties): JSX.Element {
-  // Input sanitization / safe string bounds checking on render boundary
   const safeMessage: string = typeof message === 'string' ? message.slice(0, 256) : '';
 
   return (
@@ -47,7 +46,7 @@ const DynamicMainPage = dynamic(
 export default function PageClient(): JSX.Element {
   const [hasMounted, setHasMounted] = useState<boolean>(false);
 
-  useEffect(() => {
+  useEffect((): void => {
     setHasMounted(true);
   }, []);
 
