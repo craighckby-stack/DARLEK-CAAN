@@ -10,22 +10,26 @@ export interface AstSymbol {
   line?: number;
 }
 
+export interface AstDiffViolation {
+  code: 'BRANDING_INJECTION' | 'AST_SYMBOL_DROPPED' | 'AST_STRUCTURAL_DRIFT' | 'UNRESOLVED_AST_IMPORT';
+  message: string;
+  severity: 'high' | 'medium' | 'low';
+}
+
+export interface AstSymbolMap {
+  originalCount: number;
+  proposedCount: number;
+  retainedCount: number;
+  missingSymbols: AstSymbol[];
+}
+
 export interface AstDiffResult {
   passed: boolean;
   astScore: number;
-  symbolMap: {
-    originalCount: number;
-    proposedCount: number;
-    retainedCount: number;
-    missingSymbols: AstSymbol[];
-  };
+  symbolMap: AstSymbolMap;
   brandingInjections: string[];
   structuralDriftRatio: number;
-  violations: Array<{
-    code: 'BRANDING_INJECTION' | 'AST_SYMBOL_DROPPED' | 'AST_STRUCTURAL_DRIFT' | 'UNRESOLVED_AST_IMPORT';
-    message: string;
-    severity: 'high' | 'medium' | 'low';
-  }>;
+  violations: AstDiffViolation[];
 }
 
 const SYSTEM_PERSONA_BRANDING_TERMS: readonly string[] = [
@@ -64,18 +68,20 @@ const tokenCache = new Map<string, string[]>();
 
 function getCachedSymbols(code: string, isPython: boolean): AstSymbol[] {
   const cacheKey = (isPython ? 'py:' : 'ts:') + code;
-  let cached = astSymbolsCache.get(cacheKey);
-  if (cached) return cached;
+  const cachedSymbols = astSymbolsCache.get(cacheKey);
+  if (cachedSymbols !== undefined) {
+    return cachedSymbols;
+  }
 
-  cached = parseAstSymbolsUncached(code, isPython);
+  const freshSymbols = parseAstSymbolsUncached(code, isPython);
   if (astSymbolsCache.size >= AST_CACHE_MAX_SIZE) {
-    const firstKey = astSymbolsCache.keys().next().value;
-    if (firstKey !== undefined) {
-      astSymbolsCache.delete(firstKey);
+    const oldestKey = astSymbolsCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      astSymbolsCache.delete(oldestKey);
     }
   }
-  astSymbolsCache.set(cacheKey, cached);
-  return cached;
+  astSymbolsCache.set(cacheKey, freshSymbols);
+  return freshSymbols;
 }
 
 function parseAstSymbolsUncached(code: string, isPython: boolean): AstSymbol[] {
@@ -123,6 +129,7 @@ function parseAstSymbolsUncached(code: string, isPython: boolean): AstSymbol[] {
 
     for (let i = 0, len = TS_FN_REGEXES.length; i < len; i++) {
       const regex = TS_FN_REGEXES[i];
+      if (!regex) continue;
       regex.lastIndex = 0;
       while ((match = regex.exec(code)) !== null) {
         const name = match[1];
@@ -141,13 +148,17 @@ function parseAstSymbolsUncached(code: string, isPython: boolean): AstSymbol[] {
  * Extracts top-level AST symbols (functions, classes, interfaces, types) with maximized efficiency via caching.
  */
 export function parseAstSymbols(code: string, isPython: boolean): AstSymbol[] {
-  if (typeof code !== 'string') return [];
+  if (typeof code !== 'string') {
+    return [];
+  }
   return getCachedSymbols(code, isPython);
 }
 
 function getCachedTokens(src: string): string[] {
-  let cached = tokenCache.get(src);
-  if (cached) return cached;
+  const cachedTokens = tokenCache.get(src);
+  if (cachedTokens !== undefined) {
+    return cachedTokens;
+  }
 
   const normalized = src
     .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
@@ -155,41 +166,46 @@ function getCachedTokens(src: string): string[] {
     .replace(/["'].*?["']/g, 'STR')
     .replace(/\b\d+\b/g, 'NUM');
 
-  cached = normalized.split(/\s+/).filter((t) => t.length > 0);
+  const tokens = normalized.split(/\s+/).filter((token: string) => token.length > 0);
 
   if (tokenCache.size >= AST_CACHE_MAX_SIZE) {
-    const firstKey = tokenCache.keys().next().value;
-    if (firstKey !== undefined) {
-      tokenCache.delete(firstKey);
+    const oldestKey = tokenCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      tokenCache.delete(oldestKey);
     }
   }
-  tokenCache.set(src, cached);
-  return cached;
+  tokenCache.set(src, tokens);
+  return tokens;
 }
 
 /**
  * Calculates token/syntax AST structural drift ratio using normalized token n-grams and memory-efficient transforms.
  */
 export function calculateAstDriftRatio(originalCode: string, proposedCode: string): number {
-  if (typeof originalCode !== 'string' || typeof proposedCode !== 'string') return 0;
+  if (typeof originalCode !== 'string' || typeof proposedCode !== 'string') {
+    return 0;
+  }
 
   const origTokens = getCachedTokens(originalCode);
   const propTokens = getCachedTokens(proposedCode);
 
   const origLen = origTokens.length;
   const propLen = propTokens.length;
-  if (origLen === 0) return 0;
+  if (origLen === 0) {
+    return 0;
+  }
 
   const origSet = new Set(origTokens);
-  let matched = 0;
+  let matchedCount = 0;
 
   for (let i = 0; i < propLen; i++) {
-    if (origSet.has(propTokens[i])) {
-      matched++;
+    const token = propTokens[i];
+    if (token !== undefined && origSet.has(token)) {
+      matchedCount++;
     }
   }
 
-  const overlap = propLen > 0 ? matched / Math.max(origLen, propLen) : 0;
+  const overlap = propLen > 0 ? matchedCount / Math.max(origLen, propLen) : 0;
   return Math.max(0, Math.min(1, 1 - overlap));
 }
 
@@ -197,22 +213,24 @@ export function calculateAstDriftRatio(originalCode: string, proposedCode: strin
  * Checks if system persona/branding terms were injected into code where they didn't exist in original.
  */
 export function detectBrandingInjection(originalCode: string, proposedCode: string): string[] {
-  if (typeof originalCode !== 'string' || typeof proposedCode !== 'string') return [];
+  if (typeof originalCode !== 'string' || typeof proposedCode !== 'string') {
+    return [];
+  }
 
   const origLower = originalCode.toLowerCase();
   const propLower = proposedCode.toLowerCase();
 
-  const injected: string[] = [];
+  const injectedTerms: string[] = [];
   const len = SYSTEM_PERSONA_BRANDING_TERMS.length;
 
   for (let i = 0; i < len; i++) {
     const term = SYSTEM_PERSONA_BRANDING_TERMS[i];
-    if (!origLower.includes(term) && propLower.includes(term)) {
-      injected.push(term);
+    if (term !== undefined && !origLower.includes(term) && propLower.includes(term)) {
+      injectedTerms.push(term);
     }
   }
 
-  return injected;
+  return injectedTerms;
 }
 
 /**
@@ -228,21 +246,24 @@ export function runAstDiffGate(
   const safeFilePath = typeof filePath === 'string' ? filePath : '';
 
   const isPython = safeFilePath.endsWith('.py');
-  const violations: AstDiffResult['violations'] = [];
+  const violations: AstDiffViolation[] = [];
   let astScore = 100;
 
   const origSymbols = parseAstSymbols(safeOriginal, isPython);
   const propSymbols = parseAstSymbols(safeProposed, isPython);
 
-  const propSymbolNames = new Set();
+  const propSymbolNames = new Set<string>();
   for (let i = 0, len = propSymbols.length; i < len; i++) {
-    propSymbolNames.add(propSymbols[i].name);
+    const symbol = propSymbols[i];
+    if (symbol !== undefined) {
+      propSymbolNames.add(symbol.name);
+    }
   }
 
   const missingSymbols: AstSymbol[] = [];
   for (let i = 0, len = origSymbols.length; i < len; i++) {
     const sym = origSymbols[i];
-    if (!propSymbolNames.has(sym.name)) {
+    if (sym !== undefined && !propSymbolNames.has(sym.name)) {
       missingSymbols.push(sym);
     }
   }
@@ -256,7 +277,7 @@ export function runAstDiffGate(
     if (dropRatio >= 0.5 && missingLen >= 3) {
       astScore -= Math.min(50, Math.round(dropRatio * 100));
       const sliced = missingSymbols.slice(0, 5);
-      const namesList = sliced.map((s) => `${s.type}:${s.name}`).join(', ');
+      const namesList = sliced.map((s: AstSymbol) => `${s.type}:${s.name}`).join(', ');
       violations.push({
         code: 'AST_SYMBOL_DROPPED',
         message: `AST SYMBOL GATE: Proposed mutation dropped ${missingLen} top-level AST symbol(s) [${namesList}].`,
@@ -265,7 +286,7 @@ export function runAstDiffGate(
     } else {
       astScore -= Math.min(25, Math.round(dropRatio * 50));
       const sliced = missingSymbols.slice(0, 5);
-      const namesList = sliced.map((s) => `${s.type}:${s.name}`).join(', ');
+      const namesList = sliced.map((s: AstSymbol) => `${s.type}:${s.name}`).join(', ');
       violations.push({
         code: 'AST_SYMBOL_DROPPED',
         message: `AST SYMBOL NOTICE: Mutation modified top-level AST symbol(s) [${namesList}].`,
@@ -302,7 +323,7 @@ export function runAstDiffGate(
   }
 
   astScore = Math.max(0, astScore);
-  const passed = !violations.some((v) => v.severity === 'high');
+  const passed = !violations.some((v: AstDiffViolation) => v.severity === 'high');
 
   return {
     passed,
