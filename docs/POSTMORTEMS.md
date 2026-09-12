@@ -903,3 +903,12 @@ Line 482, Col 8: Property declaration is missing its type annotation.
 Line 65, Col 1: Unexpected closing delimiter '}' with no matching opening pair.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on firestore.rules.
+
+### ❌ [2026-09-12] fix_orchestra.sh `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 8, Col 12: Unclosed double-quote string literal.
+Line 31, Col 1: Unclosed double-quote string literal.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_orchestra.sh.
