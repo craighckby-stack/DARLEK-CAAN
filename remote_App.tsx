@@ -1,3 +1,10 @@
+/**
+ * DARLEK CANN ARCHITECTURAL HEADER
+ * File: remote_App.tsx
+ * Role: Core system component participating in autonomous cognitive evolution cycles.
+ * Architecture: Type-safe modular unit with resilient state interfaces.
+ */
+
 import React, { useState, useEffect, useRef, useCallback, useMemo, ReactElement } from 'react';
 import { Chess } from 'chess.js';
 import { useSystemBootstrap } from './hooks/useSystemBootstrap';
