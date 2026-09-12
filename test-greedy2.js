@@ -1,81 +1,75 @@
 /**
- * EMG Core v49 Neural Code & Documentation Optimizer Engine
+ * EMG Core Neural Code and Documentation Optimizer Engine
  * File Path: "test-greedy2.js"
- * Optimization Goal: SECURITY - Defensive input validation, memory safety, and strict bounds checking.
+ * Optimization Goal: READABILITY - Focus on pristine modern idioms, descriptive naming, modular decomposition, and clean architectural clarity.
  */
 
 /**
- * Extracts and parses the first valid JSON block or object found within unstructured text.
- * Utilizes robust state tracking for string literals, escape sequences, and brace matching.
+ * Parses and returns the first valid JSON block or object found within unstructured text.
+ * Implements precise tracking for string boundaries, escape characters, and brace nesting depth.
  * 
- * @param {string} text - The raw text containing potential JSON payloads.
- * @returns {any | null} The parsed JSON object/value, or null if extraction fails.
+ * @param {string} rawInput - The input text containing potential JSON structures.
+ * @returns {any | null} The parsed JSON object, or null if parsing fails.
  */
-function extractJSON(text) {
-  if (typeof text !== 'string' || text.length === 0) {
+function extractJSON(rawInput) {
+  if (typeof rawInput !== 'string' || rawInput.length === 0 || rawInput.length > 1048576) {
     return null;
   }
 
-  // Bounds check for maximum input length to prevent denial-of-service via memory exhaustion
-  if (text.length > 1048576) {
-    return null;
-  }
-
-  // Phase 1: Try to match standard markdown code blocks (```json ... ``` or ``` ... ```)
-  const jsonBlockMatch = text.match(/```(?:json)?\s*\n([\s\S]*?)```/);
-  if (jsonBlockMatch?.[1]) {
+  const parseJsonCandidate = (candidateString) => {
     try {
-      const candidate = jsonBlockMatch[1].trim();
-      if (candidate.length <= 1048576) {
-        return JSON.parse(candidate);
-      }
+      return candidateString.length <= 1048576 ? JSON.parse(candidateString) : null;
     } catch {
-      // Fallback to structural scanning if markdown block parsing fails
+      return null;
+    }
+  };
+
+  // Phase 1: Extract from markdown code blocks
+  const markdownCodeBlockMatch = rawInput.match(/```(?:json)?\s*\n([\s\S]*?)```/);
+  if (markdownCodeBlockMatch?.[1]) {
+    const parsedMarkdownJson = parseJsonCandidate(markdownCodeBlockMatch[1].trim());
+    if (parsedMarkdownJson !== null) {
+      return parsedMarkdownJson;
     }
   }
   
-  // Phase 2: Locate the first opening brace and scan incrementally for balanced JSON structures
-  const firstBrace = text.indexOf('{');
-  if (firstBrace === -1) {
+  // Phase 2: Locate structural JSON boundaries using incremental brace matching
+  const openingBraceIndex = rawInput.indexOf('{');
+  if (openingBraceIndex === -1) {
     return null;
   }
 
-  let braceCount = 0;
-  let inString = false;
-  let escape = false;
-  const textLength = text.length;
+  let nestingDepth = 0;
+  let isWithinString = false;
+  let isEscaped = characterEscapeState(false);
+  const inputLength = rawInput.length;
 
-  for (let i = firstBrace; i < textLength; i++) {
-    const char = text[i];
+  for (let currentIndex = openingBraceIndex; currentIndex < inputLength; currentIndex++) {
+    const currentChar = rawInput[currentIndex];
 
-    if (escape) {
-      escape = false;
+    if (isEscaped) {
+      isEscaped = false;
       continue;
     }
 
-    if (char === '\\') {
-      escape = true;
+    if (currentChar === '\\') {
+      isEscaped = true;
       continue;
     }
 
-    if (char === '"') {
-      inString = !inString;
+    if (currentChar === '"') {
+      isWithinString = !isWithinString;
       continue;
     }
 
-    if (!inString) {
-      if (char === '{') {
-        braceCount++;
-      } else if (char === '}') {
-        braceCount--;
-        if (braceCount === 0) {
-          const jsonStr = text.slice(firstBrace, i + 1);
-          try {
-            return JSON.parse(jsonStr);
-          } catch {
-            // If the balanced section is invalid JSON, terminate early
-            break;
-          }
+    if (!isWithinString) {
+      if (currentChar === '{') {
+        nestingDepth++;
+      } else if (currentChar === '}') {
+        nestingDepth--;
+        if (nestingDepth === 0) {
+          const extractedSubstring = rawInput.slice(openingBraceIndex, currentIndex + 1);
+          return parseJsonCandidate(extractedSubstring);
         }
       }
     }
@@ -84,7 +78,17 @@ function extractJSON(text) {
   return null;
 }
 
-const rawText = `Here is my thought:
+/**
+ * Helper utility to manage escape tracking states cleanly.
+ * 
+ * @param {boolean} initialState - Initial escape status.
+ * @returns {boolean} Current status.
+ */
+function characterEscapeState(initialState) {
+  return initialState;
+}
+
+const samplePayload = `Here is my thought:
 {
   "analysis": "Test { nested }",
   "newFiles": [{"a": 1}]
@@ -93,4 +97,4 @@ export function myFunc() {
   return { a: 1 };
 }`;
 
-console.log(extractJSON(rawText));
+console.log(extractJSON(samplePayload));
