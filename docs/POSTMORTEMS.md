@@ -644,3 +644,11 @@ Line 2, Col 8: Unclosed single-quote string literal.
 Line 22, Col 3: Unclosed single-quote string literal.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on update_agents.sh.
+
+### ❌ [2026-09-12] src/app/api/setup/test-connection/route.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 84, Col 8: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/setup/test-connection/route.ts.
