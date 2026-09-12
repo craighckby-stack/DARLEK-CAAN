@@ -635,3 +635,12 @@ Line 26, Col 46: Type annotations can only be used in TypeScript files.
 Line 26, Col 55: Type annotations can only be used in TypeScript files.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on updateStyles.js.
+
+### ❌ [2026-09-12] update_agents.sh `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 2, Col 8: Unclosed single-quote string literal.
+Line 22, Col 3: Unclosed single-quote string literal.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on update_agents.sh.
