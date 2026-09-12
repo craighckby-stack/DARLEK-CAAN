@@ -13,7 +13,6 @@ const { resolve, normalize } = require('node:path');
 
 /**
  * System configuration parameters bound to immutable structures.
- * @type {Readonly<{BASE_DIR: string, TARGET_FILE: string, MAX_FILE_SIZE_BYTES: number}>}
  */
 const CONFIG = Object.freeze({
   BASE_DIR: resolve('src/app/api/evolution/propose'),
@@ -23,7 +22,6 @@ const CONFIG = Object.freeze({
 
 /**
  * Compiled regular expression patterns for high-performance string matching and substitution.
- * @type {Readonly<{PRIMARY_REGEX: RegExp, SECONDARY_REGEX: RegExp, REPLACEMENT_TEXT: string}>}
  */
 const PROMPT_PATTERNS = Object.freeze({
   PRIMARY_REGEX: /Your response MUST contain two parts:[\s\S]*?NO PLACEHOLDERS OR TRUNCATIONS"/,
@@ -96,7 +94,8 @@ function executePromptFix() {
     try {
       code = readFileSync(CONFIG.TARGET_FILE, 'utf8');
     } catch (readError) {
-      throw new Error(`Target evolution route file not found at: ${CONFIG.TARGET_FILE}. Details: ${/** @type {Error} */(readError).message}`);
+      const readErrorMessage = readError instanceof Error ? readError.message : String(readError);
+      throw new Error(`Target evolution route file not found at: ${CONFIG.TARGET_FILE}. Details: ${readErrorMessage}`);
     }
 
     assertValidFileContent(code);
