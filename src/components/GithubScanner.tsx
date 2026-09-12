@@ -1,3 +1,10 @@
+/**
+ * DARLEK CANN ARCHITECTURAL HEADER
+ * File: src/components/GithubScanner.tsx
+ * Role: Core system component participating in autonomous cognitive evolution cycles.
+ * Architecture: Type-safe modular unit with resilient state interfaces.
+ */
+
 import React, { useState, useMemo } from 'react';
 import { useGithubScanner, ScanResult } from '@/hooks/useGithubScanner';
 import { Shield, Play, Square, Download, Filter, Search, Eye, Copy, Check, X, FileCode, AlertTriangle, ArrowRight, Settings, Key, RefreshCw, Trash2, GitCommit, Folder, FileText } from 'lucide-react';
