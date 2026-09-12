@@ -64,13 +64,13 @@ function sanitizePath(filePath: string): string {
     return '';
   }
   const segments = filePath.split('/');
-  const filteredSegments = segments.filter(segment => segment.length > 0 && segment !== '.' && segment !== '..');
+  const filteredSegments = segments.filter((segment: string): boolean => segment.length > 0 && segment !== '.' && segment !== '..');
   
   if (filteredSegments.length === 0) {
     return '';
   }
 
-  return filteredSegments.map(segment => encodeURIComponent(segment)).join('/');
+  return filteredSegments.map((segment: string): string => encodeURIComponent(segment)).join('/');
 }
 
 async function getFileSha(
