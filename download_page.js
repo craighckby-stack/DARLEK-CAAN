@@ -37,7 +37,7 @@ const REQUEST_OPTIONS = Object.freeze({
 });
 
 /**
- * Validates and parses the request URL against allowed security parameters.
+ * Validates and parses the request URL against allowed security parameters with strict boundary checking.
  * @param {string} rawRequestUrl - The raw endpoint URL string.
  * @returns {URL} The parsed URL object.
  */
@@ -100,11 +100,12 @@ function fetchContent(rawRequestUrl) {
 }
 
 /**
- * Ensures the target file path is securely contained within the workspace root directory.
+ * Ensures the target file path is securely contained within the workspace root directory, preventing directory traversal.
  * @param {string} targetFileSystemPath - The filesystem path to validate.
  */
 function ensureWorkspaceContainment(targetFileSystemPath) {
-  if (!targetFileSystemPath.startsWith(BASE_WORKSPACE_DIRECTORY)) {
+  const resolvedPath = path.resolve(targetFileSystemPath);
+  if (!resolvedPath.startsWith(BASE_WORKSPACE_DIRECTORY + path.sep) && resolvedPath !== BASE_WORKSPACE_DIRECTORY) {
     throw new Error('Security violation: Target path escapes root workspace directory.');
   }
 }
