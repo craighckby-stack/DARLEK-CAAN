@@ -3,7 +3,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 export interface MutationRecord {
   id?: string;
   timestamp?: number;
-  [key: string]: unknown;
+  filePath?: string;
+  type?: string;
+  description?: string;
 }
 
 export interface UseMutationDataResult {
@@ -15,7 +17,7 @@ export interface UseMutationDataResult {
 
 interface BrainApiResponse {
   mutations?: unknown;
-  [key: string]: unknown;
+  error?: string;
 }
 
 const API_ENDPOINT = '/api/brain';

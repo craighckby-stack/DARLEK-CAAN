@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callLlm, getDefaultGeminiKey } from '@/lib/llm-provider';
 import { safeReqJson } from '@/lib/safe-json';
+import type { ApiKeys } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export interface AnalyzeImpactBody {
   readonly proposedCode: string;
   readonly filePath: string;
   readonly riskScore: number;
-  readonly apiKeys: Record<string, string>;
+  readonly apiKeys?: ApiKeys;
 }
 
 export interface AnalysisResponseSuccess {

@@ -946,7 +946,18 @@ export class ReasoningEngine {
     }
 
     const selected = safeCandidates[0];
+    if (!selected) {
+      return {
+        action: null,
+        utility: 0,
+        reasoning_trace: { selected_reason: 'no_safe_candidate' },
+        alternatives: [],
+        blockedActions
+      };
+    }
     const utility = selected.type === 'mutate' ? 0.85 : selected.type === 'learn' ? 0.72 : 0.45;
+
+    const activeGoal = activeGoals[0];
 
     return {
       action: selected.name,
@@ -961,7 +972,7 @@ export class ReasoningEngine {
       },
       alternatives: safeCandidates.filter(c => c.name !== selected.name).map(c => ({ name: c.name, utility: 0.3 })),
       blockedActions,
-      goalId: activeGoals[0]?.id
+      ...(activeGoal?.id ? { goalId: activeGoal.id } : {})
     };
   }
 

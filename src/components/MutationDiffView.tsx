@@ -13,7 +13,8 @@ export interface DebateVote {
     branch?: string;
     type?: string;
   };
-  [key: string]: unknown;
+  vote?: string;
+  reasoning?: string;
 }
 
 export interface MutationDiffViewProps {

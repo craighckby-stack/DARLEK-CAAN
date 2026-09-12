@@ -180,7 +180,7 @@ export function validateStructuralSanity(
   originalCode: string,
   proposedCode: string,
   filePath: string,
-  repoFiles: string[] = [],
+  repoFiles: Array<string | { path: string }> = [],
   newFiles: Array<{ path: string; content?: string }> = []
 ): StructuralSanityResult {
   const safeOriginal = originalCode ?? '';
@@ -220,7 +220,7 @@ export function validateStructuralSanity(
   const hallucinatedImports: string[] = [];
 
   const knownFiles = new Set<string>([
-    ...repoFiles.map((f) => f.toLowerCase()),
+    ...repoFiles.map((f) => (typeof f === 'string' ? f : f.path).toLowerCase()),
     ...newFiles.map((f) => f.path.toLowerCase()),
     filePath.toLowerCase(),
   ]);

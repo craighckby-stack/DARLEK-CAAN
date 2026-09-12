@@ -150,10 +150,12 @@ export default function ChatPanel({
       return (
         <div className="space-y-3 p-4 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
           <input
+            dir="ltr"
             type="text"
             placeholder={setupStep.placeholder}
             defaultValue="craighckby-stack/DARLEK-CAAN-Cognitive-Engine"
             className="dalek-input w-full px-4 py-3 text-sm"
+            style={{ unicodeBidi: 'normal', direction: 'ltr' }}
             onChange={(e) => {
               const [owner = '', ...repoParts] = e.target.value.split('/');
               onUpdateRepoConfig('owner', owner);
@@ -301,10 +303,12 @@ export default function ChatPanel({
             </span>
             <div className="flex items-center gap-2 mt-1.5">
               <input
+                dir="ltr"
                 type="text"
                 placeholder="branch name..."
                 defaultValue="main"
                 className="dalek-input flex-1 px-3 py-2 text-xs"
+                style={{ unicodeBidi: 'normal', direction: 'ltr' }}
                 onChange={(e) => onUpdateRepoConfig('branch', e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -342,9 +346,11 @@ export default function ChatPanel({
           </div>
           <div className="flex items-center gap-2">
             <input
+              dir="ltr"
               type="password"
               placeholder={setupStep.placeholder}
               className="dalek-input flex-1 px-4 py-3 text-sm"
+              style={{ unicodeBidi: 'normal', direction: 'ltr' }}
               value={currentValue}
               onChange={(e) => onUpdateKey('github', e.target.value)}
               onKeyDown={(e) => {
@@ -523,6 +529,7 @@ export default function ChatPanel({
             </div>
             <div className="flex items-center gap-2">
               <input
+                dir="ltr"
                 type="password"
                 placeholder="AIza... (or leave blank for Dalek Brain)"
                 className="dalek-input flex-1 px-3 py-2 text-xs"
@@ -534,6 +541,8 @@ export default function ChatPanel({
                   }
                 }}
                 style={{
+                  unicodeBidi: 'normal',
+                  direction: 'ltr',
                   borderColor: geminiStatus === 'connected'
                     ? `${COLORS.green}30`
                     : geminiStatus === 'error'

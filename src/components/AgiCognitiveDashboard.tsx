@@ -194,11 +194,11 @@ export function NeuralSimulator({ systemCycle = 0 }: NeuralSimulatorProps) {
       const savedState = localStorage.getItem('darlek_cann_system_state');
       if (savedState) {
         try {
-          const parsed = JSON.parse(savedState);
-          if (parsed.apiKeys?.github) token = parsed.apiKeys.github;
-          if (parsed.repoConfig?.owner) owner = parsed.repoConfig.owner;
-          if (parsed.repoConfig?.repo) repo = parsed.repoConfig.repo;
-          if (parsed.repoConfig?.branch) branch = parsed.repoConfig.branch;
+          const parsed = JSON.parse(savedState) as Record<string, any>;
+          if (parsed['apiKeys']?.['github']) token = parsed['apiKeys']['github'];
+          if (parsed['repoConfig']?.['owner']) owner = parsed['repoConfig']['owner'];
+          if (parsed['repoConfig']?.['repo']) repo = parsed['repoConfig']['repo'];
+          if (parsed['repoConfig']?.['branch']) branch = parsed['repoConfig']['branch'];
         } catch {
           // ignore
         }

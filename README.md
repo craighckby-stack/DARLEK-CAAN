@@ -1,101 +1,90 @@
-# 🚀 DARLEK CAAN — Autonomous Code Evolution & AI Command Center
+# 🚀 DARLEK CAAN — Autonomous Cognitive Engine & Code Base Evolution Center
 
 [![Live App](https://img.shields.io/badge/Live_App-Open_Application-00FF88?style=for-the-badge&logo=googlecloud)](https://ais-dev-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app)
-[![Repository](https://img.shields.io/badge/Repository-craighckby--stack%2FDarlek--Caan--vs--Jesus--Chess-blue?style=for-the-badge&logo=github)](https://github.com/craighckby-stack/Darlek-Caan-vs-Jesus-Chess)
-[![Security Policy](https://img.shields.io/badge/Security-Policy_%26_Disclosure-red?style=for-the-badge&logo=shield)](docs/SECURITY.md)
+[![Repository](https://img.shields.io/badge/Repository-craighckby--stack%2FDARLEK--CAAN--Cognitive--Engine-blue?style=for-the-badge&logo=github)](https://github.com/craighckby-stack/DARLEK-CAAN-Cognitive-Engine)
+[![License](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-red?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 ---
 
-## ⚡ Executive Summary
+## 🌐 Live Application Links
 
-**DARLEK CAAN** is an enterprise-grade, AI-powered code analysis and repository orchestration platform. It streamlines automated code inspection, multi-LLM consensus refactoring, blueprint compilation, and secure GitHub integration into a single centralized command center.
-
----
-
-## 📋 Table of Contents
-
-* [🌐 Live Web Applications](#-live-web-applications)
-* [💡 Core Capabilities](#-core-capabilities)
-* [📖 Quickstart & Usage Guide](#-quickstart--usage-guide)
-* [🔒 Security Guidelines & Best Practices](#-security-guidelines--best-practices)
-* [🛡️ Vulnerability Reporting & Disclosure](#️-vulnerability-reporting--disclosure)
-* [📄 Copyright & License](#-copyright--license)
+* **Development App**: [Open Live App](https://ais-dev-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app)
+* **Shared Preview**: [Open Preview](https://ais-pre-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app)
 
 ---
 
-## 🌐 Live Web Applications
+## ⚡ What the System Does
 
-| Environment              | Access Link                                                                                                 |
-| :----------------------- | :---------------------------------------------------------------------------------------------------------- |
-| **Development Instance** | [Open App](https://ais-dev-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app)                      |
-| **Shared Preview**       | [Open Preview](https://ais-pre-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app)                  |
+**DARLEK CAAN** is an autonomous AI cognitive engine and repository orchestration platform built to analyze, refactor, and continuously evolve codebases safely.
 
----
-
-## 💡 Core Capabilities
-
-* **🤖 Autonomous Evolution**: AI-driven refactoring, optimization, and cleanup suggestions based on selected repository files.
-* **🏛️ Multi-LLM Debate Chamber**: Cross-model analysis weighing risks, pros, and cons prior to code application.
-* **📄 Blueprint Compilation**: Automated full-repository scaffolding and GitHub deployment from spec sheets or prompts.
-* **🔍 Health Auditing**: Deep scans for syntax errors, structural flaws, and security vulnerabilities.
-* **📊 Telemetry Dashboards**: Real-time tracking of active evolution cycles, mutations, and system metrics.
-* **♟️ Specialized Tools**: Integrated AI-assisted chess chamber and cognitive benchmark meters.
+### Key Capabilities
+1. **🧠 RAG Brain Vector Store**: Indexes codebase chunks into Firestore/local vector stores using Google `text-embedding-004` embeddings for semantic context retrieval.
+2. **🛡️ Siphon & Security Guard**: Scans payloads for secret tokens and forbidden file extensions before code processing.
+3. **🏛️ Multi-LLM Debate Chamber**: Cross-verifies proposed mutations across multiple AI models to calculate risk scores and consensus.
+4. **📟 MS-DOS Real-Time Telemetry Screen**: A retro terminal interface displaying real-time execution logs (RAG vector writes, AST self-mutations, auto-push streams).
 
 ---
 
-## 📖 Quickstart & Usage Guide
+## 💬 Command Interface & Chat Directives
 
-### 1. Authentication & Setup
+You can control the engine directly from the chat prompt using simple, intuitive commands:
 
-1. Open the [Live Application](https://ais-dev-amubz4v3czr3772fnvrcru-483535245139.asia-southeast1.run.app).
-2. Input your **GitHub Personal Access Token (PAT)** in the configuration panel.
-3. Choose your target repository and active branch.
-
-### 2. Code Evolution Workflow
-
-1. Navigate the repository tree and select a target file.
-2. Trigger **"Evolve Code"** or **"Propose Mutation"**.
-3. Inspect the AI-generated side-by-side diff and **Multi-LLM Debate** safety metrics.
-4. Click **Approve & Commit** to push changes or **Reject** to discard.
-
-### 3. Repository Compilation
-
-1. Provide your application blueprint or spec document in the main prompt input.
-2. Specify your target repository name.
-3. Click **Compile & Build** to generate and push the codebase.
-
-### 4. Batch Processing
-
-1. Enable **Batch Mode** for sequential multi-file analysis.
-2. Configure your **Auto-Approve Risk Threshold** (`Low`, `Medium`, or `Manual Check`) to manage execution autonomy.
+| Command | Alias | Description |
+| :--- | :--- | :--- |
+| `help` | `commands` | Displays the interactive command operational manual. |
+| `agi` | `dos`, `msdos`, `agi monitor` | Opens the **MS-DOS Real-Time Telemetry Monitor** screen. |
+| `scan` | — | Scans the connected GitHub repository file tree. |
+| `1`, `2`, `3`... | — | Selects a specific file from the scanned inventory to inspect or mutate. |
+| `propose` | — | Triggers an AST mutation proposal for the currently selected file. |
+| `reboot` | `reset` | Initiates a clean system reboot, clearing chat history and cache. |
 
 ---
 
-## 🔒 Security Guidelines & Best Practices
+## 🔄 Back-Mutation Engine & Repository Enhancement Logic
 
-* **Token Scoping**: Limit GitHub PAT permissions strictly to required scopes (e.g., specific `repo` access) rather than broad organization access.
-* **Credential Management**: Never hardcode secrets or tokens in source code or specifications; use secure environment variables.
-* **Mutation Auditing**: Thoroughly review diffs, safety scores, and debate logs before approving automated commits to production branches.
+When enhancing a repository codebase, DARLEK CAAN uses a **Closed-Loop Back-Mutation Algorithm** to ensure all code updates are syntax-safe, logically coherent, and non-destructive.
+
+```
+┌────────────────┐     ┌─────────────────┐     ┌───────────────────┐
+│ Target File    │ ──> │ MCTS Candidate  │ ──> │ Structural Sanity │
+│ Selection      │     │ Expansion (AST) │     │ Guard Check       │
+└────────────────┘     └─────────────────┘     └───────────────────┘
+                                                         │
+                                                         ▼
+┌────────────────┐     ┌─────────────────┐     ┌───────────────────┐
+│ Target GitHub  │ <── │ Auto-Push Sync  │ <── │ Coherence Gate    │
+│ Repository     │     │ Pipeline        │     │ & Debate Consensus│
+└────────────────┘     └─────────────────┘     └───────────────────┘
+```
+
+### How the Back-Mutation Pipeline Works
+
+1. **AST Node Parsing & MCTS Candidate Expansion**:
+   - The engine parses the selected source file into an Abstract Syntax Tree (AST).
+   - Monte Carlo Tree Search (MCTS) expands candidate refactoring nodes to optimize performance and readability.
+
+2. **Structural Sanity Guard & Emergency Breaker**:
+   - Before any code is staged, the **Sanity Guard** validates syntax integrity.
+   - If zero-output or syntax corruption is detected, the emergency circuit breaker triggers instantly, discarding the bad candidate.
+
+3. **Coherence Gate & Multi-Agent Consensus**:
+   - Candidate mutations pass through the **Coherence Gate**, evaluating cross-file impact and safety metrics.
+   - If risk is below the threshold, the mutation is staged for review or automatically approved based on system policy.
+
+4. **Auto-Push Synchronization**:
+   - Once approved, the **Auto-Push Worker** applies the back-mutation, commits the changeset with verification SHA hashes, and syncs directly to the target GitHub repository branch.
 
 ---
 
-## 🛡️ Vulnerability Reporting & Disclosure
+## 🔒 Security & Best Practices
 
-1. **Private Reporting**: Avoid public issues. Report security concerns confidentially via the [GitHub Repository Security Tab](https://github.com/craighckby-stack/Darlek-Caan-vs-Jesus-Chess/security/advisories/new).
-2. **Details Required**: Include reproduction steps, potential impact, and suggested remediations.
-3. **Response SLA**: Initial acknowledgment is provided within 48 hours.
+* **Scoped Access**: Connect using GitHub Personal Access Tokens (PAT) scoped strictly to required repositories.
+* **Leak Prevention**: All code payloads are filtered through the Siphon scanner to block accidental token or secret exposure.
+* **Auditability**: Diffs, risk scores, and execution telemetry can be monitored live on the MS-DOS screen.
 
 ---
 
-## 📄 Copyright & License
+## 📄 License & Copyright
 
-**Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**  
-[Full text of the license is available at https://creativecommons.org]
-
-**Copyright (c) 2026 Craighckby.** All rights reserved.    
-Maintained under the [craighckby-stack/Darlek-Caan-vs-Jesus-Chess](https://github.com/craighckby-stack/Darlek-Caan-vs-Jesus-Chess) repository.
-
-### Key License Provisions:
-* **Attribution (BY)**: You must give appropriate credit to **Craighckby**, provide a link to the license, and indicate if changes were made.
-* **NonCommercial (NC)**: You may not use the material for commercial purposes without prior explicit permission.
-* **ShareAlike (SA)**: If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+Distributed under **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**.  
+Copyright (c) 2026 **Craighckby**. All rights reserved.

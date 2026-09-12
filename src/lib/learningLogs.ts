@@ -1,5 +1,5 @@
 import { collection, addDoc, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, isFirebaseConfigured } from './firebase';
 
 export interface LearningLog {
   readonly id?: string;
@@ -92,7 +92,7 @@ function readLocalPostmortems(): string {
  * Synchronizes local POSTMORTEMS.md logs into Firestore if they don't already exist.
  */
 export async function syncPostmortemsToFirebase(): Promise<void> {
-  if (typeof window !== 'undefined') return;
+  if (typeof window !== 'undefined' || !isFirebaseConfigured()) return;
 
   try {
     const localMd = readLocalPostmortems();
@@ -123,23 +123,28 @@ export async function syncPostmortemsToFirebase(): Promise<void> {
           constraint: log.constraint ?? '',
           timestamp: log.timestamp
         });
-        console.log(`[Darlek Caan] Synced postmortem log: "${log.title}" to Firestore.`);
       }
     }
   } catch (error) {
-    console.error('[Darlek Caan] Error syncing postmortems to Firebase:', error);
+    console.warn('[Darlek Caan] Firestore syncPostmortems offline, using local postmortems:', error);
   }
 }
 
 /**
- * Saves a new learning, bug or postmortem log into Firestore.
+ * Saves a new learning, bug or postmortem log into Firestore or logs locally.
  */
 export async function saveLearningLog(
   log: Omit<LearningLog, 'id' | 'timestamp'>
 ): Promise<string> {
+  const timestamp = new Date().toISOString();
+  const localId = `log_${Date.now()}`;
+
+  if (!isFirebaseConfigured()) {
+    return localId;
+  }
+
   try {
     const colRef = collection(db, COLLECTION_NAME);
-    const timestamp = new Date().toISOString();
     const docRef = await addDoc(colRef, {
       type: log.type,
       title: log.title,
@@ -150,8 +155,8 @@ export async function saveLearningLog(
     });
     return docRef.id;
   } catch (error) {
-    console.error('[Darlek Caan] Failed to save learning log:', error);
-    throw error;
+    console.warn('[Darlek Caan] Firestore saveLearningLog offline:', error);
+    return localId;
   }
 }
 
@@ -161,30 +166,39 @@ export async function saveLearningLog(
  */
 export async function getLearningLogs(): Promise<LearningLog[]> {
   const logs: LearningLog[] = [];
-  try {
-    const colRef = collection(db, COLLECTION_NAME);
-    const snapshot = await getDocs(colRef);
+  if (isFirebaseConfigured()) {
+    try {
+      const colRef = collection(db, COLLECTION_NAME);
+      const snapshot = await getDocs(colRef);
 
-    if (!snapshot.empty) {
-      snapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => {
-        const data = docSnap.data();
-        logs.push({
-          id: docSnap.id,
-          type: (data.type as 'learning' | 'bug' | 'postmortem') || 'postmortem',
-          title: typeof data.title === 'string' ? data.title : 'Untitled Lesson',
-          symptom: typeof data.symptom === 'string' ? data.symptom : '',
-          evidence: typeof data.evidence === 'string' ? data.evidence : '',
-          constraint: typeof data.constraint === 'string' ? data.constraint : '',
-          timestamp: typeof data.timestamp === 'string' ? data.timestamp : new Date().toISOString()
+      if (!snapshot.empty) {
+        snapshot.forEach((docSnap: QueryDocumentSnapshot<DocumentData>) => {
+          const data = docSnap.data();
+          const rawType = data['type'];
+          const rawTitle = data['title'];
+          const rawSymptom = data['symptom'];
+          const rawEvidence = data['evidence'];
+          const rawConstraint = data['constraint'];
+          const rawTime = data['timestamp'];
+
+          logs.push({
+            id: docSnap.id,
+            type: (rawType as 'learning' | 'bug' | 'postmortem') || 'postmortem',
+            title: typeof rawTitle === 'string' ? rawTitle : 'Untitled Lesson',
+            symptom: typeof rawSymptom === 'string' ? rawSymptom : '',
+            evidence: typeof rawEvidence === 'string' ? rawEvidence : '',
+            constraint: typeof rawConstraint === 'string' ? rawConstraint : '',
+            timestamp: typeof rawTime === 'string' ? rawTime : new Date().toISOString()
+          });
         });
-      });
-      return logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+        return logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+      }
+    } catch (error) {
+      console.warn('[Darlek Caan] Firestore logs fetch offline, reading local file:', error);
     }
-  } catch (error) {
-    console.warn('[Darlek Caan] Firestore logs fetch failed, falling back to local file:', error);
   }
 
-  // Fallback to local markdown file if empty/offline
+  // Fallback to local markdown file if empty/offline/unconfigured
   const localMd = readLocalPostmortems();
   if (localMd) {
     return parsePostmortemsMarkdown(localMd).sort((a, b) => b.timestamp.localeCompare(a.timestamp));

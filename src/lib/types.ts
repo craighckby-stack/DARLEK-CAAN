@@ -20,9 +20,15 @@ export interface Message {
 
 export type ConnectionStatusValue = 'idle' | 'testing' | 'connected' | 'error';
 
-export interface ApiKeys extends Record<string, string | undefined> {
+export interface ApiKeys {
   readonly github: string;
   readonly gemini?: string;
+  readonly anthropic?: string;
+  readonly openai?: string;
+  readonly groq?: string;
+  readonly openrouter?: string;
+  readonly mistral?: string;
+  readonly deepseek?: string;
 }
 
 export interface ConnectionStatus {

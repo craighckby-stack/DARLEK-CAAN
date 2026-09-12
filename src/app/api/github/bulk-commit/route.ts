@@ -68,28 +68,21 @@ function createGitHubHeaders(token: string): Record<string, string> {
  * Sanitizes all committable files to redact any accidental secrets or sensitive credentials.
  */
 function sanitizeCommittableFiles(files: CommittableFile[]): CommittableFile[] {
-  const len = files.length;
-  const sanitizedFiles = new Array<CommittableFile>(len);
-  
-  for (let i = 0; i < len; i++) {
-    const file = files[i];
+  return files.map((file) => {
     if (!file || typeof file.content !== 'string') {
-      sanitizedFiles[i] = file;
-      continue;
+      return file;
     }
-    
+
     const { sanitized, findings } = sanitizeContent(file.content);
     if (findings.length > 0) {
       console.log(`[Secret Sanitizer] Auto-redacted ${findings.length} secret(s) in ${file.path.replace(/error/gi, 'err')} before bulk commit.`);
     }
 
-    sanitizedFiles[i] = {
+    return {
       path: file.path,
       content: sanitized,
     };
-  }
-
-  return sanitizedFiles;
+  });
 }
 
 /**
@@ -235,24 +228,18 @@ async function resolveBaseTreeSha(
  */
 async function writeFilesToLocalDisk(files: CommittableFile[]): Promise<void> {
   try {
-    const len = files.length;
-    const promises = new Array<Promise<void>>(len);
+    const promises = files.map(async (file) => {
+      if (!file || !file.path || typeof file.content !== 'string') return;
 
-    for (let i = 0; i < len; i++) {
-      const file = files[i];
-      if (!file || !file.path || typeof file.content !== 'string') continue;
-
-      promises[i] = (async () => {
-        const cleanPath = file.path.replace(/^\/+|\/+$/g, '');
-        const localFilePath = resolve(projectRoot, cleanPath);
-        
-        if (localFilePath.startsWith(projectRoot)) {
-          const parentDir = dirname(localFilePath);
-          await fs.mkdir(parentDir, { recursive: true });
-          await fs.writeFile(localFilePath, file.content, 'utf-8');
-        }
-      })();
-    }
+      const cleanPath = file.path.replace(/^\/+|\/+$/g, '');
+      const localFilePath = resolve(projectRoot, cleanPath);
+      
+      if (localFilePath.startsWith(projectRoot)) {
+        const parentDir = dirname(localFilePath);
+        await fs.mkdir(parentDir, { recursive: true });
+        await fs.writeFile(localFilePath, file.content, 'utf-8');
+      }
+    });
 
     await Promise.all(promises);
   } catch (diskError: unknown) {
@@ -272,39 +259,33 @@ async function generateTreeItems(
   const blobUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/blobs`;
 
   try {
-    const len = files.length;
-    const treeItemsPromises = new Array<Promise<GitTreeItem>>(len);
+    const treeItemsPromises = files.map(async (file): Promise<GitTreeItem> => {
+      const blobResponse = await fetch(blobUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          content: Buffer.from(file.content, 'utf-8').toString('base64'),
+          encoding: 'base64',
+        }),
+      });
 
-    for (let i = 0; i < len; i++) {
-      const file = files[i];
-      treeItemsPromises[i] = (async (): Promise<GitTreeItem> => {
-        const blobResponse = await fetch(blobUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            content: Buffer.from(file.content, 'utf-8').toString('base64'),
-            encoding: 'base64',
-          }),
-        });
+      if (!blobResponse.ok) {
+        const errorMsg = await blobResponse.text();
+        throw new Error(`Failed to create git blob for file ${file.path}: ${errorMsg}`);
+      }
 
-        if (!blobResponse.ok) {
-          const errorMsg = await blobResponse.text();
-          throw new Error(`Failed to create git blob for file ${file.path}: ${errorMsg}`);
-        }
+      const blobData = (await blobResponse.json()) as GitHubBlobResponse;
+      if (!blobData.sha) {
+        throw new Error(`Git blob API did not return SHA for file ${file.path}`);
+      }
 
-        const blobData = (await blobResponse.json()) as GitHubBlobResponse;
-        if (!blobData.sha) {
-          throw new Error(`Git blob API did not return SHA for file ${file.path}`);
-        }
-
-        return {
-          path: file.path.replace(/^\/+|\/+$/g, ''),
-          mode: '100644',
-          type: 'blob',
-          sha: blobData.sha,
-        };
-      })();
-    }
+      return {
+        path: file.path.replace(/^\/+|\/+$/g, ''),
+        mode: '100644',
+        type: 'blob',
+        sha: blobData.sha,
+      };
+    });
 
     const treeItems = await Promise.all(treeItemsPromises);
     return { items: treeItems };

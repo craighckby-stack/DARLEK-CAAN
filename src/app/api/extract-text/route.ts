@@ -52,7 +52,8 @@ function validatePayloadSize(req: NextRequest): NextResponse<ApiResponse> | null
  */
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
-    const pdfParse = (await import('pdf-parse')).default;
+    const pdfModule = await import('pdf-parse');
+    const pdfParse = (pdfModule as any).default || (pdfModule as any);
     const pdfData = await pdfParse(buffer);
     return pdfData.text;
   } catch (pdfError: unknown) {
@@ -125,9 +126,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
 
     // Handle JSON payloads
     if (contentType.includes('application/json')) {
-      const body = await req.json().catch(() => null);
-      if (body && typeof (body as Record<string, unknown>).text === 'string' && ((body as Record<string, unknown>).text as string).length > 0) {
-        return NextResponse.json({ text: (body as Record<string, unknown>).text as string, success: true });
+      const body = (await req.json().catch(() => null)) as { text?: string } | null;
+      if (typeof body?.text === 'string' && body.text.length > 0) {
+        return NextResponse.json({ text: body.text, success: true });
       }
       return NO_TEXT_RESPONSE;
     }

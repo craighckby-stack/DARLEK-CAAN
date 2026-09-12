@@ -90,7 +90,10 @@ async function parseSpecializedDocument(
   try {
     if (lowerPath.endsWith('.pdf')) {
       const pdfParseModule = await import('pdf-parse');
-      const pdfParse = (pdfParseModule as { default?: (buf: Buffer) => Promise<{ text: string }> }).default || pdfParseModule;
+      type PdfParserFn = (buf: Buffer) => Promise<{ text: string }>;
+      const pdfParse: PdfParserFn = typeof pdfParseModule === 'function'
+        ? (pdfParseModule as unknown as PdfParserFn)
+        : ((pdfParseModule as { default?: PdfParserFn }).default ?? (pdfParseModule as unknown as PdfParserFn));
       const pdfData = await pdfParse(buffer);
       
       return {
@@ -101,7 +104,7 @@ async function parseSpecializedDocument(
 
     if (lowerPath.endsWith('.docx')) {
       const mammothModule = await import('mammoth');
-      const mammoth = mammothModule.default;
+      const mammoth = (mammothModule as { default?: { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> } }).default ?? mammothModule;
       const docxData = await mammoth.extractRawText({ buffer });
 
       return {

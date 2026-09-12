@@ -35,7 +35,8 @@ interface SystemState {
   readonly apiKeys?: {
     readonly github?: string;
     readonly gemini?: string;
-    readonly [key: string]: string | undefined;
+    readonly anthropic?: string;
+    readonly openai?: string;
   };
   readonly saturation?: {
     readonly structuralChange?: number;
@@ -54,7 +55,7 @@ interface ChatRequestBody {
   readonly scannedFiles?: ReadonlyArray<{ readonly path: string; readonly size?: number }>;
   readonly apiKeys?: {
     readonly gemini?: string;
-    readonly [key: string]: string | undefined;
+    readonly github?: string;
   };
 }
 
@@ -145,15 +146,7 @@ async function fetchGithubRepoTree(token: string, owner: string, repo: string, b
 }
 
 function processUserMessage(message: string): string {
-  const trimmed = message.trim();
-  const reversed = trimmed.split('').reverse().join('');
-  const lowerReversed = reversed.toLowerCase();
-  const lowerOriginal = trimmed.toLowerCase();
-
-  if (REVERSE_TRANSFORM_WORDS.includes(lowerReversed) && !REVERSE_TRANSFORM_WORDS.includes(lowerOriginal)) {
-    return reversed;
-  }
-  return trimmed;
+  return message.trim();
 }
 
 function isAnalysisRequest(message: string): boolean {

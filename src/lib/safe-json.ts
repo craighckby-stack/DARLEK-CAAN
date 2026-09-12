@@ -4,7 +4,7 @@ export interface SafeFetchResult<T> {
   readonly success: boolean;
   readonly data: T | null;
   readonly status: number;
-  readonly error?: string;
+  readonly error?: string | undefined;
 }
 
 const MAX_ERROR_SNIPPET_LENGTH = 200;

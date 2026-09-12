@@ -24,8 +24,10 @@ const Textarea = React.memo(
       return (
         <textarea
           ref={ref}
+          dir="ltr"
           data-slot="textarea"
           className={mergedClassName}
+          style={{ unicodeBidi: 'normal', direction: 'ltr', ...(props.style ?? {}) }}
           {...props}
         />
       )

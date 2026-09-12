@@ -8,7 +8,7 @@ import MutationDiffView from '@/components/MutationDiffView';
 import AgentOrchestra from '@/components/AgentOrchestra';
 import NeuralSimulator from '@/components/NeuralSimulator';
 import TemporalParadoxLog from '@/components/TemporalParadoxLog';
-import GithubScanner from '@/components/GithubScanner';
+import AgiDosConsoleModal from '@/components/AgiDosConsoleModal';
 import type {
   Message,
   SystemState,
@@ -117,6 +117,7 @@ export default function Home() {
     sessionStart: new Date(),
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isAgiDosOpen, setIsAgiDosOpen] = useState(false);
   const [logEntries, setLogEntries] = useState<EvolutionLogEntry[]>([
     createLogEntry('SYSTEM', 'DARLEK CANN v3.1 online. Coherence Gate ARMED.'),
   ]);
@@ -198,10 +199,10 @@ export default function Home() {
   const [orchestraActive, setOrchestraActive] = useState(false);
 
   // ── Mobile view navigation state ──
-  const [activeTab, setActiveTab] = useState<'chat' | 'dashboard' | 'controls' | 'scanner'>('scanner');
+  const [activeTab, setActiveTab] = useState<'chat' | 'dashboard' | 'controls'>('dashboard');
 
-  // ── Center view toggle (Files vs Agi Cognitive Dashboard vs Scanner) ──
-  const [centerView, setCenterView] = useState<'files' | 'cognitive' | 'scanner'>('scanner');
+  // ── Center view toggle (Files vs Agi Cognitive Dashboard) ──
+  const [centerView, setCenterView] = useState<'files' | 'cognitive'>('files');
 
   // ── Auto setup states ──
   const [tokenInput, setTokenInput] = useState('');
@@ -444,12 +445,12 @@ export default function Home() {
         .catch(() => {});
 
       const savedCenterView = localStorage.getItem('darlek_cann_center_view');
-      if (savedCenterView === 'files' || savedCenterView === 'cognitive' || savedCenterView === 'scanner') {
+      if (savedCenterView === 'files' || savedCenterView === 'cognitive') {
         setCenterView(savedCenterView);
       }
 
       const savedActiveTab = localStorage.getItem('darlek_cann_active_tab');
-      if (savedActiveTab === 'chat' || savedActiveTab === 'dashboard' || savedActiveTab === 'controls' || savedActiveTab === 'scanner') {
+      if (savedActiveTab === 'chat' || savedActiveTab === 'dashboard' || savedActiveTab === 'controls') {
         setActiveTab(savedActiveTab);
       }
 
@@ -862,14 +863,8 @@ export default function Home() {
     if (!isHydrated) return;
     try {
       localStorage.setItem('darlek_cann_active_tab', activeTab);
-      // Sync center view on mobile navigation
-      if (activeTab === 'scanner') {
-        setCenterView('scanner');
-      } else if (activeTab === 'dashboard' && centerView === 'scanner') {
-        setCenterView('files');
-      }
     } catch (e) {}
-  }, [activeTab, centerView, isHydrated]);
+  }, [activeTab, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -2094,6 +2089,11 @@ export default function Home() {
       const isPropose =
         lowerRaw === 'propose' || lowerReversed === 'propose';
 
+      const isAgi = 
+        lowerRaw === 'agi' || lowerRaw === 'agi-dos' || lowerRaw === 'dos' || lowerRaw === 'msdos' || lowerRaw === 'ms-dos' ||
+        lowerRaw === 'agi monitor' || lowerRaw === 'agi screen' || lowerRaw === 'agi telemetry' || lowerRaw === 'rag monitor' ||
+        lowerReversed === 'iga' || lowerRaw === 'iga';
+
       const currentState = systemState;
       const lowerContent = cleaned.toLowerCase();
 
@@ -2103,6 +2103,7 @@ export default function Home() {
         addCaanMessage(
           `DALEK CAAN COMMAND DIRECTIVES:\n\n` +
           `• help / commands — Display this operational command manual.\n` +
+          `• agi / dos — Launch MS-DOS black screen live system telemetry monitor window.\n` +
           `• reboot / reset — Initiate full system reboot and purge chat, logs & cache.\n` +
           `• scan — Scan target repository (${currentState.repoConfig?.owner || 'owner'}/${currentState.repoConfig?.repo || 'repo'}) for code assets.\n` +
           `• 1, 2, ... — Select target file from scanned inventory to evolve.\n` +
@@ -2116,6 +2117,18 @@ export default function Home() {
           `• clear — Clear chat message history.`
         );
         addLogEntry('SYSTEM', 'Help directory output to chat console.');
+        return;
+      }
+
+      // ── AGI MS-DOS command ──
+      if (isAgi) {
+        setMessages((prev) => [...prev, createMessage('operator', content)]);
+        setIsAgiDosOpen(true);
+        addCaanMessage(
+          `[MS-DOS AGI MONITOR INITIALIZED]\n\nOpening C:\\DALEK\\AGI MS-DOS Screen...\n` +
+          `Displaying real-time system executions: RAG writing/enhancing, AST self-mutating, vector persistence, and auto-push commit streams.`
+        );
+        addLogEntry('SYSTEM', 'MS-DOS AGI telemetry screen launched via operator command.');
         return;
       }
 
@@ -4321,10 +4334,12 @@ export default function Home() {
               </label>
               <div className="relative">
                 <input
+                  dir="ltr"
                   type="password"
                   placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
+                  style={{ unicodeBidi: 'normal', direction: 'ltr' }}
                   className="w-full pl-9 pr-3 py-2 text-xs text-red-100 bg-[#060000] border border-red-900/20 rounded font-mono focus:border-red-500/60 focus:ring-1 focus:ring-red-500/30 focus:outline-none transition-all duration-200"
                 />
                 <div className="absolute left-3 top-2.5 text-red-800">
@@ -4501,9 +4516,11 @@ export default function Home() {
                   Organization / Profile
                 </label>
                 <input
+                  dir="ltr"
                   type="text"
                   value={ownerInput}
                   onChange={(e) => setOwnerInput(e.target.value)}
+                  style={{ unicodeBidi: 'normal', direction: 'ltr' }}
                   className="w-full px-3 py-2 text-xs text-gray-200 bg-[#060000] border border-red-900/20 rounded font-mono focus:border-red-500/60 focus:outline-none transition-all duration-200"
                 />
               </div>
@@ -4512,9 +4529,11 @@ export default function Home() {
                   Repository Name
                 </label>
                 <input
+                  dir="ltr"
                   type="text"
                   value={repoInput}
                   onChange={(e) => setRepoInput(e.target.value)}
+                  style={{ unicodeBidi: 'normal', direction: 'ltr' }}
                   className="w-full px-3 py-2 text-xs text-gray-200 bg-[#060000] border border-red-900/20 rounded font-mono focus:border-red-500/60 focus:outline-none transition-all duration-200"
                   placeholder="e.g. Jesus-Chess-Evolved"
                 />
@@ -4524,9 +4543,11 @@ export default function Home() {
                   Target Branch
                 </label>
                 <input
+                  dir="ltr"
                   type="text"
                   value={branchInput}
                   onChange={(e) => setBranchInput(e.target.value)}
+                  style={{ unicodeBidi: 'normal', direction: 'ltr' }}
                   className="w-full px-3 py-2 text-xs text-gray-200 bg-[#060000] border border-red-900/20 rounded font-mono focus:border-red-500/60 focus:outline-none transition-all duration-200"
                 />
               </div>
@@ -5296,20 +5317,6 @@ export default function Home() {
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ccff] animate-pulse shrink-0" />
             )}
           </button>
-          
-          <button
-            onClick={() => setActiveTab('scanner')}
-            type="button"
-            className={`flex-1 min-w-0 flex items-center justify-center gap-1 px-1.5 py-1.5 rounded text-[10px] sm:text-[11px] whitespace-nowrap cursor-pointer transition-all duration-200 ${
-              activeTab === 'scanner'
-                ? 'text-rose-400 bg-rose-950/40 border border-rose-500/40 shadow-[0_0_8px_rgba(244,63,94,0.2)] font-bold'
-                : 'text-gray-400 border border-transparent hover:text-gray-200 bg-neutral-950/40'
-            }`}
-            style={{ fontFamily: 'var(--font-orbitron), sans-serif', letterSpacing: '0.04em' }}
-          >
-            <Shield size={12} className={activeTab === 'scanner' ? 'text-rose-400 shrink-0' : 'text-gray-400 shrink-0'} />
-            <span className="truncate">SCANNER</span>
-          </button>
         </div>
       )}
 
@@ -5341,7 +5348,7 @@ export default function Home() {
         {/* ── Center: Evolution Command Deck & Difference Matrix (col-span-5) ── */}
         <div
           className={`col-span-12 lg:col-span-5 flex flex-col lg:h-full lg:overflow-hidden ${
-            activeTab === 'dashboard' || activeTab === 'scanner' ? 'flex' : 'hidden lg:flex'
+            activeTab === 'dashboard' ? 'flex' : 'hidden lg:flex'
           }`}
           style={{
             borderLeft: `1px solid ${COLORS.panelBorder}`,
@@ -5371,9 +5378,6 @@ export default function Home() {
             <div className="flex-1 flex flex-col min-h-0 p-4 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-red-900/20 pb-2">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                  <span className="text-[10px] sm:text-[11px] font-bold text-red-500 tracking-[0.15em] sm:tracking-[0.18em] font-sans uppercase truncate">
-                    &#9673; COMMAND & SECURITY MATRIX
-                  </span>
                   <div className="flex rounded border border-red-900/30 bg-[#080303] p-0.5 shrink-0 overflow-x-auto">
                     <button
                       onClick={() => setCenterView('files')}
@@ -5397,17 +5401,6 @@ export default function Home() {
                     >
                       NEURAL SIMULATOR
                     </button>
-                    <button
-                      onClick={() => setCenterView('scanner')}
-                      type="button"
-                      className={`px-2 py-1 text-[8.5px] font-sans font-bold tracking-wider rounded-sm transition-all duration-200 cursor-pointer ${
-                        centerView === 'scanner' 
-                          ? 'bg-[#ff2020]/20 text-red-400 border border-red-500/40 shadow-sm' 
-                          : 'text-gray-400 hover:text-gray-200 border border-transparent'
-                      }`}
-                    >
-                      SECURITY SCANNER
-                    </button>
                   </div>
                 </div>
                 {batchMode && (
@@ -5420,24 +5413,6 @@ export default function Home() {
               {centerView === 'cognitive' ? (
                 <div className="flex-1 min-h-0">
                   <NeuralSimulator systemCycle={systemState.evolutionCycle} />
-                </div>
-              ) : centerView === 'scanner' ? (
-                <div className="flex-1 min-h-0">
-                  <GithubScanner 
-                    token={systemState.apiKeys.github} 
-                    owner={systemState.repoConfig.owner} 
-                    repo={systemState.repoConfig.repo} 
-                    branch={systemState.repoConfig.branch || 'main'}
-                    onFileClick={(path) => {
-                      let idx = scannedFiles.findIndex(f => f.path === path);
-                      if (idx === -1) {
-                        setScannedFiles(prev => [{ path, size: 0, type: 'blob', sha: '' }, ...prev]);
-                        idx = 0;
-                      }
-                      setSelectedFileIndex(idx);
-                      openFileInspector(path);
-                    }}
-                  />
                 </div>
               ) : (
                 <>
@@ -5698,19 +5673,23 @@ export default function Home() {
                 <div className="space-y-1">
                   <label className="text-[10px] text-gray-400 font-mono tracking-wider">RELATIVE FILE PATH</label>
                   <input
+                    dir="ltr"
                     type="text"
                     placeholder="e.g. src/app/page.tsx or components/ui/Button.tsx"
                     value={createFileModal.path}
                     onChange={(e) => setCreateFileModal({ ...createFileModal, path: e.target.value })}
+                    style={{ unicodeBidi: 'normal', direction: 'ltr' }}
                     className="w-full bg-[#050000] border border-white/10 rounded px-3 py-2 text-sm text-cyan-50 font-mono focus:border-cyan-500/50 outline-none"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] text-gray-400 font-mono tracking-wider">INITIAL CONTENT</label>
                   <textarea
+                    dir="ltr"
                     rows={8}
                     value={createFileModal.content}
                     onChange={(e) => setCreateFileModal({ ...createFileModal, content: e.target.value })}
+                    style={{ unicodeBidi: 'normal', direction: 'ltr' }}
                     className="w-full bg-[#050000] border border-white/10 rounded px-3 py-2 text-xs text-yellow-50 focus:border-cyan-500/50 outline-none font-mono dalek-scrollbar"
                   />
                 </div>
@@ -5960,16 +5939,6 @@ export default function Home() {
                 <span>
                   Lines: {(inspectingFile.content || '').split('\n').length} | Characters: {(inspectingFile.content || '').length}
                 </span>
-                <button
-                  onClick={() => {
-                    setCenterView('scanner');
-                    setInspectingFile(null);
-                  }}
-                  type="button"
-                  className="text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  <Shield size={11} /> Scan for Secrets
-                </button>
               </div>
             </motion.div>
           </div>
@@ -6037,7 +6006,22 @@ export default function Home() {
               · {mutationsApplied} mutations applied
             </span>
           )}
+          <button
+            onClick={() => setIsAgiDosOpen(true)}
+            className="ml-2 px-2 py-0.5 rounded bg-black border border-white/20 text-white hover:bg-white hover:text-black transition-colors font-mono text-[9px] flex items-center gap-1 cursor-pointer"
+            title="Open MS-DOS Real-Time Telemetry Monitor (or type 'agi' in chat)"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <span>[MS-DOS AGI]</span>
+          </button>
         </div>
+
+      {/* MS-DOS AGI Real-Time Console Modal */}
+      <AgiDosConsoleModal
+        isOpen={isAgiDosOpen}
+        onClose={() => setIsAgiDosOpen(false)}
+        systemState={systemState}
+      />
         <div className="flex items-center gap-4">
           <span
             style={{

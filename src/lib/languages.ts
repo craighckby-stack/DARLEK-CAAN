@@ -143,7 +143,7 @@ export const ALL_SUPPORTED_LANGUAGES: readonly LanguageOption[] = Object.freeze(
   { id: 'welsh', name: 'Welsh', nativeName: 'Cymraeg', serviceId: 'cy' },
   { id: 'yiddish', name: 'Yiddish', nativeName: 'ייִדיש', serviceId: 'yi' },
   { id: 'yoruba', name: 'Yoruba', nativeName: 'Yorùbá', serviceId: 'yo' },
-]) as const;
+]) as readonly LanguageOption[];
 
 // Internal storage key constant to eliminate magic strings and optimize memory lookup
 const STORAGE_KEY_LANGUAGE = 'darlek_cann_language';

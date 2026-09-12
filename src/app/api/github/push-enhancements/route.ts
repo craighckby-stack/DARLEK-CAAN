@@ -280,7 +280,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'No files valid for push' }, { status: 400 });
     }
 
-    const treeBody: Record<string, unknown> = { tree: treeItems };
+    const treeBody: { tree: unknown[]; base_tree?: string } = { tree: treeItems };
     if (baseTreeSha) {
       treeBody.base_tree = baseTreeSha;
     }

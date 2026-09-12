@@ -163,12 +163,13 @@ export function sanitizeContent(content: string): { sanitized: string; findings:
   const sanitizedLines: string[] = new Array(numLines);
 
   for (let i = 0; i < numLines; i++) {
-    let line = lines[i];
+    let line = lines[i] ?? '';
     const scanLine = line.length > 3000 ? line.substring(0, 3000) : line;
     const currentLineNum = i + 1;
 
     for (let p = 0; p < SENSITIVE_PATTERNS.length; p++) {
       const pattern = SENSITIVE_PATTERNS[p];
+      if (!pattern) continue;
       pattern.regex.lastIndex = 0;
       let match: RegExpExecArray | null;
 
@@ -182,7 +183,8 @@ export function sanitizeContent(content: string): { sanitized: string; findings:
 
         let exists = false;
         for (let f = 0; f < findings.length; f++) {
-          if (findings[f].lineNum === currentLineNum && findings[f].match === matchedValue) {
+          const finding = findings[f];
+          if (finding && finding.lineNum === currentLineNum && finding.match === matchedValue) {
             exists = true;
             break;
           }
@@ -216,7 +218,8 @@ export function sanitizeContent(content: string): { sanitized: string; findings:
       if (val && val.length > 18 && calculateEntropy(val) > 4.2) {
         let alreadyFound = false;
         for (let f = 0; f < findings.length; f++) {
-          if (findings[f].lineNum === currentLineNum && findings[f].match === val) {
+          const finding = findings[f];
+          if (finding && finding.lineNum === currentLineNum && finding.match === val) {
             alreadyFound = true;
             break;
           }

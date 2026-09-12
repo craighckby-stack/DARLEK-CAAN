@@ -154,11 +154,11 @@ async function validateGitHubTokenAndGetOwner(token: string): Promise<string | n
 }
 
 interface UserPromptOptions {
-  repoName?: string;
-  description?: string;
-  blueprintName?: string;
-  blueprintContent?: string;
-  prompt?: string;
+  repoName?: string | undefined;
+  description?: string | undefined;
+  blueprintName?: string | undefined;
+  blueprintContent?: string | undefined;
+  prompt?: string | undefined;
 }
 
 function buildUserPrompt({ repoName, description, blueprintName, blueprintContent, prompt }: UserPromptOptions): string {
@@ -314,9 +314,9 @@ function parseCompilationJson(str: string): CompilationOutput {
 }
 
 function upsertReadmeContent(files: RepositoryFile[], blueprintContent: string): void {
-  const readmeIndex = files.findIndex((f) => f.path.toLowerCase() === 'readme.md');
-  if (readmeIndex !== -1) {
-    files[readmeIndex].content = blueprintContent;
+  const existing = files.find((f) => f.path.toLowerCase() === 'readme.md');
+  if (existing) {
+    existing.content = blueprintContent;
   } else {
     files.push({ path: 'README.md', content: blueprintContent });
   }
@@ -326,8 +326,8 @@ interface EnsureRepoParams {
   token: string;
   owner: string;
   repoName: string;
-  description?: string;
-  blueprintName?: string;
+  description?: string | undefined;
+  blueprintName?: string | undefined;
 }
 
 async function ensureGitHubRepositoryExists({ token, owner, repoName, description, blueprintName }: EnsureRepoParams): Promise<string> {
@@ -397,7 +397,12 @@ async function pushFilesToGitHub({ token, owner, repoName, defaultBranch, files 
         fileSha = checkData.sha;
       }
 
-      const putBody: Record<string, unknown> = {
+      const putBody: {
+        message: string;
+        content: string;
+        branch: string;
+        sha?: string;
+      } = {
         message: `[DALEK CAAN COMPILER] Spawn spec file: ${file.path}`,
         content: base64Content,
         branch: defaultBranch,

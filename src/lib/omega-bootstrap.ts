@@ -35,8 +35,7 @@ function createBootstrapError(error: unknown): Error {
   return new Error(`[OmegaBootError] Darlek Caan initialization sequence failed: ${errorMessage}`);
 }
 
-export const OMEGA_BOOT_SEQUENCE: OmegaBootSequence = {
-  __proto__: null,
+export const OMEGA_BOOT_SEQUENCE: OmegaBootSequence = Object.assign(Object.create(null), {
   async init(): Promise<OmegaBootStatus> {
     try {
       return {
@@ -47,4 +46,4 @@ export const OMEGA_BOOT_SEQUENCE: OmegaBootSequence = {
       throw createBootstrapError(error);
     }
   },
-};
+});

@@ -17,8 +17,10 @@ const Input = React.memo(
         <input
           ref={forwardedRef}
           type={type}
+          dir="ltr"
           data-slot="input"
           className={computedClassName}
+          style={{ unicodeBidi: 'normal', direction: 'ltr', ...(props.style ?? {}) }}
           {...props}
         />
       )

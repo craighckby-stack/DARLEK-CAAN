@@ -172,12 +172,14 @@ function handleDalekBrainDebate(systemPrompt: string, userPrompt: string): LlmRe
     userPrompt.match(/As ([a-zA-Z0-9_]+),/i) ||
     userPrompt.match(/perspective as ([a-zA-Z0-9_]+)\./i);
   
-  const personaName = personaMatch ? personaMatch[1].trim().toUpperCase() : 'AGENT';
+  const firstPersona = personaMatch?.[1];
+  const personaName = firstPersona ? firstPersona.trim().toUpperCase() : 'AGENT';
 
   const riskMatch =
     userPrompt.match(/Risk Score:\s*(\d+)/i) ||
     systemPrompt.match(/risk:\s*(\d+)/i);
-  const risk = riskMatch ? parseInt(riskMatch[1], 10) : 3;
+  const firstRisk = riskMatch?.[1];
+  const risk = firstRisk ? parseInt(firstRisk, 10) : 3;
 
   let response: PersonaResponse = {
     vote: 'approve',
@@ -397,5 +399,5 @@ export async function callLlmChat(
  * Get the default Gemini API key from environment.
  */
 export function getDefaultGeminiKey(): string {
-  return process.env.GEMINI_API_KEY || '';
+  return process.env['GEMINI_API_KEY'] || '';
 }

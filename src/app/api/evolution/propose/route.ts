@@ -397,7 +397,9 @@ function parseLlmResponse(rawText: string, fallbackCode: string): ParsedLlmResul
 
   const codeBlocks = [...rawText.matchAll(/```(?:[^\n]*)\n([\s\S]*?)```/g)];
   for (const block of codeBlocks) {
-    const content = block[1].trim();
+    const rawContent = block[1];
+    if (!rawContent) continue;
+    const content = rawContent.trim();
     if (parsedResponse && jsonString && content.replace(/\s/g, '') === jsonString.replace(/\s/g, '')) {
       continue;
     }

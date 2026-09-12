@@ -3,6 +3,7 @@ import { callLlm, getDefaultGeminiKey } from '@/lib/llm-provider';
 import { db } from '@/lib/db';
 import { dalekBrainDebateVote, dalekBrainSynthesize } from '@/lib/dalek-brain';
 import { safeReqJson } from '@/lib/safe-json';
+import type { ApiKeys } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,7 @@ export interface DebateBody {
   readonly riskScore?: number;
   readonly analysis?: string;
   readonly affectedFiles?: readonly string[];
-  readonly apiKeys?: Record<string, string>;
+  readonly apiKeys?: ApiKeys;
   readonly rounds?: number;
   readonly activeAgents?: readonly string[];
   readonly owner?: string;
@@ -204,10 +205,17 @@ function truncateCode(code: string): string {
   return `${code.slice(0, MAX_CODE_LENGTH)}\n// ... [truncated]`;
 }
 
-function parseJsonPayload(rawText: string): Record<string, unknown> | null {
+interface ParsedVotePayload {
+  vote?: string;
+  confidence?: number;
+  reasoning?: string;
+  structuralProposal?: unknown;
+}
+
+function parseJsonPayload(rawText: string): ParsedVotePayload | null {
   try {
     const cleaned = rawText.replace(JSON_FENCE_REGEX, '').replace(BACKTICK_FENCE_REGEX, '').trim();
-    return JSON.parse(cleaned);
+    return JSON.parse(cleaned) as ParsedVotePayload;
   } catch {
     return null;
   }
@@ -243,7 +251,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const riskScore = typeof body.riskScore === 'number' ? body.riskScore : 5;
     const analysis = body.analysis ?? 'Evolutionary delta inspection';
     const affectedFiles = Array.isArray(body.affectedFiles) ? body.affectedFiles : [];
-    const apiKeys = body.apiKeys ?? {};
+    const apiKeys: ApiKeys = body.apiKeys ?? { github: '' };
     const rounds = typeof body.rounds === 'number' ? body.rounds : 1;
     const sessionId = body.sessionId;
     const isArchitecturalGenesis = body.isArchitecturalGenesis === true;
@@ -504,8 +512,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       let roundAbstains = 0;
       let allApproved = true;
 
-      for (let i = 0, len = currentVotes.length; i < len; i++) {
-        const v = currentVotes[i];
+      for (const v of currentVotes) {
         if (v.vote === 'reject') roundRejections++;
         if (v.vote === 'abstain') roundAbstains++;
         if (v.vote !== 'approve') allApproved = false;
@@ -568,8 +575,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     let totalWeights = 0;
     let positiveWeights = 0;
 
-    for (let i = 0, len = votes.length; i < len; i++) {
-      const v = votes[i];
+    for (const v of votes) {
       if (v.vote === 'approve') {
         approvals++;
         positiveWeights += v.confidence;
@@ -607,8 +613,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     } catch {}
 
     let structuralProposal: StructuralProposal | null = null;
-    for (let i = 0, len = votes.length; i < len; i++) {
-      const v = votes[i];
+    for (const v of votes) {
       if (v.vote === 'approve') {
         if (v.structuralProposal?.newPath) {
           structuralProposal = v.structuralProposal;

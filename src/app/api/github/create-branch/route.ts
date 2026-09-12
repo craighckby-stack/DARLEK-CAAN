@@ -40,9 +40,10 @@ const POST_HEADERS_CACHE: Readonly<Record<string, string>> = Object.freeze({
  * Generates HTTP headers utilizing pre-allocated reference objects with the provided authentication token.
  */
 function createGitHubHeaders(token: string, isPost: boolean = false): Record<string, string> {
-  const headers = isPost ? { ...POST_HEADERS_CACHE } : { ...BASE_HEADERS_CACHE };
-  headers.Authorization = `Bearer ${token}`;
-  return headers;
+  return {
+    ...(isPost ? POST_HEADERS_CACHE : BASE_HEADERS_CACHE),
+    Authorization: `Bearer ${token}`,
+  };
 }
 
 /**

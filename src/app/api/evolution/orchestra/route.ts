@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callLlm, callLlmMultiTurn, getDefaultGeminiKey } from '@/lib/llm-provider';
 import { safeReqJson } from '@/lib/safe-json';
+import type { ApiKeys } from '@/lib/types';
 
 // ─────────────────────────────────────────────
 // Types & Interfaces
@@ -18,7 +19,7 @@ export interface OrchestraRequestBody {
   mode?: 'parallel' | 'debate';
   topic?: string;
   rounds?: number;
-  apiKeys?: Record<string, string>;
+  apiKeys?: ApiKeys;
   agentConfigs?: AgentConfig[];
 }
 
@@ -34,10 +35,10 @@ export interface AgentCallResult {
 export interface OrchestraLog {
   timestamp: string;
   type: 'call' | 'response' | 'error' | 'info';
-  agent?: string;
-  provider?: string;
+  agent?: string | undefined;
+  provider?: string | undefined;
   message: string;
-  latencyMs?: number;
+  latencyMs?: number | undefined;
 }
 
 export interface AgentResponseItem {
@@ -94,7 +95,7 @@ const getCurrentTimestamp = (): string => new Date().toISOString();
 function createLog(
   type: OrchestraLog['type'],
   message: string,
-  options?: { agent?: string; provider?: string; latencyMs?: number }
+  options?: { agent?: string | undefined; provider?: string | undefined; latencyMs?: number | undefined }
 ): OrchestraLog {
   return {
     timestamp: getCurrentTimestamp(),
@@ -189,7 +190,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const mode = body.mode ?? 'parallel';
     const topic = body.topic ?? '';
     const requestedRounds = body.rounds ?? 1;
-    const apiKeys = body.apiKeys ?? {};
+    const apiKeys: ApiKeys = body.apiKeys ?? { github: '' };
     const agentConfigs = body.agentConfigs;
 
     if (!topic || topic.trim().length < 3) {

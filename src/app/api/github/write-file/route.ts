@@ -11,6 +11,13 @@ const GITHUB_API_BASE = 'https://api.github.com';
 const GITHUB_API_VERSION = 'application/vnd.github.v3+json';
 const PROJECT_ROOT = resolve(process.cwd());
 
+interface PutFileContentBody {
+  message: string;
+  content: string;
+  branch: string;
+  sha?: string;
+}
+
 interface GitHubHeaders extends Record<string, string> {
   Authorization: string;
   Accept: string;
@@ -214,7 +221,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const encodedPath = encodePathSegments(cleanPath);
     const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${encodedPath}`;
 
-    const bodyPayload: Record<string, unknown> = {
+    const bodyPayload: PutFileContentBody = {
       message: commitMessage || `[DARLEK CANN] Mutate ${cleanPath}`,
       content: Buffer.from(safeContent, 'utf-8').toString('base64'),
       branch,

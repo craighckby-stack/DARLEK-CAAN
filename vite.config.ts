@@ -25,7 +25,7 @@ function createServerConfig(isHmrDisabled: boolean): ServerOptions {
 }
 
 export default defineConfig(() => {
-  const isHmrDisabled = process.env.DISABLE_HMR === 'true';
+  const isHmrDisabled = process.env['DISABLE_HMR'] === 'true';
 
   return {
     plugins: [react(), tailwindcss()],

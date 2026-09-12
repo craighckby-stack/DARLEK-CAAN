@@ -11,7 +11,8 @@ export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error' | (
 export interface SystemState {
   setupComplete: boolean;
   connectionStatus: ConnectionStatus;
-  [key: string]: unknown;
+  evolutionCycle?: number;
+  geminiGeoblocked?: boolean;
 }
 
 /**

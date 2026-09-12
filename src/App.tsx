@@ -671,10 +671,12 @@ const AutonomousHotswapperPanel = ({
         <div className="space-y-1.5">
           <label className="text-[10px] font-mono text-gray-400 uppercase font-semibold">GitHub Token (for Auto Push)</label>
           <input 
+            dir="ltr"
             type="password"
             placeholder="ghp_..."
             value={ghToken}
             onChange={(e) => setGhToken(e.target.value)}
+            style={{ unicodeBidi: 'normal', direction: 'ltr' }}
             className="w-full bg-black/50 border border-white/10 rounded px-3 py-1.5 text-[11px] font-mono text-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 outline-none transition-all"
           />
         </div>
@@ -743,10 +745,12 @@ const ConfigCard = ({
       <div className="space-y-2">
         <label className="text-[10px] font-mono text-gray-400 uppercase font-semibold">Target Repository (owner/repo)</label>
         <input 
+          dir="ltr"
           type="text" 
           value={repoName}
           onChange={(e) => setRepoName(e.target.value)}
           disabled={isFirebaseBrainOnly}
+          style={{ unicodeBidi: 'normal', direction: 'ltr' }}
           className={`w-full bg-black/50 border border-white/10 rounded px-3 py-2.5 text-[12px] font-mono text-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 outline-none transition-all shadow-inner ${isFirebaseBrainOnly ? 'opacity-30 cursor-not-allowed' : ''}`}
         />
       </div>
@@ -1076,33 +1080,41 @@ const FirebaseLearningLogsPanel = ({
               <option value="postmortem">Post-Mortem</option>
             </select>
             <input
+              dir="ltr"
               type="text"
               placeholder="Log Title"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
+              style={{ unicodeBidi: 'normal', direction: 'ltr' }}
               className="bg-zinc-900 border border-white/10 rounded p-1 text-[10px] text-white font-mono placeholder-gray-600 focus:outline-none focus:border-green-500/40"
               required
             />
           </div>
           <input
+            dir="ltr"
             type="text"
             placeholder="Symptom / Context"
             value={newSymptom}
             onChange={(e) => setNewSymptom(e.target.value)}
+            style={{ unicodeBidi: 'normal', direction: 'ltr' }}
             className="bg-zinc-900 border border-white/10 rounded p-1 text-[10px] text-white font-mono placeholder-gray-600 focus:outline-none focus:border-green-500/40"
           />
           <textarea
+            dir="ltr"
             placeholder="Evidence (Machine-Copied Fact / Error Code)"
             value={newEvidence}
             onChange={(e) => setNewEvidence(e.target.value)}
             rows={2}
+            style={{ unicodeBidi: 'normal', direction: 'ltr' }}
             className="bg-zinc-900 border border-white/10 rounded p-1 text-[10px] text-white font-mono placeholder-gray-600 resize-none h-12 focus:outline-none focus:border-green-500/40"
           />
           <textarea
+            dir="ltr"
             placeholder="MANDATORY CONSTRAINT (Lesson for LLM)"
             value={newConstraint}
             onChange={(e) => setNewConstraint(e.target.value)}
             rows={2}
+            style={{ unicodeBidi: 'normal', direction: 'ltr' }}
             className="bg-zinc-900 border border-white/10 rounded p-1 text-[10px] text-white font-mono placeholder-gray-600 resize-none h-12 focus:outline-none focus:border-green-500/40"
           />
           <div className="grid grid-cols-2 gap-2 pt-1 shrink-0">

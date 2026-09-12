@@ -146,15 +146,15 @@ function buildGenerationConfig(systemInstruction: string, options?: GeminiCallCo
 
   const trimmedSystemInstruction = systemInstruction.trim();
   if (trimmedSystemInstruction) {
-    config.systemInstruction = trimmedSystemInstruction;
+    config['systemInstruction'] = trimmedSystemInstruction;
   }
 
   if (options?.responseMimeType) {
-    config.responseMimeType = options.responseMimeType;
+    config['responseMimeType'] = options.responseMimeType;
   }
 
   if (options?.responseSchema) {
-    config.responseSchema = options.responseSchema;
+    config['responseSchema'] = options.responseSchema;
   }
 
   return config;

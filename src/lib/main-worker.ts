@@ -6,8 +6,7 @@ import { validateStructuralSanity, StructuralSanityResult } from './structural-s
  */
 export interface CodeFile {
   readonly path: string;
-  readonly content: string;
-  readonly [key: string]: unknown;
+  readonly content?: string;
 }
 
 /**
@@ -27,7 +26,7 @@ export class MainWorkerPool {
   /**
    * Enqueues a task and returns a promise that resolves with the result.
    */
-  private enqueue<T>(taskFn: () => Promise<T>): Promise<T> {
+  private enqueue<T>(taskFn: () => T | Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const wrappedTask = async (): Promise<void> => {
         try {
@@ -79,8 +78,8 @@ export class MainWorkerPool {
     originalCode: string,
     proposedCode: string,
     filePath: string,
-    repoFiles: CodeFile[],
-    newFiles: CodeFile[]
+    repoFiles: Array<string | { path: string }> = [],
+    newFiles: CodeFile[] = []
   ): Promise<StructuralSanityResult> {
     return this.enqueue(() => validateStructuralSanity(originalCode, proposedCode, filePath, repoFiles, newFiles));
   }

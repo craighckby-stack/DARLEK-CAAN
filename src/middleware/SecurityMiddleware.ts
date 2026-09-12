@@ -78,7 +78,8 @@ export class SecurityMiddleware {
   private static hasForbiddenExtension(filePath: string): boolean {
     const len = SecurityMiddleware.FORBIDDEN_EXTENSIONS.length;
     for (let i = 0; i < len; i++) {
-      if (filePath.endsWith(SecurityMiddleware.FORBIDDEN_EXTENSIONS[i])) {
+      const ext = SecurityMiddleware.FORBIDDEN_EXTENSIONS[i];
+      if (ext && filePath.endsWith(ext)) {
         return true;
       }
     }

@@ -9,9 +9,9 @@ export interface ValidationError {
   line: number;
   column: number;
   message: string;
-  code?: string;
+  code?: string | undefined;
   severity: 'error' | 'warning';
-  snippet?: string;
+  snippet?: string | undefined;
 }
 
 export interface ValidationResult {
@@ -20,7 +20,7 @@ export interface ValidationResult {
   errors: ValidationError[];
   warnings: string[];
   autoHealed: boolean;
-  healedCode?: string;
+  healedCode?: string | undefined;
 }
 
 /**
@@ -684,12 +684,13 @@ export async function validateSourceCode(
   errors.push(...delimiterCheck.errors);
 
   // 5. Auto-fix single missing trailing delimiter
-  if (errors.length === 1 && errors[0].code === 'SYNTAX_UNCLOSED_DELIMITER') {
-    const unclosedChar = errors[0].message.includes('{')
+  const firstError = errors[0];
+  if (errors.length === 1 && firstError && firstError.code === 'SYNTAX_UNCLOSED_DELIMITER') {
+    const unclosedChar = firstError.message.includes('{')
       ? '}'
-      : errors[0].message.includes('(')
+      : firstError.message.includes('(')
       ? ')'
-      : errors[0].message.includes('[')
+      : firstError.message.includes('[')
       ? ']'
       : '';
     if (unclosedChar) {

@@ -25,7 +25,7 @@ interface GitHubCommitResponse {
 
 interface RepoCommitInfo {
   readonly sha: string;
-  readonly fullSha?: string;
+  readonly fullSha?: string | undefined;
   readonly message: string;
   readonly author: string;
   readonly date: string;

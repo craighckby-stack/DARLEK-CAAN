@@ -38,8 +38,8 @@ interface GitHubUserResponse {
 }
 
 export const SOURCES: readonly SiphonSource[] = [
+  { owner: "craighckby-stack", repo: "Tt", branch: "main", label: "RAG COGNITIVE RESOLUTION ENGINE" },
   { owner: "craighckby-stack", repo: "DARLEK-CAAN-Cognitive-Engine", branch: "main", label: "DARLEKCANNV3 MAIN" },
-  { owner: "craighckby-stack", repo: "DARLEK-CAAN-Cognitive-Engine", branch: "main", label: "AI PROJECT RECON" },
   { owner: "craighckby-stack", repo: "Huxley-Singularity-Loop-Main", branch: "main", label: "SINGULARITY LOOP" },
   { owner: "google-deepmind", repo: "deepmind-research", branch: "master", label: "AGI RESEARCH" },
   { owner: "microsoft", repo: "autogen", branch: "main", label: "MULTI-AGENT ORCHESTRATION" },
@@ -106,7 +106,7 @@ function buildGitHubHeaders(githubToken?: string): Record<string, string> {
     Accept: "application/vnd.github.v3+json",
   };
   if (githubToken && githubToken.trim().length > 0) {
-    headers.Authorization = `Bearer ${githubToken.trim()}`;
+    headers['Authorization'] = `Bearer ${githubToken.trim()}`;
   }
   return headers;
 }
