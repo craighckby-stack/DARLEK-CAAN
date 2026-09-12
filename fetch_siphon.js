@@ -2,7 +2,7 @@
  * DARLEK CANN ARCHITECTURAL HEADER
  * File: fetch_siphon.js
  * Role: Core system component participating in autonomous cognitive evolution cycles.
- * Architecture: Type-safe modular unit with resilient state interfaces.
+ * Architecture: Clean JavaScript module with robust error handling and stream limits.
  */
 
 'use strict';
