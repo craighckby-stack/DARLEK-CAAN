@@ -664,3 +664,15 @@ Line 18, Col 10: Property declaration is missing its type annotation.
 Line 20, Col 6: Property declaration is missing its type annotation.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/ui/button.tsx.
+
+### ❌ [2026-09-12] fix_synthesizer.sh `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 2, Col 8: Unclosed single-quote string literal.
+Line 3, Col 1179: Unclosed single-quote string literal.
+Line 3, Col 1018: Unclosed opening delimiter '{'.
+Line 3, Col 1017: Unclosed opening delimiter '('.
+Line 3, Col 969: Unclosed opening delimiter '{'.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_synthesizer.sh.
