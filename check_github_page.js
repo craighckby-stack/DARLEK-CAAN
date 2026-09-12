@@ -8,6 +8,7 @@
 'use strict';
 
 const https = require('https');
+const { URL } = require('url');
 
 /**
  * Configuration constants for network operations.
@@ -15,14 +16,17 @@ const https = require('https');
 const NETWORK_CONFIG = Object.freeze({
   USER_AGENT: 'DARLEK-CANN-Engine/4.9 (Node.js)',
   TIMEOUT_MS: 10000,
-  PREVIEW_LINE_COUNT: 5
+  PREVIEW_LINE_COUNT: 5,
+  MAX_RESPONSE_BYTES: 10 * 1024 * 1024 // 10MB strict bounds limit for memory protection
 });
 
 /**
  * Base HTTP headers utilized across outgoing requests.
  */
 const BASE_HEADERS = Object.freeze({
-  'User-Agent': NETWORK_CONFIG.USER_AGENT
+  'User-Agent': NETWORK_CONFIG.USER_AGENT,
+  'Accept': 'text/plain,application/vnd.github.v3+raw,*/*',
+  'Accept-Charset': 'utf-8'
 });
 
 /**
@@ -36,18 +40,51 @@ function logError(label, message) {
 }
 
 /**
- * Collects and aggregates response stream chunks into a complete string using optimized buffer concatenation.
+ * Validates the target URL to ensure it is a safe HTTPS URL pointing to allowed domains.
+ * 
+ * @param {string} inputUrl - The URL string to validate.
+ * @returns {URL|null} The parsed URL object or null if invalid.
+ */
+function validateAndParseUrl(inputUrl) {
+  if (typeof inputUrl !== 'string' || inputUrl.length === 0 || inputUrl.length > 2048) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(inputUrl);
+    if (parsed.protocol !== 'https:') {
+      return null;
+    }
+    // Restrict host to trusted domains (e.g., githubusercontent.com)
+    if (!parsed.hostname.endsWith('githubusercontent.com') && !parsed.hostname.endsWith('github.com')) {
+      return null;
+    }
+    return parsed;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Collects and aggregates response stream chunks into a complete string with strict bounds checking.
  * 
  * @param {import('http').IncomingMessage} response - The incoming HTTP response stream.
  * @returns {Promise<string>} The complete response body.
  */
 function consumeResponseBody(response) {
   return new Promise((resolve, reject) => {
+    let totalBytes = 0;
     const chunks = [];
     
     response.setEncoding('utf8');
 
     response.on('data', (chunk) => {
+      totalBytes += Buffer.byteLength(chunk, 'utf8');
+      if (totalBytes > NETWORK_CONFIG.MAX_RESPONSE_BYTES) {
+        response.destroy();
+        reject(new Error('Response body exceeded maximum allowed length (Memory/Overflow protection).'));
+        return;
+      }
       chunks.push(chunk);
     });
 
@@ -102,8 +139,14 @@ function analyzeAndReportContent(label, data) {
  * @returns {void}
  */
 function checkPage(url, label) {
-  if (typeof url !== 'string' || typeof label !== 'string') {
-    logError(label || 'UNKNOWN', 'Invalid parameters passed to checkPage.');
+  if (typeof label !== 'string') {
+    logError('UNKNOWN', 'Invalid label parameter passed to checkPage.');
+    return;
+  }
+
+  const validatedUrl = validateAndParseUrl(url);
+  if (!validatedUrl) {
+    logError(label, 'Invalid or untrusted URL provided (Security bounds violation).');
     return;
   }
 
@@ -112,7 +155,7 @@ function checkPage(url, label) {
     timeout: NETWORK_CONFIG.TIMEOUT_MS
   };
 
-  const req = https.get(url, requestOptions, async (res) => {
+  const req = https.get(validatedUrl, requestOptions, async (res) => {
     if (res.statusCode < 200 || res.statusCode >= 300) {
       logError(label, `HTTP Status Code: ${res.statusCode} ${res.statusMessage || ''}`);
       res.resume();
