@@ -29,15 +29,25 @@ const STORAGE_KEYS = {
 
 const MAX_PARADOX_ENTRIES = 10;
 const REFRESH_INTERVAL_MS = 3000;
+const MAX_DESCRIPTION_LENGTH = 1024;
+
+function sanitizeInput(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  if (str.length > MAX_DESCRIPTION_LENGTH) {
+    return str.slice(0, MAX_DESCRIPTION_LENGTH) + '... [TRUNCATED]';
+  }
+  return str;
+}
 
 function formatTimeString(timestamp: unknown): string {
   if (!timestamp) return new Date().toLocaleTimeString();
   if (timestamp instanceof Date) return timestamp.toLocaleTimeString();
   if (typeof timestamp === 'string') {
     const parsedDate = new Date(timestamp);
-    return Number.isNaN(parsedDate.getTime()) ? timestamp : parsedDate.toLocaleTimeString();
+    return Number.isNaN(parsedDate.getTime()) ? sanitizeInput(timestamp) : parsedDate.toLocaleTimeString();
   }
-  return String(timestamp);
+  return sanitizeInput(timestamp);
 }
 
 function fetchStoredData<T>(storageKey: string): T[] {
@@ -64,10 +74,14 @@ export default function TemporalParadoxLog({ logEntries, rejectionMemory }: Temp
     
     activeRejections.forEach((rejection, index) => {
       if (!rejection) return;
+      const safeId = sanitizeInput(rejection.id ?? index);
+      const safeFilePath = sanitizeInput(rejection.filePath ?? 'unknown');
+      const safeReason = sanitizeInput(rejection.reason ?? 'No reason specified');
+
       collectedParadoxes.push({
-        id: `rej-${rejection.id ?? index}`,
+        id: `rej-${safeId}`,
         time: formatTimeString(rejection.timestamp),
-        description: `Mutation rejected for ${rejection.filePath ?? 'unknown'}: ${rejection.reason ?? 'No reason specified'}`,
+        description: `Mutation rejected for ${safeFilePath}: ${safeReason}`,
         type: 'REJECTION',
       });
     });
@@ -79,20 +93,24 @@ export default function TemporalParadoxLog({ logEntries, rejectionMemory }: Temp
     activeLogs.forEach((entry) => {
       if (!entry) return;
       const isCriticalType = entry.type === 'ERROR' || entry.type === 'WARNING';
+      const safeDescription = sanitizeInput(entry.description ?? 'No description provided');
       const hasCriticalKeywords = Boolean(
-        entry.description && (
-          entry.description.includes('REJECTED') ||
-          entry.description.includes('AST') ||
-          entry.description.includes('Coherence Gate')
+        safeDescription && (
+          safeDescription.includes('REJECTED') ||
+          safeDescription.includes('AST') ||
+          safeDescription.includes('Coherence Gate')
         )
       );
 
       if (isCriticalType || hasCriticalKeywords) {
+        const safeLogId = sanitizeInput(entry.id ?? Math.random().toString(36).substring(2, 9));
+        const safeType = sanitizeInput(entry.type ?? 'UNKNOWN');
+
         collectedParadoxes.push({
-          id: `log-${entry.id ?? Math.random().toString(36).substring(2, 9)}`,
+          id: `log-${safeLogId}`,
           time: formatTimeString(entry.timestamp),
-          description: entry.description ?? 'No description provided',
-          type: entry.type ?? 'UNKNOWN',
+          description: safeDescription,
+          type: safeType,
         });
       }
     });
