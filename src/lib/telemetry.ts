@@ -1,7 +1,6 @@
 /**
  * @file src/lib/telemetry.ts
- * @description Darlek Caan - Darlek Caan Optimized Telemetry and Metrics Engine.
- * Provides high-clarity event logging, type-safe telemetry structures, and metric calculations.
+ * @description Modern telemetry and metrics engine providing robust event logging, type-safe structures, and efficient metric calculations.
  */
 
 // ============================================================================
@@ -34,10 +33,9 @@ export interface SaturationMetrics {
 const UNSERIALIZABLE_FALLBACK = '[Unserializable Data]';
 const MAX_EVENT_NAME_LENGTH = 128;
 const MAX_SERIALIZED_PAYLOAD_LENGTH = 16384;
-const MAX_NESTING_DEPTH = 8;
 
 /**
- * Validates and sanitizes string bounds to prevent overflow and injection vectors.
+ * Validates and sanitizes string bounds to prevent overflow and malformed output.
  */
 const sanitizeStringInput = (input: string, maxLength: number): string => {
   if (typeof input !== 'string') {
@@ -48,7 +46,7 @@ const sanitizeStringInput = (input: string, maxLength: number): string => {
 };
 
 /**
- * Custom JSON serialization replacer that transforms BigInt values into strings and guards depth.
+ * Custom JSON serialization replacer that transforms BigInt, functions, and symbols into strings.
  */
 const serializeBigIntReplacer = (_key: string, value: unknown): unknown => {
   if (typeof value === 'bigint') {
@@ -62,7 +60,7 @@ const serializeBigIntReplacer = (_key: string, value: unknown): unknown => {
 
 /**
  * Safely converts event data into a formatted JSON string without throwing runtime errors,
- * incorporating depth limiting and strict length bounds checking.
+ * incorporating strict length bounds checking.
  */
 const safeSerializeEventData = (data: EvolutionEventData): string => {
   if (data === null || typeof data !== 'object') {
@@ -81,7 +79,7 @@ const safeSerializeEventData = (data: EvolutionEventData): string => {
 };
 
 /**
- * Formats a telemetry log line into the standard Darlek Caan engine event schema
+ * Formats a telemetry log line into the standard telemetry event schema
  * with input length restrictions.
  */
 const formatEvolutionLog = (eventName: string, serializedPayload: string): string => {
