@@ -1,6 +1,6 @@
 /**
  * @file test-parse2.js
- * @version 4.0.0
+ * @version 4.1.0
  * @engine EMG Core v49 Neural Code and Documentation Optimizer Engine
  */
 
@@ -22,15 +22,20 @@
 
 /**
  * Sanitizes control characters from potential JSON strings for secure parsing.
- * @param {string} input
+ * Enforces strict input validation against non-string inputs.
+ * @param {unknown} input
  * @returns {string}
  */
 function sanitizeControlCharacters(input) {
+  if (typeof input !== 'string') {
+    return '';
+  }
   return input.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ');
 }
 
 /**
  * Parses an LLM response string to extract structured metadata, analysis, and code blocks safely.
+ * Implements strict type checking and bounds/length protection against injection/overflow.
  * 
  * @param {string} rawText - The raw string output from the LLM.
  * @param {string} fallbackCode - The default code fallback if no valid code is identified.
@@ -50,14 +55,18 @@ function parseLlmResponse(rawText, fallbackCode) {
     };
   }
 
+  // Enforce a strict length boundary check to mitigate potential buffer/overflow or resource exhaustion
+  const MAX_INPUT_LENGTH = 1048576; // 1MB limit
+  const safeRawText = rawText.length > MAX_INPUT_LENGTH ? rawText.slice(0, MAX_INPUT_LENGTH) : rawText;
+
   // 1. Attempt to extract and parse JSON payload safely
   try {
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    const jsonMatch = safeRawText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const sanitizedJson = sanitizeControlCharacters(jsonMatch[0]);
       /** @type {LlmParsedResponse} */
       const parsed = JSON.parse(sanitizedJson);
-      if (parsed && (typeof parsed.analysis === 'string' || parsed.riskScore !== undefined || Array.isArray(parsed.newFiles))) {
+      if (parsed && typeof parsed === 'object' && (typeof parsed.analysis === 'string' || parsed.riskScore !== undefined || Array.isArray(parsed.newFiles))) {
         parsedResponse = parsed;
       }
     }
@@ -65,12 +74,15 @@ function parseLlmResponse(rawText, fallbackCode) {
     // Graceful fallback on JSON parse failure
   }
 
-  // 2. Extract code blocks via regex iterator
+  // 2. Extract code blocks via regex iterator with safe iteration limit
   const codeBlockRegex = /```(?:[^\n]*)\n([\s\S]*?)```/g;
   let blockMatch;
+  let iterations = 0;
+  const MAX_ITERATIONS = 1000;
 
-  while ((blockMatch = codeBlockRegex.exec(rawText)) !== null) {
-    const content = blockMatch[1].trim();
+  while ((blockMatch = codeBlockRegex.exec(safeRawText)) !== null && iterations < MAX_ITERATIONS) {
+    iterations++;
+    const content = typeof blockMatch[1] === 'string' ? blockMatch[1].trim() : '';
     
     // Skip if content matches the extracted analysis string
     if (parsedResponse && typeof parsedResponse.analysis === 'string' && content.includes(parsedResponse.analysis)) {
@@ -95,7 +107,7 @@ function parseLlmResponse(rawText, fallbackCode) {
 
   // 3. Fallback extraction if no code blocks were found
   if (!proposedCode) {
-    const textWithoutJson = rawText
+    const textWithoutJson = safeRawText
       .replace(/\{[\s\S]*\}/, '')
       .replace(/```(?:json|tsx|ts|js|)[^\n]*/gi, '')
       .replace(/```/g, '')
@@ -118,7 +130,7 @@ function parseLlmResponse(rawText, fallbackCode) {
 
   // 5. Apply final fallback code safeguard
   if (!proposedCode) {
-    proposedCode = fallbackCode;
+    proposedCode = typeof fallbackCode === 'string' ? fallbackCode : '';
   }
 
   return { parsedResponse, proposedCode, analysis };
