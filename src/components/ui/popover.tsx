@@ -3,8 +3,6 @@
 import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 
-import { cn } from "@/lib/utils"
-
 export type PopoverProps = React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Root>
 
 const Popover = React.memo(
