@@ -6,12 +6,12 @@ import { COLORS, HEALTH_STATUS_COLORS } from '@/lib/constants';
 import { GitBranch, RotateCw, Activity, Clock } from 'lucide-react';
 
 export interface StatusBarProps {
-  connectionStatus: ConnectionStatus;
-  repoConfig: RepoConfig;
-  evolutionCycle: number;
+  readonly connectionStatus: ConnectionStatus;
+  readonly repoConfig: RepoConfig;
+  readonly evolutionCycle: number;
   overallHealth: 'healthy' | 'warning' | 'critical';
-  sessionStart: Date | string | number;
-  userReposCount?: number;
+  readonly sessionStart: Date | string | number;
+  readonly userReposCount?: number;
 }
 
 interface ProviderConfig {
