@@ -17,7 +17,6 @@ const REQUEST_HEADERS = Object.freeze({
   'Accept': 'text/plain,application/typescript'
 });
 
-// Pre-parsed URL validation cache for execution speed optimization
 const PARSED_ENDPOINT = new URL(SIPHON_ENDPOINT);
 if (PARSED_ENDPOINT.protocol !== 'https:') {
   throw new Error('Security violation: Only secure HTTPS endpoints are permitted.');
