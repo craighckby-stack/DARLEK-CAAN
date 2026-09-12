@@ -536,3 +536,11 @@ Line 3, Col 1017: Unclosed opening delimiter '('.
 Line 3, Col 969: Unclosed opening delimiter '{'.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_synthesizer.sh.
+
+### ❌ [2026-09-12] patch.js `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 6, Col 24: Type annotations can only be used in TypeScript files.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on patch.js.
