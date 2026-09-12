@@ -138,3 +138,13 @@ Line 3, Col 969: Unclosed opening delimiter '{'.
 Line 85, Col 8: Property declaration is missing its type annotation.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/setup/test-connection/route.ts.
+
+### ❌ [2026-09-12] src/components/ChessBoard.tsx `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 28, Col 8: Property declaration is missing its type annotation.
+Line 40, Col 8: Property declaration is missing its type annotation.
+Line 257, Col 8: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/ChessBoard.tsx.
