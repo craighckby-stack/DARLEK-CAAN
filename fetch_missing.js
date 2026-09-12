@@ -2,7 +2,7 @@
  * DARLEK CANN ARCHITECTURAL HEADER
  * File: fetch_missing.js
  * Role: Core system component participating in autonomous cognitive evolution cycles.
- * Architecture: Type-safe modular unit with resilient state interfaces.
+ * Architecture: Modular unit with resilient state interfaces.
  * Optimization Engine: EMG Core v49 Neural Code and Documentation Optimizer Engine
  */
 
@@ -12,24 +12,6 @@ const fs = require('fs/promises');
 const https = require('https');
 const path = require('path');
 
-/**
- * @typedef {Object} GitHubTreeItem
- * @property {string} path - Relative file path in the repository.
- * @property {string} mode - File mode bitfield representation.
- * @property {string} type - Node type ('blob' | 'tree').
- * @property {string} [sha] - SHA hash identifier.
- * @property {number} [size] - File size in bytes.
- * @property {string} [url] - Direct API endpoint URL.
- */
-
-/**
- * @typedef {Object} GitHubTreeResponse
- * @property {string} sha - Tree commit SHA.
- * @property {string} url - GitHub Tree API endpoint.
- * @property {GitHubTreeItem[]} tree - List of repository objects.
- * @property {boolean} truncated - Indicates if output was truncated by server.
- */
-
 const API_ENDPOINT = 'https://api.github.com/repos/craighckby-stack/epistemic_debate_engine/git/trees/main?recursive=1';
 const LOCAL_DIR = 'src';
 const OUTPUT_FILE = 'missing_files.json';
@@ -37,7 +19,7 @@ const OUTPUT_FILE = 'missing_files.json';
 /**
  * Fetches repository structure from GitHub API asynchronously with resilience.
  * @param {string} url - Target endpoint URL.
- * @returns {Promise<GitHubTreeResponse>} Resolves with JSON response object.
+ * @returns {Promise<Object>} Resolves with JSON response object.
  */
 function fetchRemoteTree(url) {
   return new Promise((resolve, reject) => {
@@ -51,11 +33,10 @@ function fetchRemoteTree(url) {
     const req = https.get(url, requestOptions, (res) => {
       const { statusCode } = res;
       if (statusCode !== 200) {
-        res.resume(); // Consume stream to prevent memory leaks
+        res.resume();
         return reject(new Error(`HTTPS GET failed with status code: ${statusCode}`));
       }
 
-      /** @type {Buffer[]} */
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {
@@ -88,14 +69,9 @@ async function walkDirectory(dir) {
   try {
     await fs.access(dir);
   } catch {
-    // Return empty set safely if target directory does not exist locally
     return results;
   }
 
-  /**
-   * Recursive inner scanner utilizing non-blocking directory reading.
-   * @param {string} currentDir 
-   */
   async function scan(currentDir) {
     const entries = await fs.readdir(currentDir, { withFileTypes: true });
 
@@ -105,7 +81,6 @@ async function walkDirectory(dir) {
         if (entry.isDirectory()) {
           await scan(fullPath);
         } else if (entry.isFile()) {
-          // Normalize platform-specific delimiters (Windows '\\' vs POSIX '/')
           const normalizedPath = fullPath.split(path.sep).join('/');
           results.push(normalizedPath);
         }
@@ -132,7 +107,6 @@ async function run() {
       throw new Error('Received malformed payload structure from GitHub API.');
     }
 
-    // Optimize membership verification from O(N*M) to O(1) time complexity
     const localFileSet = new Set(localFiles);
     const targetPrefix = `${LOCAL_DIR}/`;
 
@@ -157,5 +131,4 @@ async function run() {
   }
 }
 
-// Auto-execute process
 run();
