@@ -314,3 +314,12 @@ Line 2, Col 8: Unclosed single-quote string literal.
 Line 22, Col 3: Unclosed single-quote string literal.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on update_agents.sh.
+
+### ❌ [2026-09-12] fix_synthesizer.sh `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 18, Col 12: Unclosed single-quote string literal.
+Line 36, Col 1: Unclosed single-quote string literal.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_synthesizer.sh.
