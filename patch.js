@@ -1,18 +1,28 @@
-const { readFileSync, writeFileSync } = require('fs');
+/**
+ * File: patch.js
+ * Description: Modifies the evolution propose API route to integrate repository file context.
+ */
 
-const FILE_PATH = 'src/app/api/evolution/propose/route.ts';
+const { readFileSync, writeFileSync } = require('node:fs');
+
+const TARGET_FILE_PATH = 'src/app/api/evolution/propose/route.ts';
 const SEARCH_TARGET = 'const userPrompt = `Analyze this file';
 
-const content = readFileSync(FILE_PATH, 'utf8');
-const idx = content.indexOf(SEARCH_TARGET);
+function applyPatch() {
+    const fileContent = readFileSync(TARGET_FILE_PATH, 'utf8');
+    const targetIndex = fileContent.indexOf(SEARCH_TARGET);
 
-if (idx !== -1) {
-    const lineEndIdx = content.indexOf('\n', idx);
-    const insertSnippet = `    const repoFilesContext = Array.isArray((body as any)?.repoFiles) ? \`\\nEXISTING REPOSITORY FILES:\\n\${(body as any).repoFiles.slice(0, 1000).join('\\n')}\\n\` : '';\n`;
-    
-    let updated = content.slice(0, lineEndIdx + 1) + insertSnippet + content.slice(lineEndIdx + 1);
-    updated = updated.replace('${userReposContextStr}', '${userReposContextStr}${repoFilesContext}');
+    if (targetIndex === -1) {
+        return;
+    }
 
-    writeFileSync(FILE_PATH, updated);
-    console.log('Patched userPrompt');
+    const lineEndIndex = fileContent.indexOf('\n', targetIndex);
+    const insertSnippet = '    const repoFilesContext = Array.isArray(body?.repoFiles) ? `\\nEXISTING REPOSITORY FILES:\\n${body.repoFiles.slice(0, 1000).join(\'\\n\')}\\n` : \'\';\n';
+
+    let updatedContent = fileContent.slice(0, lineEndIndex + 1) + insertSnippet + fileContent.slice(lineEndIndex + 1);
+    updatedContent = updatedContent.replace('${userReposContextStr}', '${userReposContextStr}${repoFilesContext}');
+
+    writeFileSync(TARGET_FILE_PATH, updatedContent, 'utf8');
 }
+
+applyPatch();
