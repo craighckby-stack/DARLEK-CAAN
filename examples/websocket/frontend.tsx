@@ -41,6 +41,14 @@ interface ClientToServerEvents {
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+const MAX_INPUT_LENGTH = 1000;
+const MAX_USERNAME_LENGTH = 50;
+
+const sanitizeInput = (input: string, maxLength: number): string => {
+  if (typeof input !== 'string') return '';
+  return input.slice(0, maxLength).replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+};
+
 const formatTimestamp = (timestamp: Date | string): string => {
   try {
     const date = new Date(timestamp);
@@ -72,9 +80,6 @@ export default function SocketDemo(): ReactElement {
   }, [messages, scrollToBottom]);
 
   useEffect(() => {
-    // Connect to websocket server
-    // Never use PORT in the URL, always use XTransformPort
-    // DO NOT change the path, it is used by Caddy to forward the request to the correct port
     const socketInstance: TypedSocket = io('/?XTransformPort=3003', {
       transports: ['websocket', 'polling'],
       forceNew: true,
@@ -102,26 +107,54 @@ export default function SocketDemo(): ReactElement {
     };
 
     const handleIncomingMessage = (msg: Message) => {
-      setMessages((prevMessages) => [...prevMessages, msg]);
+      if (!msg || typeof msg.id !== 'string' || typeof msg.content !== 'string') return;
+      const safeMsg: Message = {
+        ...msg,
+        content: sanitizeInput(msg.content, MAX_INPUT_LENGTH),
+        username: sanitizeInput(msg.username, MAX_USERNAME_LENGTH),
+      };
+      setMessages((prevMessages) => [...prevMessages, safeMsg]);
     };
 
     const handleUserJoined = (data: { user: User; message: Message }) => {
-      setMessages((prevMessages) => [...prevMessages, data.message]);
+      if (!data || !data.user || !data.message) return;
+      const safeMessage: Message = {
+        ...data.message,
+        content: sanitizeInput(data.message.content, MAX_INPUT_LENGTH),
+        username: sanitizeInput(data.message.username, MAX_USERNAME_LENGTH),
+      };
+      const safeUser: User = {
+        id: sanitizeInput(data.user.id, 100),
+        username: sanitizeInput(data.user.username, MAX_USERNAME_LENGTH),
+      };
+
+      setMessages((prevMessages) => [...prevMessages, safeMessage]);
       setUsers((prevUsers) => {
-        if (!prevUsers.some((u) => u.id === data.user.id)) {
-          return [...prevUsers, data.user];
+        if (!prevUsers.some((u) => u.id === safeUser.id)) {
+          return [...prevUsers, safeUser];
         }
         return prevUsers;
       });
     };
 
     const handleUserLeft = (data: { user: User; message: Message }) => {
-      setMessages((prevMessages) => [...prevMessages, data.message]);
+      if (!data || !data.user || !data.message) return;
+      const safeMessage: Message = {
+        ...data.message,
+        content: sanitizeInput(data.message.content, MAX_INPUT_LENGTH),
+        username: sanitizeInput(data.message.username, MAX_USERNAME_LENGTH),
+      };
+      setMessages((prevMessages) => [...prevMessages, safeMessage]);
       setUsers((prevUsers) => prevUsers.filter((u) => u.id !== data.user.id));
     };
 
     const handleUsersList = (data: { users: User[] }) => {
-      setUsers(data.users);
+      if (!data || !Array.isArray(data.users)) return;
+      const safeUsers = data.users.map((u) => ({
+        id: sanitizeInput(u.id, 100),
+        username: sanitizeInput(u.username, MAX_USERNAME_LENGTH),
+      }));
+      setUsers(safeUsers);
     };
 
     socketInstance.on('connect', handleConnect);
@@ -146,7 +179,7 @@ export default function SocketDemo(): ReactElement {
   }, []);
 
   const handleJoin = useCallback(() => {
-    const trimmedUsername = username.trim();
+    const trimmedUsername = sanitizeInput(username.trim(), MAX_USERNAME_LENGTH);
     const currentSocket = socketRef.current;
     if (currentSocket && trimmedUsername && isConnected) {
       currentSocket.emit('join', { username: trimmedUsername });
@@ -155,8 +188,8 @@ export default function SocketDemo(): ReactElement {
   }, [username, isConnected]);
 
   const sendMessage = useCallback(() => {
-    const trimmedMessage = inputMessage.trim();
-    const trimmedUsername = username.trim();
+    const trimmedMessage = sanitizeInput(inputMessage.trim(), MAX_INPUT_LENGTH);
+    const trimmedUsername = sanitizeInput(username.trim(), MAX_USERNAME_LENGTH);
     const currentSocket = socketRef.current;
     if (currentSocket && trimmedMessage && trimmedUsername && isConnected) {
       currentSocket.emit('message', {
@@ -186,11 +219,11 @@ export default function SocketDemo(): ReactElement {
   );
 
   const handleUsernameChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setUsername(e.target.value);
+    setUsername(sanitizeInput(e.target.value, MAX_USERNAME_LENGTH));
   }, []);
 
   const handleInputMessageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setInputMessage(e.target.value);
+    setInputMessage(sanitizeInput(e.target.value, MAX_INPUT_LENGTH));
   }, []);
 
   return (
@@ -225,6 +258,7 @@ export default function SocketDemo(): ReactElement {
                 onChange={handleUsernameChange}
                 onKeyDown={handleJoinKeyPress}
                 placeholder="Enter your username..."
+                maxLength={MAX_USERNAME_LENGTH}
                 disabled={!isConnected}
                 className="flex-1"
               />
@@ -283,6 +317,7 @@ export default function SocketDemo(): ReactElement {
                   onChange={handleInputMessageChange}
                   onKeyDown={handleKeyPress}
                   placeholder="Type a message..."
+                  maxLength={MAX_INPUT_LENGTH}
                   disabled={!isConnected}
                   className="flex-1"
                 />
