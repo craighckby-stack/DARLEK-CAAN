@@ -2,7 +2,7 @@
  * DARLEK CANN ARCHITECTURAL HEADER
  * File: fetch_readme.js
  * Role: Core system component participating in autonomous cognitive evolution cycles.
- * Architecture: Type-safe modular unit with resilient state interfaces.
+ * Architecture: Modular unit with resilient state interfaces.
  */
 
 'use strict';
