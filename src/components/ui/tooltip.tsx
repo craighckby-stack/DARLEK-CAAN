@@ -44,7 +44,9 @@ const TOOLTIP_ARROW_STYLES = "z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotat
 /**
  * Context provider for tooltip delay settings and global configurations.
  */
-export const TooltipProvider = React.memo<TooltipProviderProps>(function TooltipProvider({
+export const TooltipProvider: React.MemoExoticComponent<
+  React.ForwardRefExoticComponent<TooltipProviderProps & React.RefAttributes<HTMLDivElement>>
+> = React.memo<TooltipProviderProps>(function TooltipProvider({
   delayDuration = 0,
   ...props
 }) {
@@ -62,7 +64,9 @@ TooltipProvider.displayName = "TooltipProvider"
 /**
  * Root container managing tooltip open/closed state.
  */
-export const Tooltip = React.memo<TooltipProps>(function Tooltip(props) {
+export const Tooltip: React.MemoExoticComponent<
+  React.ForwardRefExoticComponent<TooltipProps & React.RefAttributes<HTMLDivElement>>
+> = React.memo<TooltipProps>(function Tooltip(props) {
   return (
     <TooltipProvider>
       <TooltipPrimitive.Root data-slot="tooltip" {...props} />
@@ -75,7 +79,9 @@ Tooltip.displayName = "Tooltip"
 /**
  * Interactive element that triggers the tooltip display upon focus or hover.
  */
-export const TooltipTrigger = React.memo<TooltipTriggerProps>(function TooltipTrigger(props) {
+export const TooltipTrigger: React.MemoExoticComponent<
+  React.ForwardRefExoticComponent<TooltipTriggerProps & React.RefAttributes<HTMLButtonElement>>
+> = React.memo<TooltipTriggerProps>(function TooltipTrigger(props) {
   return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
 })
 
@@ -84,7 +90,9 @@ TooltipTrigger.displayName = "TooltipTrigger"
 /**
  * Floating container displaying the tooltip content and directional arrow.
  */
-export const TooltipContent = React.memo<TooltipContentProps>(function TooltipContent({
+export const TooltipContent: React.MemoExoticComponent<
+  React.ForwardRefExoticComponent<TooltipContentProps & React.RefAttributes<HTMLDivElement>>
+> = React.memo<TooltipContentProps>(function TooltipContent({
   className,
   sideOffset = 0,
   children,
