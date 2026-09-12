@@ -16,7 +16,7 @@ export interface ProgressProps extends React.ComponentPropsWithoutRef<typeof Pro
   max?: number
 }
 
-const ZERO_PERCENT_TRANSFORM = "translateX(-100%)"
+const ZERO_PERCENT_TRANSFORM: string = "translateX(-100%)"
 
 /**
  * Clamps and normalizes a progress value within valid boundaries with strict type guards.
@@ -41,16 +41,16 @@ const Progress = React.memo(
     React.ElementRef<typeof ProgressPrimitive.Root>,
     ProgressProps
   >(({ className, value, max = 100, ...props }, ref) => {
-    const validMax = max > 0 ? max : 100
-    const clampedValue = clampProgressValue(value, validMax)
+    const validMax: number = max > 0 ? max : 100
+    const clampedValue: number = clampProgressValue(value, validMax)
     
-    const percentage = clampedValue === 0 
+    const percentage: number = clampedValue === 0 
       ? 0 
       : clampedValue === validMax 
         ? 100 
         : (clampedValue / validMax) * 100
 
-    const indicatorTransform = getIndicatorTransform(percentage)
+    const indicatorTransform: string = getIndicatorTransform(percentage)
 
     return (
       <ProgressPrimitive.Root
