@@ -42,32 +42,52 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 
 const PATH_NAME_CACHE = new Map<string, string>();
 const DATE_FORMAT_CACHE = new Map<string, string>();
+const MAX_CACHE_SIZE = 500;
 
 const getStatusColor = (status: string): string => STATUS_COLOR_MAP[status] || COLORS.textMuted;
 
 const getRiskColor = (risk: number): string => {
-  if (risk <= 3) return COLORS.cyan;
-  if (risk <= 6) return COLORS.gold;
+  const boundedRisk = Number.isFinite(risk) ? Math.max(0, Math.min(10, risk)) : 0;
+  if (boundedRisk <= 3) return COLORS.cyan;
+  if (boundedRisk <= 6) return COLORS.gold;
   return COLORS.dalekRed;
 };
 
 const getCachedFileName = (filePath: string): string => {
-  if (!filePath) return 'unknown';
+  if (!filePath || typeof filePath !== 'string') return 'unknown';
   let cachedFileName = PATH_NAME_CACHE.get(filePath);
   if (cachedFileName === undefined) {
-    const lastSlashIndex = filePath.lastIndexOf('/');
-    cachedFileName = lastSlashIndex !== -1 ? filePath.substring(lastSlashIndex + 1) : filePath;
+    if (PATH_NAME_CACHE.size >= MAX_CACHE_SIZE) {
+      const firstKey = PATH_NAME_CACHE.keys().next().value;
+      if (firstKey !== undefined) {
+        PATH_NAME_CACHE.delete(firstKey);
+      }
+    }
+    const sanitizedPath = filePath.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+    const lastSlashIndex = sanitizedPath.lastIndexOf('/');
+    cachedFileName = lastSlashIndex !== -1 ? sanitizedPath.substring(lastSlashIndex + 1) : sanitizedPath;
     PATH_NAME_CACHE.set(filePath, cachedFileName);
   }
   return cachedFileName;
 };
 
 const getCachedFormattedDate = (dateString: string): string => {
-  if (!dateString) return '';
+  if (!dateString || typeof dateString !== 'string') return '';
   let cachedFormattedDate = DATE_FORMAT_CACHE.get(dateString);
   if (cachedFormattedDate === undefined) {
+    if (DATE_FORMAT_CACHE.size >= MAX_CACHE_SIZE) {
+      const firstKey = DATE_FORMAT_CACHE.keys().next().value;
+      if (firstKey !== undefined) {
+        DATE_FORMAT_CACHE.delete(firstKey);
+      }
+    }
     try {
-      cachedFormattedDate = new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const parsedDate = new Date(dateString);
+      if (!isNaN(parsedDate.getTime())) {
+        cachedFormattedDate = parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else {
+        cachedFormattedDate = '';
+      }
     } catch {
       cachedFormattedDate = '';
     }
@@ -84,7 +104,7 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
   const lastRefreshTriggerRef = useRef<number | undefined>(refreshTrigger);
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || typeof sessionId !== 'string') return;
     
     const hasTriggerChanged = refreshTrigger !== lastRefreshTriggerRef.current;
     if (fetchedSessionIdRef.current === sessionId && !hasTriggerChanged) return;
@@ -103,7 +123,16 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
         });
         const responseData = (await safeResponseJson(response, {})) as MutationApiResponse;
         if (!isCancelled && responseData?.success && Array.isArray(responseData.mutations)) {
-          setMutations(responseData.mutations);
+          const validatedMutations: MutationRecord[] = responseData.mutations.map((m) => ({
+            id: typeof m.id === 'string' ? m.id : String(m.id || Math.random()),
+            filePath: typeof m.filePath === 'string' ? m.filePath : 'unknown',
+            riskScore: typeof m.riskScore === 'number' ? m.riskScore : 0,
+            status: typeof m.status === 'string' ? m.status : 'pending',
+            commitSha: typeof m.commitSha === 'string' ? m.commitSha : undefined,
+            createdAt: typeof m.createdAt === 'string' ? m.createdAt : new Date().toISOString(),
+            provider: typeof m.provider === 'string' ? m.provider : undefined,
+          }));
+          setMutations(validatedMutations);
         }
       } catch {
         // Suppress network or parsing anomalies gracefully in production monitoring panels
