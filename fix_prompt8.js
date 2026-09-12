@@ -41,15 +41,10 @@ function applyFormattingTransforms(content) {
         throw new TypeError('Expected content to be a string.');
     }
 
-    let currentContent = content;
-    const length = FORMATTING_REPLACEMENTS.length;
-    
-    for (let i = 0; i < length; i++) {
-        const item = FORMATTING_REPLACEMENTS[i];
-        currentContent = currentContent.replace(item.pattern, item.replacement);
-    }
-
-    return currentContent;
+    return FORMATTING_REPLACEMENTS.reduce(
+        (acc, { pattern, replacement }) => acc.replace(pattern, replacement),
+        content
+    );
 }
 
 /**
