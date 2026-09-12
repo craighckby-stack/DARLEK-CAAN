@@ -1,6 +1,6 @@
 /**
- * @fileoverview GitHub Configuration and Credential Manager (Darlek Caan Optimized)
- * Maximizes type-safety, memory efficiency, and runtime execution speed for state retrieval.
+ * @fileoverview GitHub Configuration and Credential Manager
+ * Provides type-safe access and retrieval of GitHub integration settings.
  */
 
 export interface GitHubConfig {
@@ -32,7 +32,7 @@ const DEFAULT_CONFIG: GitHubConfig = Object.freeze({
 });
 
 /**
- * Safely checks if the window runtime environment is currently available.
+ * Checks if the window runtime environment is currently available.
  */
 const isBrowser = (): boolean => typeof window !== "undefined";
 
@@ -60,7 +60,6 @@ const getSessionStorageItem = (key: string): string | null => {
 
 /**
  * Retrieves and validates GitHub configuration and authorization tokens from storage layers.
- * Utilizes constant-time assertions and zero-allocation immutable returns with robust error isolation.
  * 
  * @returns {GitHubConfig} The frozen configuration object.
  */
@@ -69,7 +68,6 @@ export const getGitHubConfig = (): GitHubConfig => {
   const storedRepoName = getLocalStorageItem(STORAGE_KEYS.REPO);
   const storedToken = getSessionStorageItem(STORAGE_KEYS.TOKEN) ?? getLocalStorageItem(STORAGE_KEYS.TOKEN);
 
-  // Fast-path return for default baseline configuration to prevent object allocation churn
   if (!storedUsername && !storedRepoName && !storedToken) {
     return DEFAULT_CONFIG;
   }
