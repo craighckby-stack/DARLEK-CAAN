@@ -91,3 +91,12 @@ Line 3, Col 1017: Unclosed opening delimiter '('.
 Line 3, Col 969: Unclosed opening delimiter '{'.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_synthesizer.sh.
+
+### ❌ [2026-09-12] src/app/api/github/create-repo/route.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 1, Col 1: Source code is completely empty.
+[OUTPUT_LIKELY_TRUNCATED] The output is < 80% of original length and syntactically invalid. The model likely hit its output token limit.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/github/create-repo/route.ts.
