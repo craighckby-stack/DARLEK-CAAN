@@ -1,3 +1,10 @@
+/**
+ * DARLEK CANN ARCHITECTURAL HEADER
+ * File: renameVars.js
+ * Role: Core system component participating in autonomous cognitive evolution cycles.
+ * Architecture: Type-safe modular unit with resilient state interfaces.
+ */
+
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const TARGET_FILE = 'src/App.tsx';
