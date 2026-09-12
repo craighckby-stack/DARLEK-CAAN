@@ -7,6 +7,14 @@ export const dynamic = 'force-dynamic';
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 const GITHUB_API_VERSION_HEADER = 'application/vnd.github.v3+json';
 
+const MAX_OWNER_LENGTH = 100;
+const MAX_REPO_LENGTH = 100;
+const MAX_BRANCH_LENGTH = 255;
+const MAX_TOKEN_LENGTH = 500;
+const MAX_TREE_ITEMS = 50000;
+
+const SAFE_NAME_REGEX = /^[a-zA-Z0-9_.-]+$/;
+
 const EXCLUDED_DIRECTORIES = Object.freeze([
   'node_modules/',
   '.git/',
@@ -39,14 +47,17 @@ interface GitHubTreeResponse {
 }
 
 /**
- * Determines whether a given tree item is a valid file that passes exclusion filters.
+ * Determines whether a given tree item is a valid file that passes exclusion filters and bounds constraints.
  */
 function isValidBlobItem(item: GitHubTreeItem): boolean {
-  if (item.type !== 'blob') {
+  if (!item || item.type !== 'blob' || typeof item.path !== 'string' || typeof item.size !== 'number') {
     return false;
   }
 
   const { path } = item;
+  if (path.length > 1024 || path.includes('..') || path.startsWith('/')) {
+    return false;
+  }
 
   for (let i = 0; i < EXCLUDED_DIRECTORIES.length; i++) {
     if (path.includes(EXCLUDED_DIRECTORIES[i])) {
@@ -68,7 +79,7 @@ export async function GET(): Promise<NextResponse> {
 }
 
 /**
- * Scans a GitHub repository tree recursively while filtering out ignored files and directories.
+ * Scans a GitHub repository tree recursively while filtering out ignored files and directories with strict input validation.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -82,7 +93,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const repositoryTreeUrl = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+    if (
+      typeof token !== 'string' || token.length > MAX_TOKEN_LENGTH ||
+      typeof owner !== 'string' || owner.length > MAX_OWNER_LENGTH || !SAFE_NAME_REGEX.test(owner) ||
+      typeof repo !== 'string' || repo.length > MAX_REPO_LENGTH || !SAFE_NAME_REGEX.test(repo) ||
+      typeof branch !== 'string' || branch.length > MAX_BRANCH_LENGTH
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid parameter formats or lengths.' },
+        { status: 400 }
+      );
+    }
+
+    const repositoryTreeUrl = `${GITHUB_API_BASE_URL}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
 
     const githubResponse = await fetch(repositoryTreeUrl, {
       headers: {
@@ -109,12 +132,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
+    if (tree.length > MAX_TREE_ITEMS) {
+      return NextResponse.json(
+        { error: 'Repository tree exceeds maximum allowed item count.' },
+        { status: 400 }
+      );
+    }
+
     const filteredFiles: GitHubFile[] = [];
     let repoTotal = 0;
 
     for (let i = 0; i < tree.length; i++) {
       const item = tree[i];
-      if (item.type === 'blob') {
+      if (item && item.type === 'blob') {
         repoTotal++;
         if (isValidBlobItem(item)) {
           filteredFiles.push({
