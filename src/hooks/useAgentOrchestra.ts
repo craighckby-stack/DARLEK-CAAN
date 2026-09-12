@@ -7,11 +7,17 @@ export interface UseAgentOrchestraReturn {
   readonly dispatch: (action: string) => void;
 }
 
+const MAX_ACTION_LENGTH: number = 128;
+
 /**
- * Validates that an action payload is a non-empty string.
+ * Validates that an action payload is a non-empty string adhering to length bounds.
  */
 const isValidAction = (action: unknown): action is string => {
-  return typeof action === 'string' && action.trim().length > 0;
+  if (typeof action !== 'string') {
+    return false;
+  }
+  const trimmed: string = action.trim();
+  return trimmed.length > 0 && trimmed.length <= MAX_ACTION_LENGTH;
 };
 
 /**
@@ -30,7 +36,8 @@ export const useAgentOrchestra = (): UseAgentOrchestraReturn => {
       return;
     }
 
-    const nextStatus: OrchestraStatus = `EXECUTING_${action}`;
+    const sanitizedAction: string = action.trim();
+    const nextStatus: OrchestraStatus = `EXECUTING_${sanitizedAction}`;
     
     if (statusRef.current !== nextStatus) {
       setStatus(nextStatus);
