@@ -13,7 +13,7 @@ import path from 'node:path';
  * @property {string} replacement
  */
 
-/** @readonly @type {string} */
+/** @readonly */
 const TARGET_FILE_PATH = path.normalize(path.join('src', 'utils', 'agi-engine.ts'));
 
 /**
