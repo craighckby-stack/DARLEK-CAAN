@@ -25,15 +25,19 @@ interface ErrorResponse {
 }
 
 const DEFAULT_FILE_NAME = 'source.tsx';
-const SUPPORTED_TS_EXT = /\.(ts|tsx)$/i;
-const SUPPORTED_JS_EXT = /\.(js|jsx|mjs|cjs)$/i;
+const SUPPORTED_TS_REGEX = /\.(ts|tsx)$/i;
+const SUPPORTED_JS_REGEX = /\.(js|jsx|mjs|cjs)$/i;
 
 /**
  * Determines the appropriate TypeScript ScriptKind based on file extension.
  */
-function getScriptKind(fileName: string): ts.ScriptKind {
-  if (fileName.endsWith('.tsx')) return ts.ScriptKind.TSX;
-  if (fileName.endsWith('.jsx')) return ts.ScriptKind.JSX;
+function resolveScriptKind(fileName: string): ts.ScriptKind {
+  if (fileName.endsWith('.tsx')) {
+    return ts.ScriptKind.TSX;
+  }
+  if (fileName.endsWith('.jsx')) {
+    return ts.ScriptKind.JSX;
+  }
   if (fileName.endsWith('.js') || fileName.endsWith('.mjs') || fileName.endsWith('.cjs')) {
     return ts.ScriptKind.JS;
   }
@@ -55,19 +59,19 @@ export async function POST(req: NextRequest): Promise<NextResponse<SuccessRespon
       return NextResponse.json({ error: 'Source code is required.' }, { status: 400 });
     }
 
-    const fileName = typeof filePath === 'string' && filePath.trim() ? filePath.trim() : DEFAULT_FILE_NAME;
-    const isTs = SUPPORTED_TS_EXT.test(fileName);
-    const isJs = SUPPORTED_JS_EXT.test(fileName);
+    const normalizedFileName = typeof filePath === 'string' && filePath.trim() ? filePath.trim() : DEFAULT_FILE_NAME;
+    const isTypescriptFile = SUPPORTED_TS_REGEX.test(normalizedFileName);
+    const isJavascriptFile = SUPPORTED_JS_REGEX.test(normalizedFileName);
 
-    if (!isTs && !isJs) {
+    if (!isTypescriptFile && !isJavascriptFile) {
       return NextResponse.json({ valid: true, diagnostics: [] });
     }
 
-    const isJsx = fileName.endsWith('.tsx') || fileName.endsWith('.jsx');
-    const scriptKind = getScriptKind(fileName);
+    const isJsxSupported = normalizedFileName.endsWith('.tsx') || normalizedFileName.endsWith('.jsx');
+    const scriptKind = resolveScriptKind(normalizedFileName);
 
     const sourceFile = ts.createSourceFile(
-      fileName,
+      normalizedFileName,
       code,
       ts.ScriptTarget.Latest,
       true,
@@ -83,48 +87,47 @@ export async function POST(req: NextRequest): Promise<NextResponse<SuccessRespon
       noEmit: true,
     };
 
-    if (isJsx) {
+    if (isJsxSupported) {
       compilerOptions.jsx = ts.JsxEmit.ReactJSX;
     }
 
     const transpileResult = ts.transpileModule(code, {
       compilerOptions,
       reportDiagnostics: true,
-      fileName,
+      fileName: normalizedFileName,
     });
 
     const allDiagnostics = [...parseDiagnostics, ...(transpileResult.diagnostics ?? [])];
-    const uniqueDiags = new Map<string, DiagnosticItem>();
+    const uniqueDiagnosticsMap = new Map<string, DiagnosticItem>();
     
-    // Split lines safely utilizing optimized carriage return handling
-    const lines = code.split(/\r?\n/);
+    const codeLines = code.split(/\r?\n/);
 
-    for (const diag of allDiagnostics) {
+    for (const diagnostic of allDiagnostics) {
       // Skip compiler options configuration errors not related to user source code (5052, 6046)
-      if (diag.code === 5052 || diag.code === 6046) {
+      if (diagnostic.code === 5052 || diagnostic.code === 6046) {
         continue;
       }
 
-      const start = diag.start ?? 0;
-      const { line, character } = sourceFile.getLineAndCharacterOfPosition(start);
-      const msgText = ts.flattenDiagnosticMessageText(diag.messageText, '\n');
-      const key = `${line}:${character}:${diag.code}:${msgText}`;
+      const startPosition = diagnostic.start ?? 0;
+      const { line, character } = sourceFile.getLineAndCharacterOfPosition(startPosition);
+      const diagnosticMessage = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+      const diagnosticKey = `${line}:${character}:${diagnostic.code}:${diagnosticMessage}`;
 
-      if (!uniqueDiags.has(key)) {
-        const lineText = lines[line] ?? '';
-        uniqueDiags.set(key, {
+      if (!uniqueDiagnosticsMap.has(diagnosticKey)) {
+        const lineText = codeLines[line] ?? '';
+        uniqueDiagnosticsMap.set(diagnosticKey, {
           line: line + 1,
           column: character + 1,
-          message: msgText,
-          code: diag.code,
-          severity: diag.category === ts.DiagnosticCategory.Warning ? 'warning' : 'error',
+          message: diagnosticMessage,
+          code: diagnostic.code,
+          severity: diagnostic.category === ts.DiagnosticCategory.Warning ? 'warning' : 'error',
           snippet: lineText.trim(),
         });
       }
     }
 
-    const diagnostics = Array.from(uniqueDiags.values());
-    const hasErrors = diagnostics.some((d) => d.severity === 'error');
+    const diagnostics = Array.from(uniqueDiagnosticsMap.values());
+    const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === 'error');
 
     return NextResponse.json({
       valid: !hasErrors,
