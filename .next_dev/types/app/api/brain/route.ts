@@ -17,7 +17,7 @@ checkFields<Diff<{
   PUT?: Function
   DELETE?: Function
   PATCH?: Function
-  config?: {}
+  config?: Record<string, unknown>
   generateStaticParams?: Function
   revalidate?: RevalidateRange<TEntry> | false
   dynamic?: 'auto' | 'force-dynamic' | 'error' | 'force-static'
@@ -26,7 +26,6 @@ checkFields<Diff<{
   preferredRegion?: 'auto' | 'global' | 'home' | string | string[]
   runtime?: 'nodejs' | 'experimental-edge' | 'edge'
   maxDuration?: number
-  
 }, TEntry, ''>>()
 
 type RouteContext = { params: Promise<SegmentParams> }
@@ -58,11 +57,11 @@ if ('GET' in entry) {
   checkFields<
     Diff<
       {
-        __tag__: 'GET',
+        __tag__: 'GET'
         __return_type__: Response | void | never | Promise<Response | void | never>
       },
       {
-        __tag__: 'GET',
+        __tag__: 'GET'
         __return_type__: ReturnType<MaybeField<TEntry, 'GET'>>
       },
       'GET'
@@ -97,11 +96,11 @@ if ('HEAD' in entry) {
   checkFields<
     Diff<
       {
-        __tag__: 'HEAD',
+        __tag__: 'HEAD'
         __return_type__: Response | void | never | Promise<Response | void | never>
       },
       {
-        __tag__: 'HEAD',
+        __tag__: 'HEAD'
         __return_type__: ReturnType<MaybeField<TEntry, 'HEAD'>>
       },
       'HEAD'
@@ -136,11 +135,11 @@ if ('OPTIONS' in entry) {
   checkFields<
     Diff<
       {
-        __tag__: 'OPTIONS',
+        __tag__: 'OPTIONS'
         __return_type__: Response | void | never | Promise<Response | void | never>
       },
       {
-        __tag__: 'OPTIONS',
+        __tag__: 'OPTIONS'
         __return_type__: ReturnType<MaybeField<TEntry, 'OPTIONS'>>
       },
       'OPTIONS'
@@ -175,11 +174,11 @@ if ('POST' in entry) {
   checkFields<
     Diff<
       {
-        __tag__: 'POST',
+        __tag__: 'POST'
         __return_type__: Response | void | never | Promise<Response | void | never>
       },
       {
-        __tag__: 'POST',
+        __tag__: 'POST'
         __return_type__: ReturnType<MaybeField<TEntry, 'POST'>>
       },
       'POST'
@@ -214,11 +213,11 @@ if ('PUT' in entry) {
   checkFields<
     Diff<
       {
-        __tag__: 'PUT',
+        __tag__: 'PUT'
         __return_type__: Response | void | never | Promise<Response | void | never>
       },
       {
-        __tag__: 'PUT',
+        __tag__: 'PUT'
         __return_type__: ReturnType<MaybeField<TEntry, 'PUT'>>
       },
       'PUT'
@@ -253,11 +252,11 @@ if ('DELETE' in entry) {
   checkFields<
     Diff<
       {
-        __tag__: 'DELETE',
+        __tag__: 'DELETE'
         __return_type__: Response | void | never | Promise<Response | void | never>
       },
       {
-        __tag__: 'DELETE',
+        __tag__: 'DELETE'
         __return_type__: ReturnType<MaybeField<TEntry, 'DELETE'>>
       },
       'DELETE'
@@ -292,11 +291,11 @@ if ('PATCH' in entry) {
   checkFields<
     Diff<
       {
-        __tag__: 'PATCH',
+        __tag__: 'PATCH'
         __return_type__: Response | void | never | Promise<Response | void | never>
       },
       {
-        __tag__: 'PATCH',
+        __tag__: 'PATCH'
         __return_type__: ReturnType<MaybeField<TEntry, 'PATCH'>>
       },
       'PATCH'
@@ -307,7 +306,7 @@ if ('PATCH' in entry) {
 // Check the arguments and return type of the generateStaticParams function
 if ('generateStaticParams' in entry) {
   checkFields<Diff<{ params: SegmentParams }, FirstArg<MaybeField<TEntry, 'generateStaticParams'>>, 'generateStaticParams'>>()
-  checkFields<Diff<{ __tag__: 'generateStaticParams', __return_type__: any[] | Promise<any[]> }, { __tag__: 'generateStaticParams', __return_type__: ReturnType<MaybeField<TEntry, 'generateStaticParams'>> }>>()
+  checkFields<Diff<{ __tag__: 'generateStaticParams'; __return_type__: any[] | Promise<any[]> }, { __tag__: 'generateStaticParams'; __return_type__: ReturnType<MaybeField<TEntry, 'generateStaticParams'>> }>>()
 }
 
 export interface PageProps {
@@ -316,7 +315,6 @@ export interface PageProps {
 }
 export interface LayoutProps {
   children?: React.ReactNode
-
   params?: Promise<SegmentParams>
 }
 
@@ -338,7 +336,7 @@ type ParamCheck<T> = {
   __param_type__: T
 }
 
-function checkFields<_ extends { [k in keyof any]: never }>() {}
+function checkFields<_ extends { [k in keyof any]: never }>(): void {}
 
 // https://github.com/sindresorhus/type-fest
 type Numeric = number | bigint
