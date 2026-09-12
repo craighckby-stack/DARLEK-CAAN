@@ -626,3 +626,12 @@ Line 70, Col 38: '}' expected.
 [OUTPUT_LIKELY_TRUNCATED] The output is < 80% of original length and syntactically invalid. The model likely hit its output token limit.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/lib/validator.ts.
+
+### ❌ [2026-09-12] updateStyles.js `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 26, Col 46: Type annotations can only be used in TypeScript files.
+Line 26, Col 55: Type annotations can only be used in TypeScript files.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on updateStyles.js.
