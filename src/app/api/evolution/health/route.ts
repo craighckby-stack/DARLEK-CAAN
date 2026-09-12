@@ -60,7 +60,7 @@ async function parseRequestBody(req: NextRequest): Promise<RequestBody | ErrorRe
 }
 
 /**
- * Aggregates statistics across all provided mutation payloads using an optimized imperative loop.
+ * Aggregates statistics across all provided mutation payloads using an optimized unrolled imperative loop.
  */
 function aggregateMutations(mutations: readonly MutationInput[] = []): AggregateMutationStats {
   let pendingMutations = 0;
@@ -68,7 +68,40 @@ function aggregateMutations(mutations: readonly MutationInput[] = []): Aggregate
   let rejectedMutations = 0;
   let totalAffectedFiles = 0;
 
-  for (let i = 0, len = mutations.length; i < len; i++) {
+  const len = mutations.length;
+  let i = 0;
+
+  // Unroll loop for high-frequency execution performance
+  while (i + 3 < len) {
+    const m0 = mutations[i];
+    const m1 = mutations[i + 1];
+    const m2 = mutations[i + 2];
+    const m3 = mutations[i + 3];
+
+    if (m0?.status === 'pending') pendingMutations++;
+    else if (m0?.status === 'applied') appliedMutations++;
+    else if (m0?.status === 'rejected') rejectedMutations++;
+    if (Array.isArray(m0?.affectedFiles)) totalAffectedFiles += m0.affectedFiles.length;
+
+    if (m1?.status === 'pending') pendingMutations++;
+    else if (m1?.status === 'applied') appliedMutations++;
+    else if (m1?.status === 'rejected') rejectedMutations++;
+    if (Array.isArray(m1?.affectedFiles)) totalAffectedFiles += m1.affectedFiles.length;
+
+    if (m2?.status === 'pending') pendingMutations++;
+    else if (m2?.status === 'applied') appliedMutations++;
+    else if (m2?.status === 'rejected') rejectedMutations++;
+    if (Array.isArray(m2?.affectedFiles)) totalAffectedFiles += m2.affectedFiles.length;
+
+    if (m3?.status === 'pending') pendingMutations++;
+    else if (m3?.status === 'applied') appliedMutations++;
+    else if (m3?.status === 'rejected') rejectedMutations++;
+    if (Array.isArray(m3?.affectedFiles)) totalAffectedFiles += m3.affectedFiles.length;
+
+    i += 4;
+  }
+
+  while (i < len) {
     const mutation = mutations[i];
     const status = mutation?.status;
 
@@ -84,6 +117,7 @@ function aggregateMutations(mutations: readonly MutationInput[] = []): Aggregate
     if (Array.isArray(affectedFiles)) {
       totalAffectedFiles += affectedFiles.length;
     }
+    i++;
   }
 
   return {
