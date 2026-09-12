@@ -41,7 +41,8 @@ function validateFileConstraints(filePath) {
     try {
         stats = fs.statSync(filePath);
     } catch (error) {
-        throw new Error(`Security Violation: Target file does not exist: ${filePath}. Details: ${error instanceof Error ? error.message : String(error)}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        throw new Error(`Security Violation: Target file does not exist: ${filePath}. Details: ${errorMessage}`);
     }
 
     if (!stats.isFile()) {
@@ -85,7 +86,8 @@ function executeEvolutionFix() {
 
         fs.writeFileSync(targetFile, optimizedCode, 'utf8');
     } catch (error) {
-        console.error('CRITICAL: Evolution fix execution failed:', error instanceof Error ? error.message : error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('CRITICAL: Evolution fix execution failed:', errorMessage);
         process.exitCode = 1;
         throw error;
     }
