@@ -5,15 +5,6 @@ import { safeReqJson } from '@/lib/safe-json';
 
 export const dynamic = 'force-dynamic';
 
-// ── AUTO-TEST RUNNER ──────────────────────────────────────────────
-// After a mutation is applied, this endpoint runs automated checks:
-//   1. TypeScript compilation check on the mutated file
-//   2. Import dependency verification
-//   3. Export surface validation
-//   4. Common anti-pattern detection
-// Returns a structured report that feeds into the Coherence Gate.
-// ───────────────────────────────────────────────────────────────────
-
 export interface AutoTestResult {
   category: string;
   test: string;
@@ -33,8 +24,7 @@ export interface AutoTestResponse {
   error?: string;
 }
 
-// Security Bounds Constants
-const MAX_CODE_LENGTH = 1_048_576; // 1MB limit for safety against DoS/memory expansion attacks
+const MAX_CODE_LENGTH = 1_048_576;
 const MAX_FILE_PATH_LENGTH = 512;
 
 function sanitizeStringInput(val: unknown, maxLength: number): string {
@@ -45,10 +35,6 @@ function sanitizeStringInput(val: unknown, maxLength: number): string {
 function runTypeScriptSyntaxCheck(code: string, _filePath: string): AutoTestResult[] {
   const results: AutoTestResult[] = [];
 
-  // Check for basic syntax issues via pattern matching
-  // (Full TSC would require exec which is container-restricted)
-
-  // Unmatched braces
   const openBraces = (code.match(/\{/g) || []).length;
   const closeBraces = (code.match(/\}/g) || []).length;
   if (openBraces !== closeBraces) {
@@ -61,7 +47,6 @@ function runTypeScriptSyntaxCheck(code: string, _filePath: string): AutoTestResu
     });
   }
 
-  // Unmatched parentheses
   const openParens = (code.match(/\(/g) || []).length;
   const closeParens = (code.match(/\)/g) || []).length;
   if (openParens !== closeParens) {
@@ -74,7 +59,6 @@ function runTypeScriptSyntaxCheck(code: string, _filePath: string): AutoTestResu
     });
   }
 
-  // Unmatched brackets
   const openBrackets = (code.match(/\[/g) || []).length;
   const closeBrackets = (code.match(/\]/g) || []).length;
   if (openBrackets !== closeBrackets) {
@@ -102,12 +86,11 @@ function runTypeScriptSyntaxCheck(code: string, _filePath: string): AutoTestResu
 
 function runImportValidation(code: string, filePath: string): AutoTestResult[] {
   const results: AutoTestResult[] = [];
-  const imports = [...code.matchAll(/import\s+.*?from\s+['"](.+?)['"]/g)].map(m => m[1]);
+  const imports = [...code.matchAll(/import\s+.*?from\s+['"](.+?)['"]/g)].map((m: RegExpMatchArray) => m[1]);
 
-  // Check for relative imports that might break
-  const relativeImports = imports.filter((i): i is string => typeof i === 'string' && i.startsWith('.'));
+  const relativeImports = imports.filter((i: string | undefined): i is string => typeof i === 'string' && i.startsWith('.'));
   const depth = filePath.split('/').length;
-  const excessiveDepth = relativeImports.filter((i): i is string => {
+  const excessiveDepth = relativeImports.filter((i: string): boolean => {
     const upLevels = (i.match(/\.\.\//g) || []).length;
     return upLevels > depth - 1;
   });
@@ -122,8 +105,7 @@ function runImportValidation(code: string, filePath: string): AutoTestResult[] {
     });
   }
 
-  // Check for @/ alias usage consistency
-  const hasAtImports = imports.some(i => typeof i === 'string' && i.startsWith('@/'));
+  const hasAtImports = imports.some((i: string | undefined): boolean => typeof i === 'string' && i.startsWith('@/'));
   const hasRelative = relativeImports.length > 0;
   if (hasAtImports && hasRelative) {
     results.push({
@@ -135,8 +117,7 @@ function runImportValidation(code: string, filePath: string): AutoTestResult[] {
     });
   }
 
-  // Check for Node.js built-in imports
-  const nodeImports = imports.filter((i): i is string => typeof i === 'string' && ['fs', 'path', 'os', 'crypto', 'util', 'stream', 'http', 'https'].includes(i));
+  const nodeImports = imports.filter((i: string | undefined): i is string => typeof i === 'string' && ['fs', 'path', 'os', 'crypto', 'util', 'stream', 'http', 'https'].includes(i));
   if (nodeImports.length > 0 && !filePath.includes('api/')) {
     results.push({
       category: 'IMPORTS',
@@ -162,10 +143,9 @@ function runImportValidation(code: string, filePath: string): AutoTestResult[] {
 
 function runExportValidation(code: string, filePath: string): AutoTestResult[] {
   const results: AutoTestResult[] = [];
-  const exports = [...code.matchAll(/export\s+(?:default\s+)?(?:function|class|const|let|var|type|interface|enum)\s+(\w+)/g)].map(m => m[1]);
+  const exports = [...code.matchAll(/export\s+(?:default\s+)?(?:function|class|const|let|var|type|interface|enum)\s+(\w+)/g)].map((m: RegExpMatchArray) => m[1]);
 
   if (exports.length === 0) {
-    // Check if it's a page/route file that needs a default export
     if (filePath.includes('page.tsx') || filePath.includes('route.ts') || filePath.includes('layout.tsx')) {
       results.push({
         category: 'EXPORTS',
@@ -177,9 +157,8 @@ function runExportValidation(code: string, filePath: string): AutoTestResult[] {
     }
   }
 
-  // Check for duplicate exports
-  const exportNames = exports.filter((e): e is string => typeof e === 'string').map(e => e.toLowerCase());
-  const duplicates = exportNames.filter((name, idx) => exportNames.indexOf(name) !== idx);
+  const exportNames = exports.filter((e: string | undefined): e is string => typeof e === 'string').map((e: string) => e.toLowerCase());
+  const duplicates = exportNames.filter((name: string, idx: number) => exportNames.indexOf(name) !== idx);
   if (duplicates.length > 0) {
     results.push({
       category: 'EXPORTS',
@@ -190,7 +169,6 @@ function runExportValidation(code: string, filePath: string): AutoTestResult[] {
     });
   }
 
-  // Check for 'export default' in route files (API routes need named exports)
   if (filePath.includes('api/') && filePath.includes('route.ts')) {
     const hasDefaultExport = /export\s+default\s+/.test(code);
     const hasNamedExportGET = /export\s+(?:async\s+)?function\s+GET\b/.test(code) || /export\s+(?:async\s+)?const\s+GET\b/.test(code);
@@ -223,7 +201,6 @@ function runExportValidation(code: string, filePath: string): AutoTestResult[] {
 function runAntiPatternCheck(code: string, _originalCode: string, filePath: string): AutoTestResult[] {
   const results: AutoTestResult[] = [];
 
-  // Check for dangerous eval usage
   if (/\beval\s*\(/.test(code)) {
     results.push({
       category: 'SECURITY',
@@ -234,7 +211,6 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
     });
   }
 
-  // Check for innerHTML assignment
   if (/\.innerHTML\s*=/.test(code)) {
     results.push({
       category: 'SECURITY',
@@ -245,7 +221,6 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
     });
   }
 
-  // Check for hardcoded secrets
   const secretPatterns = [
     /api[_-]?key\s*[:=]\s*['"][^'"]{20,}['"]/gi,
     /password\s*[:=]\s*['"][^'"]{8,}['"]/gi,
@@ -255,8 +230,7 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
   for (const pattern of secretPatterns) {
     const matches = [...code.matchAll(pattern)];
     if (matches.length > 0) {
-      // Skip if it's a type definition or interface
-      const realSecrets = matches.filter(m => {
+      const realSecrets = matches.filter((m: RegExpMatchArray) => {
         const index = m.index ?? 0;
         const lineStart = code.lastIndexOf('\n', index) + 1;
         const line = code.slice(lineStart, index + m[0].length);
@@ -274,7 +248,6 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
     }
   }
 
-  // Check for empty catch blocks
   const emptyCatches = [...code.matchAll(/catch\s*\([^)]*\)\s*\{\s*\}/g)];
   if (emptyCatches.length > 0) {
     results.push({
@@ -286,7 +259,6 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
     });
   }
 
-  // Check for async functions without try/catch
   const asyncFunctions = [...code.matchAll(/async\s+(?:function\s+\w+|(?:const|let|var)\s+\w+\s*=\s*(?:async\s+)?)\([^)]*\)\s*(?::\s*[^{]+)?\s*\{/g)];
   const tryBlocks = [...code.matchAll(/try\s*\{/g)].length;
   if (asyncFunctions.length > 0 && tryBlocks === 0) {
@@ -299,7 +271,6 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
     });
   }
 
-  // Check for React Hook rules violations (simplified)
   if (filePath.endsWith('.tsx')) {
     const useStateCalls = [...code.matchAll(/useState\s*</g)].length;
     const useEffectCalls = [...code.matchAll(/useEffect\s*\(/g)].length;
@@ -308,10 +279,8 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
     const hookCount = useStateCalls + useEffectCalls + useCallbackCalls + useRefCalls;
 
     if (hookCount > 0) {
-      // Check hooks are inside a function component or custom hook
       const functionComponent = code.match(/(?:function\s+\w+|(?:const|let)\s+\w+\s*=\s*(?:\([^)]*\)|[^\s=]*)\s*(?::\s*[^{]+)?\s*=>\s*\{)/g);
       if (functionComponent || code.includes('function ')) {
-        // Simple heuristic: check if hooks appear at top level (not nested in conditions)
         const hasConditionalHook = /\b(if\s*\(|\?\s*.*\?:|\|\|).*useState|useEffect|useCallback|useRef/.test(code);
         if (hasConditionalHook) {
           results.push({
@@ -326,7 +295,6 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
     }
   }
 
-  // Check for memory leaks (setInterval without clearInterval, addEventListener without remove)
   const setIntervals = [...code.matchAll(/setInterval\s*\(/g)].length;
   const clearIntervals = [...code.matchAll(/clearInterval\s*\(/g)].length;
   if (setIntervals > clearIntervals) {
@@ -367,7 +335,6 @@ function runAntiPatternCheck(code: string, _originalCode: string, filePath: stri
 function runDiffSanityCheck(code: string, originalCode: string, _filePath: string): AutoTestResult[] {
   const results: AutoTestResult[] = [];
 
-  // Check if the file got completely wiped
   if (code.trim().length < 10 && originalCode.trim().length > 50) {
     results.push({
       category: 'DIFF',
@@ -378,7 +345,6 @@ function runDiffSanityCheck(code: string, originalCode: string, _filePath: strin
     });
   }
 
-  // Check for massive expansion (>300%)
   const sizeRatio = code.length / Math.max(1, originalCode.length);
   if (sizeRatio > 3) {
     results.push({
@@ -401,7 +367,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<AutoTestRespo
   try {
     const body = await safeReqJson(req, {} as Record<string, any>);
     
-    // Strict input bounds checking and sanitization to prevent injection and buffer/memory overflow anomalies
     const originalCode = sanitizeStringInput(body['originalCode'], MAX_CODE_LENGTH);
     const proposedCode = sanitizeStringInput(body['proposedCode'], MAX_CODE_LENGTH);
     const filePath = sanitizeStringInput(body['filePath'], MAX_FILE_PATH_LENGTH);
@@ -410,7 +375,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<AutoTestRespo
 
     const results: AutoTestResult[] = [];
 
-    // 0. Zero-LLM Deterministic Structural Sanity Guard & AST Diff Gate
     const sanityCheck = await mainWorker.validateSanity(originalCode, proposedCode, filePath, repoFiles, newFiles);
     for (const v of sanityCheck.violations) {
       results.push({
@@ -422,7 +386,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<AutoTestRespo
       });
     }
 
-    // Explicit AST Diff Gate Validation
     const astGate = runAstDiffGate(originalCode, proposedCode, filePath);
     if (astGate.passed) {
       results.push({
@@ -444,7 +407,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<AutoTestRespo
       }
     }
 
-    // Run remaining syntax & static checks
     results.push(...runTypeScriptSyntaxCheck(proposedCode, filePath));
     results.push(...runImportValidation(proposedCode, filePath));
     results.push(...runExportValidation(proposedCode, filePath));
@@ -452,11 +414,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<AutoTestRespo
     results.push(...runDiffSanityCheck(proposedCode, originalCode, filePath));
 
     const total = results.length;
-    const passed = results.filter(r => r.status === 'pass').length;
-    const failed = results.filter(r => r.status === 'fail').length;
-    const warned = results.filter(r => r.status === 'warn').length;
+    const passed = results.filter((r: AutoTestResult) => r.status === 'pass').length;
+    const failed = results.filter((r: AutoTestResult) => r.status === 'fail').length;
+    const warned = results.filter((r: AutoTestResult) => r.status === 'warn').length;
 
-    const hasHighFail = results.some(r => r.status === 'fail' && r.severity === 'high');
+    const hasHighFail = results.some((r: AutoTestResult) => r.status === 'fail' && r.severity === 'high');
     const verdict = hasHighFail ? 'REJECTED' : failed > 0 ? 'WARNING_PASSED' : 'PASSED';
 
     return NextResponse.json({
