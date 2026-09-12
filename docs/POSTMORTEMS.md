@@ -508,3 +508,11 @@ Line 70, Col 38: '}' expected.
 Line 204, Col 2: Expression expected.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/github/delete-file/route.ts.
+
+### ❌ [2026-09-12] src/hooks/use-toast.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 37, Col 13: Type alias declaration is missing a type definition after '='.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/hooks/use-toast.ts.
