@@ -5,22 +5,21 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-
 import React, { memo, useCallback, useMemo } from 'react';
-import { 
-  Search, 
-  FileCode, 
-  Dna, 
-  Heart, 
-  Eye, 
-  Users, 
-  Upload, 
-  Rocket, 
-  ListChecks, 
-  CheckCircle2, 
-  RotateCcw, 
-  Radio, 
-  Undo2, 
+import {
+  Search,
+  FileCode,
+  Dna,
+  Heart,
+  Eye,
+  Users,
+  Upload,
+  Rocket,
+  ListChecks,
+  CheckCircle2,
+  RotateCcw,
+  Radio,
+  Undo2,
   GitCommit,
   Languages,
   Sparkles,
@@ -38,41 +37,41 @@ export type ActionStatus = 'idle' | 'pushing' | 'deploying' | 'rebooting' | 'und
 export type RiskLevel = 'low' | 'medium' | 'high' | 'hallucinate';
 
 export interface QuickActionsProps {
-  onAction: (actionId: string) => void;
-  disabled: boolean;
-  pushStatus?: 'idle' | 'pushing' | 'success' | 'error';
-  deployStatus?: 'idle' | 'deploying' | 'success' | 'error';
-  rebootStatus?: 'idle' | 'rebooting' | 'success' | 'error';
-  undoStatus?: 'idle' | 'undoing' | 'success' | 'error';
-  bulkCommitStatus?: 'idle' | 'committing' | 'success' | 'error';
-  batchMode?: boolean;
-  autoApprove?: boolean;
-  onToggleAutoApprove?: () => void;
-  autoApproveRisk?: RiskLevel;
-  onAutoApproveRiskChange?: (risk: RiskLevel) => void;
-  backupToBranch?: boolean;
-  onToggleBackupToBranch?: () => void;
-  autoDebate?: boolean;
-  onToggleAutoDebate?: () => void;
-  orchestraActive?: boolean;
-  cycleAmount?: number;
-  onCycleAmountChange?: (amount: number) => void;
-  onEngageLazyAssCycle?: () => void;
-  hallucinationLevel?: number;
-  onHallucinationLevelChange?: (level: number) => void;
-  saturationLevel?: number;
-  onSaturationLevelChange?: (level: number) => void;
-  autoPauseOnSaturation?: boolean;
-  onToggleAutoPauseOnSaturation?: () => void;
-  autoSkipSaturated?: boolean;
-  onToggleAutoSkipSaturated?: () => void;
+  readonly onAction: (actionId: string) => void;
+  readonly disabled: boolean;
+  readonly pushStatus?: 'idle' | 'pushing' | 'success' | 'error';
+  readonly deployStatus?: 'idle' | 'deploying' | 'success' | 'error';
+  readonly rebootStatus?: 'idle' | 'rebooting' | 'success' | 'error';
+  readonly undoStatus?: 'idle' | 'undoing' | 'success' | 'error';
+  readonly bulkCommitStatus?: 'idle' | 'committing' | 'success' | 'error';
+  readonly batchMode?: boolean;
+  readonly autoApprove?: boolean;
+  readonly onToggleAutoApprove?: () => void;
+  readonly autoApproveRisk?: RiskLevel;
+  readonly onAutoApproveRiskChange?: (risk: RiskLevel) => void;
+  readonly backupToBranch?: boolean;
+  readonly onToggleBackupToBranch?: () => void;
+  readonly autoDebate?: boolean;
+  readonly onToggleAutoDebate?: () => void;
+  readonly orchestraActive?: boolean;
+  readonly cycleAmount?: number;
+  readonly onCycleAmountChange?: (amount: number) => void;
+  readonly onEngageLazyAssCycle?: () => void;
+  readonly hallucinationLevel?: number;
+  readonly onHallucinationLevelChange?: (level: number) => void;
+  readonly saturationLevel?: number;
+  readonly onSaturationLevelChange?: (level: number) => void;
+  readonly autoPauseOnSaturation?: boolean;
+  readonly onToggleAutoPauseOnSaturation?: () => void;
+  readonly autoSkipSaturated?: boolean;
+  readonly onToggleAutoSkipSaturated?: () => void;
 }
 
 interface ActionDefinition {
-  id: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  color: string;
+  readonly id: string;
+  readonly label: string;
+  readonly icon: React.ComponentType<{ readonly size?: number; readonly className?: string }>;
+  readonly color: string;
 }
 
 // ============================================================================
@@ -107,12 +106,12 @@ const CUSTOM_CYCLE_VALUES = [2, 3, 4, 15, 20, 50, 100] as const;
 // ============================================================================
 
 interface ControlToggleProps {
-  active: boolean;
-  activeColor: string;
-  label: string;
-  icon: React.ReactNode;
-  onToggle: () => void;
-  title: string;
+  readonly active: boolean;
+  readonly activeColor: string;
+  readonly label: string;
+  readonly icon: React.ReactNode;
+  readonly onToggle: () => void;
+  readonly title: string;
 }
 
 const ControlToggle = memo(function ControlToggle({ 
@@ -165,18 +164,18 @@ const ControlToggle = memo(function ControlToggle({
 });
 
 interface ActionButtonProps {
-  id: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  color: string;
-  disabled: boolean;
-  batchMode?: boolean;
-  pushStatus?: string;
-  deployStatus?: string;
-  rebootStatus?: string;
-  undoStatus?: string;
-  bulkCommitStatus?: string;
-  onAction: (id: string) => void;
+  readonly id: string;
+  readonly label: string;
+  readonly icon: React.ComponentType<{ readonly size?: number; readonly className?: string }>;
+  readonly color: string;
+  readonly disabled: boolean;
+  readonly batchMode?: boolean;
+  readonly pushStatus?: string;
+  readonly deployStatus?: string;
+  readonly rebootStatus?: string;
+  readonly undoStatus?: string;
+  readonly bulkCommitStatus?: string;
+  readonly onAction: (id: string) => void;
 }
 
 const ActionButton = memo(function ActionButton({
