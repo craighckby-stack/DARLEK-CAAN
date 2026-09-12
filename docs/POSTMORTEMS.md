@@ -920,3 +920,11 @@ Line 31, Col 1: Unclosed double-quote string literal.
 Line 214, Col 8: Property declaration is missing its type annotation.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/brain/route.ts.
+
+### ❌ [2026-09-12] src/app/api/evolution/debate/route.ts `source: mutation-cycle`
+**Symptom:** Active Linter / Compiler Gate Rejection on LLM Output (Option B)
+**EVIDENCE (Machine-Copied Fact):**
+```
+SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/evolution/debate/route.ts.
