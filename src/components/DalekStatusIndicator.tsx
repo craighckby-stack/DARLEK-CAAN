@@ -30,10 +30,14 @@ const resolveStatusConfiguration = (status: DalekStatus): StatusConfiguration =>
     return KNOWN_STATUS_CONFIGS[status];
   }
 
-  const safeStatus = typeof status === 'string' && status.length > 0 ? status : 'UNKNOWN';
+  const safeStatus = typeof status === 'string' && status.length > 0 
+    ? status.replace(/[^\w\s-]/g, '').trim() 
+    : 'UNKNOWN';
+
+  const sanitizedStatus = safeStatus.length > 0 ? safeStatus : 'UNKNOWN';
 
   return {
-    text: `○ ${safeStatus.toUpperCase()}`,
+    text: `○ ${sanitizedStatus.toUpperCase()}`,
     className: 'text-yellow-500',
   };
 };
