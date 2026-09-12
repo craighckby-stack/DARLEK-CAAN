@@ -14,12 +14,12 @@
 
 ## 1. System Architecture
 
-| Subsystem | Core Mechanism | Operational Objective |
-| :--- | :--- | :--- |
-| **Atomic Ingestion** | GitHub REST API v3 + Base64 Decoding | Fetches and transforms remote repository state securely with strict 15s timeout protection. |
-| **Boundary Injection** | Marker-based RegEx & Schema Validation | Guarantees idempotent updates and blocks state drift or corruption during live file mutations. |
-| **Transactional Snapshotting** | Isolated `.evolve_backups/` Engine | Provisions immutable pre-flight snapshots prior to executing filesystem write operations. |
-| **Autonomous Evolution** | `Darlek Caan` Refactoring Engine | Analyzes abstract syntax trees and executes autonomous self-modifications across target modules. |
+| Subsystem                  | Core Mechanism                         | Operational Objective                                                                            |
+| :------------------------- | :------------------------------------- | :----------------------------------------------------------------------------------------------- |
+| **Atomic Ingestion**       | GitHub REST API v3 + Base64 Decoding   | Fetches and transforms remote repository state securely with strict 15s timeout protection.       |
+| **Boundary Injection**     | Marker-based RegEx & Schema Validation | Guarantees idempotent updates and blocks state drift or corruption during live file mutations.   |
+| **Transactional Snapshotting** | Isolated `.evolve_backups/` Engine | Provisions immutable pre-flight snapshots prior to executing filesystem write operations.        |
+| **Autonomous Evolution**   | `DARLEK CANN` Refactoring Engine       | Analyzes abstract syntax trees and executes autonomous self-modifications across target modules. |
 
 ---
 
@@ -109,17 +109,17 @@ The ingestion subsystem directly interfaces with the GitHub REST API v3 to retri
 
 - **Ingestion Schema**: Validated via `ReadFileInput` / `ReadFileSchema` (Path, Owner, Repo).
 - **Network Resilience**: Enforces a strict 15-second `AbortController` timeout safeguard against hanging connections.
-- **Transformation Pipeline**: Base64 raw decoding -> UTF-8 payload -> AST Mutation target.
-- **Primary Consumer**: `Darlek Caan` runtime evolution controller.
+- **Transformation Pipeline**: Base64 raw decoding → UTF-8 payload → AST mutation target.
+- **Primary Consumer**: `DARLEK CANN` runtime evolution controller.
 
 ---
 
 ## 4. Security Guidelines & Vulnerability Reporting
 
 ### 4.1 Security Best Practices
-- **Input & Path Validation**: Absolute path resolution (`path.resolve`) combined with strict Zod schema parsing blocks path traversal and arbitrary filesystem mutations.
+- **Input & Path Validation**: Absolute path resolution (`path.resolve`) combined with strict Zod schema parsing prevents path traversal and arbitrary filesystem mutations.
 - **Strict Permission Isolation**: Backup directory (`.evolve_backups/`) permissions are restricted to `0700` and individual snapshots to `0600` (`POSIX`) to prevent unauthorized reading of prior application states.
-- **Timeout Protection**: Network requests to external control planes (GitHub REST API) MUST enforce `AbortController` timeouts of maximum 15 seconds.
+- **Timeout Protection**: Network requests to external control planes (such as the GitHub REST API) MUST enforce `AbortController` timeouts of a maximum 15 seconds.
 - **Idempotency Enforcement**: Injection routines must fail-safe and throw explicit exceptions on missing, inverted, or corrupt boundary markers.
 
 ### 4.2 Responsible Disclosure Policy
