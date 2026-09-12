@@ -348,18 +348,20 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
           <span className="text-white font-bold shrink-0">C:\DALEK\AGI&gt;</span>
           <input
             ref={inputRef}
+            maxLength={256}
             dir="ltr"
             type="text"
             value={dosInput}
             onChange={(e) => setDosInput(e.target.value)}
             onKeyDown={handleKeyDownHistory}
             style={{ unicodeBidi: 'normal', direction: 'ltr' }}
-            placeholder="Type 'help', 'rag', 'mutate', 'push', 'status' or 'exit'..."
+            placeholder="Type command (max 256 chars)..."
             className="flex-1 bg-transparent text-white focus:outline-none border-none p-0 font-mono text-xs sm:text-sm placeholder-white/30"
             autoFocus
           />
           <button 
             type="submit"
+            aria-label="Execute command"
             className="px-3 py-1 bg-white text-black font-bold text-xs hover:bg-gray-200 transition-colors cursor-pointer shrink-0 uppercase"
           >
             EXECUTE
