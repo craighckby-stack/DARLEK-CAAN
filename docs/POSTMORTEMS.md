@@ -70,3 +70,12 @@ Line 178, Col 55: Type annotations can only be used in TypeScript files.
 Line 178, Col 77: Type annotations can only be used in TypeScript files.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on compare.js.
+
+### ❌ [2026-09-12] fix_propose.js `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 54, Col 2: Expression expected.
+Line 54, Col 1: Decorators are not valid here.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_propose.js.
