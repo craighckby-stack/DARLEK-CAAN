@@ -1,9 +1,8 @@
 /**
  * @file test-greedy3.js
- * @version 4.0.0
+ * @version 4.1.0
  * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
- * @description Sovereign Overhaul: Enhanced memory efficiency, robust type-safe structure, 
- * optimized parsing mechanics, and hardened error resilience.
+ * @description Modernized LLM response parser emphasizing readability, modular decomposition, and clean architectural clarity.
  */
 
 /**
@@ -22,12 +21,135 @@
  */
 
 /**
- * Safely sanitizes control characters from potential JSON strings.
- * @param {string} str 
- * @returns {string}
+ * Sanitizes control characters from potential JSON strings.
+ * @param {string} str - The input string to sanitize.
+ * @returns {string} The sanitized string.
  */
 function sanitizeJsonString(str) {
   return str.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ');
+}
+
+/**
+ * Extracts embedded JSON metadata from raw LLM output using brace-matching state logic.
+ * @param {string} rawText - The raw response text.
+ * @returns {{ parsedResponse: LlmParsedResponse | null, jsonString: string }} Extracted response and raw JSON segment.
+ */
+function extractJsonMetadata(rawText) {
+  const firstBraceIndex = rawText.indexOf('{');
+  if (firstBraceIndex === -1) {
+    return { parsedResponse: null, jsonString: '' };
+  }
+
+  let braceCount = 0;
+  let isInString = false;
+  let isEscaped = false;
+  const textLength = rawText.length;
+
+  for (let index = firstBraceIndex; index < textLength; index++) {
+    const currentChar = rawText[index];
+
+    if (isEscaped) {
+      isEscaped = false;
+      continue;
+    }
+
+    if (currentChar === '\\') {
+      isEscaped = true;
+      continue;
+    }
+
+    if (currentChar === '"') {
+      isInString = !isInString;
+      continue;
+    }
+
+    if (!isInString) {
+      if (currentChar === '{') {
+        braceCount++;
+      } else if (currentChar === '}') {
+        braceCount--;
+        if (braceCount === 0) {
+          const jsonString = rawText.substring(firstBraceIndex, index + 1);
+          try {
+            const sanitizedText = sanitizeJsonString(jsonString);
+            /** @type {LlmParsedResponse} */
+            const parsed = JSON.parse(sanitizedText);
+            const isValidStructure = parsed && (
+              parsed.analysis !== undefined || 
+              parsed.riskScore !== undefined || 
+              parsed.newFiles !== undefined
+            );
+
+            if (isValidStructure) {
+              return { parsedResponse: parsed, jsonString };
+            }
+          } catch {
+            // Ignore malformed JSON segments and continue
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  return { parsedResponse: null, jsonString: '' };
+}
+
+/**
+ * Extracts proposed code snippets from Markdown code blocks.
+ * @param {string} rawText - The raw response text.
+ * @param {LlmParsedResponse | null} parsedResponse - Optional parsed JSON metadata.
+ * @param {string} jsonString - The JSON string to ignore if matched.
+ * @returns {string} The extracted code snippet or empty string.
+ */
+function extractCodeBlock(rawText, parsedResponse, jsonString) {
+  const codeBlockRegex = /```(?:[^\n]*)\n([\s\S]*?)```/g;
+  let match;
+  let proposedCode = '';
+
+  while ((match = codeBlockRegex.exec(rawText)) !== null) {
+    const content = match[1].trim();
+
+    const isJsonPayloadMatch = parsedResponse && jsonString && content.replace(/\s+/g, '') === jsonString.replace(/\s+/g, '');
+    if (isJsonPayloadMatch) {
+      continue;
+    }
+
+    if (content.startsWith('{') && content.endsWith('}')) {
+      try {
+        JSON.parse(content);
+        continue;
+      } catch {
+        // Not valid JSON, process as potential code block
+      }
+    }
+
+    if (!proposedCode && content.length > 10) {
+      proposedCode = content;
+    }
+  }
+
+  return proposedCode;
+}
+
+/**
+ * Fallback extraction when no code blocks match.
+ * @param {string} rawText - The raw response text.
+ * @param {string} jsonString - The JSON string to filter out.
+ * @returns {string} The fallback extracted code.
+ */
+function extractFallbackCode(rawText, jsonString) {
+  let textWithoutJson = rawText;
+  if (jsonString) {
+    textWithoutJson = rawText.replace(jsonString, '');
+  }
+
+  const cleanedText = textWithoutJson
+    .replace(/```(?:json|tsx|ts|js|jsx|html|css|python)?[ \t]*\n?/g, '')
+    .replace(/```/g, '')
+    .trim();
+
+  return cleanedText.length > 10 ? cleanedText : '';
 }
 
 /**
@@ -38,11 +160,8 @@ function sanitizeJsonString(str) {
  * @returns {ParseResult} The structured parsing result.
  */
 function parseLlmResponse(rawText, fallbackCode) {
-  /** @type {LlmParsedResponse | null} */
-  let parsedResponse = null;
-  let proposedCode = '';
   let analysis = 'Analysis complete.';
-  let jsonString = '';
+  let proposedCode = '';
 
   if (typeof rawText !== 'string' || rawText.length === 0) {
     return {
@@ -51,96 +170,14 @@ function parseLlmResponse(rawText, fallbackCode) {
       analysis
     };
   }
-  
-  // 1. Optimized JSON extraction with state machine tracking
-  const firstBrace = rawText.indexOf('{');
-  if (firstBrace !== -1) {
-    let braceCount = 0;
-    let inString = false;
-    let escape = false;
-    const len = rawText.length;
-    
-    for (let i = firstBrace; i < len; i++) {
-      const char = rawText[i];
-      if (escape) {
-        escape = false;
-        continue;
-      }
-      if (char === '\\') {
-        escape = true;
-        continue;
-      }
-      if (char === '"') {
-        inString = !inString;
-        continue;
-      }
-      if (!inString) {
-        if (char === '{') {
-          braceCount++;
-        } else if (char === '}') {
-          braceCount--;
-          if (braceCount === 0) {
-            jsonString = rawText.substring(firstBrace, i + 1);
-            try {
-              const sanitized = sanitizeJsonString(jsonString);
-              /** @type {LlmParsedResponse} */
-              const parsed = JSON.parse(sanitized);
-              if (parsed && (parsed.analysis !== undefined || parsed.riskScore !== undefined || parsed.newFiles !== undefined)) {
-                parsedResponse = parsed;
-              }
-            } catch {
-              // Ignore invalid JSON parsing segments and continue execution flow
-            }
-            break;
-          }
-        }
-      }
-    }
+
+  const { parsedResponse, jsonString } = extractJsonMetadata(rawText);
+  proposedCode = extractCodeBlock(rawText, parsedResponse, jsonString);
+
+  if (!proposedCode) {
+    proposedCode = extractFallbackCode(rawText, jsonString);
   }
 
-  // 2. Extract code blocks via regex execution
-  const codeBlockRegex = /```(?:[^\n]*)\n([\s\S]*?)```/g;
-  let match;
-  
-  while ((match = codeBlockRegex.exec(rawText)) !== null) {
-    const content = match[1].trim();
-    
-    // Skip if this block is identical to our extracted JSON payload
-    if (parsedResponse && jsonString && content.replace(/\s+/g, '') === jsonString.replace(/\s+/g, '')) {
-      continue;
-    }
-    
-    // Skip if block is structured strictly as JSON
-    if (content.startsWith('{') && content.endsWith('}')) {
-      try {
-        JSON.parse(content);
-        continue;
-      } catch {
-        // Not valid JSON, process as potential code block
-      }
-    }
-    
-    if (!proposedCode && content.length > 10) {
-      proposedCode = content;
-    }
-  }
-  
-  // 3. Fallback extraction outside JSON regions if no block matched
-  if (!proposedCode) {
-    let textWithoutJson = rawText;
-    if (jsonString) {
-      textWithoutJson = rawText.replace(jsonString, '');
-    }
-    textWithoutJson = textWithoutJson
-      .replace(/```(?:json|tsx|ts|js|jsx|html|css|python)?[ \t]*\n?/g, '')
-      .replace(/```/g, '')
-      .trim();
-    
-    if (textWithoutJson.length > 10) {
-      proposedCode = textWithoutJson;
-    }
-  }
-  
   if (parsedResponse) {
     if (typeof parsedResponse.analysis === 'string') {
       analysis = parsedResponse.analysis;
@@ -149,7 +186,7 @@ function parseLlmResponse(rawText, fallbackCode) {
       proposedCode = parsedResponse.proposedCode;
     }
   }
-  
+
   if (!proposedCode) {
     proposedCode = fallbackCode;
   }
