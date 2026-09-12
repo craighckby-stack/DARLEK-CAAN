@@ -71,7 +71,6 @@ const METRIC_CONFIGS: readonly MetricConfig[] = [
   },
 ] as const;
 
-// Inline style objects to avoid runtime allocation in render loops
 const LABEL_STYLE = {
   fontSize: '8px',
   color: COLORS.textMuted,
@@ -90,7 +89,7 @@ const VALUE_STYLE_BASE = {
   fontWeight: 600,
 } as const;
 
-const PANEL_CONTAINER_CLASS = "dalek-panel rounded-lg p-4 space-y-4";
+const PANEL_CONTAINER_CLASS = 'dalek-panel rounded-lg p-4 space-y-4';
 
 function resolveMetricColor(
   value: number,
