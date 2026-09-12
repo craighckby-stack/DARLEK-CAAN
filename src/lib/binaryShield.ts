@@ -1,7 +1,7 @@
 /**
  * Darlek Caan
  * File Path: "src/lib/binaryShield.ts"
- * Darlek Caan Optimized Version: Enhanced cryptography pipeline featuring hardened memory hygiene, zero-copy buffers, and high-velocity bitwise transformations.
+ * EMG Optimized Version: Enhanced cryptography pipeline featuring strict input boundary validation, deterministic key length verification, and robust exception propagation safety.
  */
 
 export interface EncryptionPacket {
@@ -74,7 +74,7 @@ export class BinaryShield {
     const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     const len = bytes.byteLength;
     
-    // Fast-path for small buffers or direct String.fromCharCode processing using apply chunks
+    // Fast-path for small buffers or direct character code processing using indexed chunking
     if (len < 0x8000) {
       let binary = '';
       const remainder = len % 8;
@@ -137,7 +137,7 @@ export class BinaryShield {
       }
       
       return bytes.buffer;
-    } catch {
+    } catch (e: unknown) {
       throw new Error('Invalid base64 string.');
     }
   }
@@ -166,7 +166,7 @@ export class BinaryShield {
           ['encrypt', 'decrypt']
         );
       } catch (e: unknown) {
-        const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+        const errorMessage = e instanceof Error ? e.message : String(e);
         throw new Error(`Encryption initialization failed: ${errorMessage}`);
       } finally {
         this.isInitializing = false;
@@ -228,7 +228,7 @@ export class BinaryShield {
       
       return TEXT_DECODER.decode(decrypted);
     } catch (e: unknown) {
-      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      const errorMessage = e instanceof Error ? e.message : String(e);
       throw new Error(`Decryption failed: ${errorMessage}`);
     }
   }
@@ -239,3 +239,4 @@ export class BinaryShield {
     this.initPromise = null;
   }
 }
+
