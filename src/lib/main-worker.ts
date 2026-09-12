@@ -16,10 +16,10 @@ export interface CodeFile {
  */
 export class MainWorkerPool {
   private readonly concurrencyLimit: number;
-  private activeCount = 0;
+  private activeCount: number = 0;
   private readonly queue: Array<() => void> = [];
 
-  constructor(concurrencyLimit = 4) {
+  constructor(concurrencyLimit: number = 4) {
     this.concurrencyLimit = Math.max(1, Math.floor(concurrencyLimit));
   }
 
@@ -37,7 +37,7 @@ export class MainWorkerPool {
           }
           const result = await taskFn();
           resolve(result);
-        } catch (error) {
+        } catch (error: unknown) {
           reject(error instanceof Error ? error : new Error(String(error)));
         } finally {
           this.activeCount--;
