@@ -40,7 +40,7 @@ export interface AgentOrchestratorProps {
 /**
  * Terminal reference types that are bypassed during deep immutability mapping.
  */
-type DeepReadonlyTerminal =
+export type DeepReadonlyTerminal =
   | Function
   | Date
   | RegExp
