@@ -99,7 +99,7 @@ export interface ChartStyleProps {
 
 const ChartStyle = React.memo(({ id, config }: ChartStyleProps) => {
   const themedEntries = React.useMemo(
-    () => Object.entries(config).filter(([, itemConfig]) => itemConfig.theme || itemConfig.color),
+    () => Object.entries(config || {}).filter(([, itemConfig]) => itemConfig && (itemConfig.theme || itemConfig.color)),
     [config]
   )
 
@@ -110,15 +110,24 @@ const ChartStyle = React.memo(({ id, config }: ChartStyleProps) => {
       .map(([themeName, themeSelector]) => {
         const themeRules = themedEntries
           .map(([key, itemConfig]) => {
+            // Validate key against injection vectors
+            if (typeof key !== "string" || !/^[a-zA-Z0-9_-]+$/.test(key)) {
+              return null
+            }
             const resolvedColor =
               itemConfig.theme?.[themeName as ThemeKey] || itemConfig.color
-            return resolvedColor ? `  --color-${key}: ${resolvedColor};` : null
+            if (typeof resolvedColor !== "string" || !/^#[0-9a-fA-F36]+$|^var\(.*\)$|^rgb\(.*\)$|^rgba\(.*\)$|^hsl\(.*\)$|^hsla\(.*\)$|^[a-zA-Z]+$/.test(resolvedColor)) {
+              return null
+            }
+            return `  --color-${key}: ${resolvedColor};`
           })
           .filter(Boolean)
           .join("\n")
 
+        if (!themeRules) return ""
         return `\n${themeSelector} [data-chart=${id}] {\n${themeRules}\n}`
       })
+      .filter(Boolean)
       .join("\n")
   }, [id, themedEntries])
 
