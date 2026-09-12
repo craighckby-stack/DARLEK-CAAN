@@ -414,3 +414,11 @@ Line 75, Col 2: Expression expected.
 Line 75, Col 1: Decorators are not valid here.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fetch_readme.js.
+
+### ❌ [2026-09-12] firestore.rules `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 65, Col 1: Unexpected closing delimiter '}' with no matching opening pair.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on firestore.rules.
