@@ -137,3 +137,11 @@ Line 481, Col 8: Property declaration is missing its type annotation.
 Line 36, Col 13: Type alias declaration is missing a type definition after '='.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/hooks/use-toast.ts.
+
+### ❌ [2026-09-12] src/lib/api-client.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 87, Col 2: Expression expected.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/lib/api-client.ts.
