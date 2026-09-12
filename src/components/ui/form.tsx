@@ -2,7 +2,7 @@
 
 /**
  * @fileoverview Form component system built on top of React Hook Form and Radix UI primitives.
- * Provides accessible, context-driven form primitives optimized for high execution speed and minimal allocations.
+ * Provides accessible, context-driven form primitives designed for clarity and maintainability.
  */
 
 import * as React from "react"
