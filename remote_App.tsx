@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, FC, ReactElement } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, ReactElement } from 'react';
 import { Chess } from 'chess.js';
 import { useSystemBootstrap } from './hooks/useSystemBootstrap';
 import { useAgentOrchestra } from './hooks/useAgentOrchestra';
