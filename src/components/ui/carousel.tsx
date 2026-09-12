@@ -55,7 +55,6 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     },
     ref
   ) => {
-    // Memoize embla options to prevent unnecessary re-initialization allocations
     const emblaOptions = React.useMemo(
       () => ({
         ...opts,
