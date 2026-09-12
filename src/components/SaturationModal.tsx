@@ -1,10 +1,10 @@
 /**
- * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * EMG Core Neural Code and Documentation Optimizer Engine
  * File: src/components/SaturationModal.tsx
- * Role: Saturation alert modal handling 0-diff architectural equilibrium and rotation blacklist.
+ * Role: Saturation alert modal handling architectural equilibrium and rotation blacklist.
  */
 
-import React, { useCallback, useEffect, useId } from 'react';
+import React, { useCallback, useEffect, useId, type FC, type MouseEvent } from 'react';
 import { ShieldAlert, Ban, RotateCcw, X, FileCode, AlertCircle } from 'lucide-react';
 import type { SaturationAlert } from '@/lib/types';
 
@@ -15,7 +15,7 @@ export interface SaturationModalProps {
   readonly onKeepInRotation: () => void;
 }
 
-export const SaturationModal: React.FC<SaturationModalProps> = ({
+export const SaturationModal: FC<SaturationModalProps> = ({
   alert,
   onClose,
   onAddToBlacklist,
@@ -24,7 +24,6 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
   const modalTitleId = useId();
   const modalDescriptionId = useId();
 
-  // Handle ESC key press for accessibility and clean closure
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === 'Escape' && alert) {
@@ -38,7 +37,6 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
     if (!alert) return;
 
     window.addEventListener('keydown', handleKeyDown);
-    // Lock body scroll when modal is active
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
@@ -50,7 +48,7 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
 
   if (!alert) return null;
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
@@ -60,7 +58,7 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
     try {
       onAddToBlacklist(alert.path);
     } catch (error) {
-      console.error('[EMG Core v49] Failed to add path to rotation blacklist:', error);
+      console.error('Failed to add path to rotation blacklist:', error);
     }
   };
 
@@ -79,7 +77,6 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         className="bg-[#0a0202] border border-red-900/60 rounded-xl w-full max-w-xl shadow-[0_0_50px_rgba(255,0,51,0.25)] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-red-950/80 bg-[#050000]">
           <div className="flex items-center gap-3">
             <div 
@@ -93,7 +90,7 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
                 NEURAL SATURATION REACHED
               </h2>
               <p className="text-[10px] text-gray-400 font-mono">
-                Dalek Caan Cognitive Engine • Peak Equilibrium Detected
+                Cognitive Engine • Peak Equilibrium Detected
               </p>
             </div>
           </div>
@@ -108,9 +105,7 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Body */}
         <div id={modalDescriptionId} className="p-4 sm:p-5 space-y-4 overflow-y-auto font-sans">
-          {/* Target File Badge */}
           <div className="p-3 bg-black/60 border border-red-950/60 rounded-lg flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <FileCode className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -123,7 +118,6 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
             </span>
           </div>
 
-          {/* Explanation Banner */}
           <div className="p-3.5 bg-[#120303] border border-red-900/30 rounded-lg space-y-2 text-xs text-gray-300 leading-relaxed font-mono">
             <div className="flex items-start gap-2 text-gray-200">
               <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -137,7 +131,6 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
             </p>
           </div>
 
-          {/* Decision Prompt */}
           <div className="pt-1">
             <span className="text-[10px] font-bold text-gray-200 font-mono uppercase tracking-wider block mb-1">
               Blacklist Decision:
@@ -148,7 +141,6 @@ export const SaturationModal: React.FC<SaturationModalProps> = ({
           </div>
         </div>
 
-        {/* Footer Actions */}
         <div className="p-3 sm:p-4 border-t border-red-950/80 bg-[#050000] flex flex-col sm:flex-row items-center justify-end gap-2.5">
           <button
             id="btn-keep-rotation"
