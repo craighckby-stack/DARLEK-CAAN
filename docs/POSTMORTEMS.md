@@ -162,3 +162,12 @@ Line 70, Col 38: '}' expected.
 [OUTPUT_LIKELY_TRUNCATED] The output is < 80% of original length and syntactically invalid. The model likely hit its output token limit.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/lib/validator.ts.
+
+### ❌ [2026-09-12] update_agents.sh `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 2, Col 8: Unclosed single-quote string literal.
+Line 22, Col 3: Unclosed single-quote string literal.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on update_agents.sh.
