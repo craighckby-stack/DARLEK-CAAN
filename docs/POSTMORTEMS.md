@@ -145,3 +145,11 @@ Line 36, Col 13: Type alias declaration is missing a type definition after '='.
 Line 87, Col 2: Expression expected.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/lib/api-client.ts.
+
+### ❌ [2026-09-12] src/lib/msDosEngine.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 330, Col 8: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/lib/msDosEngine.ts.
