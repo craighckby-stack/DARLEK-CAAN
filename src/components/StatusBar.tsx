@@ -49,9 +49,9 @@ export default function StatusBar({
   const sessionTime = useMemo(() => {
     try {
       const date = sessionStart instanceof Date ? sessionStart : new Date(sessionStart);
-      return isNaN(date.getTime())
-        ? '--:--'
-        : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return Number.isFinite(date.getTime())
+        ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : '--:--';
     } catch {
       return '--:--';
     }
