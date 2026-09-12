@@ -1,3 +1,10 @@
+/**
+ * DARLEK CANN ARCHITECTURAL HEADER
+ * File: .next_dev/types/app/api/brain/route.ts
+ * Role: Core system component participating in autonomous cognitive evolution cycles.
+ * Architecture: Type-safe modular unit with resilient state interfaces.
+ */
+
 // File: /app/applet/src/app/api/brain/route.ts
 import * as entry from '../../../../../src/app/api/brain/route.js'
 import type { NextRequest } from 'next/server.js'
