@@ -3,3 +3,32 @@
 ## System Overview & Constraint Mechanics
 
 > **Executive
+
+### ❌ [2026-09-12] compare.js `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 8, Col 11: 'interface' declarations can only be used in TypeScript files.
+Line 16, Col 11: 'interface' declarations can only be used in TypeScript files.
+Line 25, Col 11: 'interface' declarations can only be used in TypeScript files.
+Line 32, Col 18: 'interface' declarations can only be used in TypeScript files.
+Line 41, Col 41: Type annotations can only be used in TypeScript files.
+Line 41, Col 50: Type annotations can only be used in TypeScript files.
+Line 61, Col 47: Type annotations can only be used in TypeScript files.
+Line 61, Col 56: Type annotations can only be used in TypeScript files.
+Line 67, Col 18: Type annotations can only be used in TypeScript files.
+Line 69, Col 16: Type annotations can only be used in TypeScript files.
+Line 72, Col 24: Non-null assertions can only be used in TypeScript files.
+Line 114, Col 10: Type annotations can only be used in TypeScript files.
+Line 115, Col 9: Type annotations can only be used in TypeScript files.
+Line 116, Col 11: Type annotations can only be used in TypeScript files.
+Line 117, Col 8: The '?' modifier can only be used in TypeScript files.
+Line 117, Col 11: Type annotations can only be used in TypeScript files.
+Line 118, Col 4: Type annotations can only be used in TypeScript files.
+Line 120, Col 18: Type annotations can only be used in TypeScript files.
+Line 148, Col 48: Type assertion expressions can only be used in TypeScript files.
+Line 154, Col 24: Type annotations can only be used in TypeScript files.
+Line 178, Col 55: Type annotations can only be used in TypeScript files.
+Line 178, Col 77: Type annotations can only be used in TypeScript files.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on compare.js.
