@@ -27,7 +27,7 @@ const Card = React.memo(
         <div
           ref={ref}
           data-slot="card"
-          className={className ? `${CARD_BASE_CLASS} ${className}` : CARD_BASE_CLASS}
+          className={cn(CARD_BASE_CLASS, className)}
           {...props}
         />
       )
@@ -42,7 +42,7 @@ const CardHeader = React.memo(
         <div
           ref={ref}
           data-slot="card-header"
-          className={className ? `${CARD_HEADER_CLASS} ${className}` : CARD_HEADER_CLASS}
+          className={cn(CARD_HEADER_CLASS, className)}
           {...props}
         />
       )
@@ -57,7 +57,7 @@ const CardTitle = React.memo(
         <div
           ref={ref}
           data-slot="card-title"
-          className={className ? `${CARD_TITLE_CLASS} ${className}` : CARD_TITLE_CLASS}
+          className={cn(CARD_TITLE_CLASS, className)}
           {...props}
         />
       )
@@ -72,7 +72,7 @@ const CardDescription = React.memo(
         <div
           ref={ref}
           data-slot="card-description"
-          className={className ? `${CARD_DESC_CLASS} ${className}` : CARD_DESC_CLASS}
+          className={cn(CARD_DESC_CLASS, className)}
           {...props}
         />
       )
@@ -87,7 +87,7 @@ const CardAction = React.memo(
         <div
           ref={ref}
           data-slot="card-action"
-          className={className ? `${CARD_ACTION_CLASS} ${className}` : CARD_ACTION_CLASS}
+          className={cn(CARD_ACTION_CLASS, className)}
           {...props}
         />
       )
@@ -102,7 +102,7 @@ const CardContent = React.memo(
         <div
           ref={ref}
           data-slot="card-content"
-          className={className ? `${CARD_CONTENT_CLASS} ${className}` : CARD_CONTENT_CLASS}
+          className={cn(CARD_CONTENT_CLASS, className)}
           {...props}
         />
       )
@@ -117,7 +117,7 @@ const CardFooter = React.memo(
         <div
           ref={ref}
           data-slot="card-footer"
-          className={className ? `${CARD_FOOTER_CLASS} ${className}` : CARD_FOOTER_CLASS}
+          className={cn(CARD_FOOTER_CLASS, className)}
           {...props}
         />
       )
