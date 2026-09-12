@@ -54,6 +54,32 @@ interface StagedMutation {
   status?: string;
 }
 
+interface RagHealthPoint {
+  time: string;
+  health: number;
+  drift: number;
+  recovery: number;
+}
+
+const STORAGE_KEY = 'darlek_cann_rag_health_history';
+const MAX_HISTORY_POINTS = 15;
+
+const DEFAULT_RAG_HISTORY: RagHealthPoint[] = [
+  { time: "08:00", health: 96, drift: 4, recovery: 0 },
+  { time: "09:00", health: 91, drift: 9, recovery: 0 },
+  { time: "10:00", health: 85, drift: 15, recovery: 0 },
+  { time: "11:00", health: 71, drift: 29, recovery: 0 },
+  { time: "12:00", health: 99, drift: 2, recovery: 100 },
+  { time: "13:00", health: 95, drift: 5, recovery: 0 },
+  { time: "14:00", health: 90, drift: 10, recovery: 0 },
+  { time: "15:00", health: 78, drift: 22, recovery: 0 },
+  { time: "16:00", health: 98, drift: 3, recovery: 100 },
+  { time: "17:00", health: 96, drift: 6, recovery: 0 },
+  { time: "18:00", health: 93, drift: 9, recovery: 0 },
+  { time: "19:00", health: 80, drift: 20, recovery: 0 },
+  { time: "20:00", health: 100, drift: 1, recovery: 100 },
+];
+
 export default function DashboardPanel({
   systemState,
   logEntries,
@@ -83,44 +109,36 @@ export default function DashboardPanel({
 }: DashboardPanelProps) {
   const [stagedMutations, setStagedMutations] = useState<StagedMutation[]>([]);
 
-  const [ragBrainHealthHistory, setRagBrainHealthHistory] = useState<{ time: string; health: number; drift: number; recovery: number }[]>(() => {
+  const [ragBrainHealthHistory, setRagBrainHealthHistory] = useState<RagHealthPoint[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_RAG_HISTORY;
     try {
-      const saved = localStorage.getItem('darlek_cann_rag_health_history');
-      return saved ? JSON.parse(saved) : [
-        { time: "08:00", health: 96, drift: 4, recovery: 0 },
-        { time: "09:00", health: 91, drift: 9, recovery: 0 },
-        { time: "10:00", health: 85, drift: 15, recovery: 0 },
-        { time: "11:00", health: 71, drift: 29, recovery: 0 },
-        { time: "12:00", health: 99, drift: 2, recovery: 100 },
-        { time: "13:00", health: 95, drift: 5, recovery: 0 },
-        { time: "14:00", health: 90, drift: 10, recovery: 0 },
-        { time: "15:00", health: 78, drift: 22, recovery: 0 },
-        { time: "16:00", health: 98, drift: 3, recovery: 100 },
-        { time: "17:00", health: 96, drift: 6, recovery: 0 },
-        { time: "18:00", health: 93, drift: 9, recovery: 0 },
-        { time: "19:00", health: 80, drift: 20, recovery: 0 },
-        { time: "20:00", health: 100, drift: 1, recovery: 100 },
-      ];
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return DEFAULT_RAG_HISTORY;
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.slice(-MAX_HISTORY_POINTS) as RagHealthPoint[];
+      }
+      return DEFAULT_RAG_HISTORY;
     } catch {
-      return [];
+      return DEFAULT_RAG_HISTORY;
     }
   });
 
   useEffect(() => {
     if (mutationsApplied > 0) {
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setRagBrainHealthHistory((prev: { time: string; health: number; drift: number; recovery: number }[]) => {
+      setRagBrainHealthHistory((prev: RagHealthPoint[]) => {
         const lastPoint = prev[prev.length - 1];
         if (lastPoint && lastPoint.time === timeStr) return prev;
         
-        const newPoint = {
+        const newPoint: RagHealthPoint = {
           time: timeStr,
           health: 95 + Math.floor(Math.random() * 6),
           drift: Math.floor(Math.random() * 5),
           recovery: 100
         };
-        const updated = [...prev.slice(-14), newPoint];
-        try { localStorage.setItem('darlek_cann_rag_health_history', JSON.stringify(updated)); } catch {}
+        const updated = [...prev.slice(-(MAX_HISTORY_POINTS - 1)), newPoint];
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
         return updated;
       });
     }
@@ -129,21 +147,21 @@ export default function DashboardPanel({
   useEffect(() => {
     const timer = setInterval(() => {
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setRagBrainHealthHistory((prev: { time: string; health: number; drift: number; recovery: number }[]) => {
+      setRagBrainHealthHistory((prev: RagHealthPoint[]) => {
         const lastPoint = prev[prev.length - 1];
         if (lastPoint && lastPoint.time === timeStr) return prev;
 
         const currentDrift = lastPoint ? Math.min(40, Math.max(2, lastPoint.drift + (Math.random() > 0.4 ? 1 : -1))) : 5;
         const currentHealth = 100 - currentDrift;
 
-        const newPoint = {
+        const newPoint: RagHealthPoint = {
           time: timeStr,
           health: currentHealth,
           drift: currentDrift,
           recovery: 0
         };
-        const updated = [...prev.slice(-14), newPoint];
-        try { localStorage.setItem('darlek_cann_rag_health_history', JSON.stringify(updated)); } catch {}
+        const updated = [...prev.slice(-(MAX_HISTORY_POINTS - 1)), newPoint];
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
         return updated;
       });
     }, 60000);
