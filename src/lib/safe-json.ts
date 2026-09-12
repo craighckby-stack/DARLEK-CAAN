@@ -11,24 +11,24 @@ const MAX_ERROR_SNIPPET_LENGTH = 200;
 
 /**
  * Validates whether a string contains actionable content beyond mere whitespace.
- * Optimized to avoid redundant regex initialization overhead.
+ * Evaluates character codes to prevent redundant regular expression overhead.
  */
 function hasValidContent(str: string | null | undefined): str is string {
   if (typeof str !== 'string') return false;
-  let hasContent = false;
+  
   for (let i = 0; i < str.length; i++) {
     const code = str.charCodeAt(i);
     // Check for non-whitespace characters (space, tab, LF, CR)
     if (code !== 32 && code !== 9 && code !== 10 && code !== 13) {
-      hasContent = true;
-      break;
+      return true;
     }
   }
-  return hasContent;
+  
+  return false;
 }
 
 /**
- * Safely parses a raw string payload into structured JSON, defaulting gracefully.
+ * Safely parses a raw string payload into structured JSON, returning a fallback on failure.
  */
 export function safeParseJson<T = unknown>(str: string | null | undefined, fallback: T = {} as T): T {
   if (!hasValidContent(str)) {
@@ -94,15 +94,15 @@ export async function safeFetchJson<T = unknown>(
   options?: RequestInit
 ): Promise<SafeFetchResult<T>> {
   try {
-    const res = await fetch(url, options);
-    const text = await res.text();
+    const response = await fetch(url, options);
+    const text = await response.text();
     
     if (!hasValidContent(text)) {
       return {
-        success: res.ok,
+        success: response.ok,
         data: null,
-        status: res.status,
-        error: res.ok ? undefined : `HTTP ${res.status} Empty Response`,
+        status: response.status,
+        error: response.ok ? undefined : `HTTP ${response.status} Empty Response`,
       };
     }
 
@@ -110,24 +110,24 @@ export async function safeFetchJson<T = unknown>(
 
     try {
       const json = JSON.parse(trimmed);
-      const isSuccess = res.ok && (json?.success !== false && json?.error === undefined);
+      const isSuccess = response.ok && (json?.success !== false && json?.error === undefined);
       
       return {
         success: isSuccess,
         data: json as T,
-        status: res.status,
-        error: json?.error || (res.ok ? undefined : `HTTP ${res.status}`),
+        status: response.status,
+        error: json?.error || (response.ok ? undefined : `HTTP ${response.status}`),
       };
     } catch {
       return {
         success: false,
         data: null,
-        status: res.status,
-        error: `Server error (${res.status}): Non-JSON response received (possible route crash or payload limit).`,
+        status: response.status,
+        error: `Server error (${response.status}): Non-JSON response received (possible route crash or payload limit).`,
       };
     }
-  } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : 'Network request failed';
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Network request failed';
     return {
       success: false,
       data: null,
