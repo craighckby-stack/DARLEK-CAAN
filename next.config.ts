@@ -19,7 +19,6 @@ const SERVER_EXTERNAL_PACKAGES: readonly string[] = [
 const nextConfig: NextConfig = {
   distDir: BUILD_OUTPUT_DIRECTORY,
   
-  // Strict type-safety maintained while preserving build resilience
   typescript: {
     ignoreBuildErrors: false,
   },
