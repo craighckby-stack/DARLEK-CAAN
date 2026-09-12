@@ -170,7 +170,7 @@ export function changeDisplayLanguage(langId: string): boolean {
   
   // Strict validation against supported IDs or serviceIds to prevent injection
   const isValidLanguage = ALL_SUPPORTED_LANGUAGES.some(
-    (lang) => lang.id === trimmedLangId || lang.serviceId === trimmedLangId
+    (lang: LanguageOption) => lang.id === trimmedLangId || lang.serviceId === trimmedLangId
   );
 
   if (!isValidLanguage) {
@@ -206,7 +206,7 @@ export function getCurrentLanguage(): string {
       const sanitized = storedLang.trim();
       if (sanitized.length > 0 && sanitized.length <= MAX_LANG_ID_LENGTH) {
         const exists = ALL_SUPPORTED_LANGUAGES.some(
-          (lang) => lang.id === sanitized || lang.serviceId === sanitized
+          (lang: LanguageOption) => lang.id === sanitized || lang.serviceId === sanitized
         );
         if (exists) {
           return sanitized;
