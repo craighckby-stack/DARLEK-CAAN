@@ -15,7 +15,7 @@ async function runMainThread(): Promise<void> {
   try {
     const worker = new Worker(__filename);
 
-    worker.on('message', async (message: unknown) => {
+    worker.on('message', async (message: unknown): Promise<void> => {
       process.stdout.write(`from worker: ${String(message)}\n`);
 
       try {
@@ -27,12 +27,12 @@ async function runMainThread(): Promise<void> {
       }
     });
 
-    worker.on('error', (error: Error) => {
+    worker.on('error', (error: Error): void => {
       process.stderr.write(`worker error: ${error.message}\n`);
       process.exit(1);
     });
 
-    worker.on('exit', (exitCode: number) => {
+    worker.on('exit', (exitCode: number): void => {
       if (exitCode !== 0) {
         process.stderr.write(`worker stopped with exit code ${exitCode}\n`);
         process.exit(exitCode);
