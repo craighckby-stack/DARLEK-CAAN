@@ -343,7 +343,7 @@ type ParamCheck<T> = {
   __param_type__: T
 }
 
-function checkFields<_ extends { [k in keyof any]: never }>(): void {}
+function checkFields<_ extends { [k in keyof any]: never } = never>(): void {}
 
 // https://github.com/sindresorhus/type-fest
 type Numeric = number | bigint
