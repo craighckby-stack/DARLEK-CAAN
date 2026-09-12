@@ -28,6 +28,36 @@ const INITIAL_STATE: SystemState = {
 };
 
 /**
+ * Validates and sanitizes unknown parsed JSON objects against expected types and bounds.
+ */
+const sanitizeStoredState = (parsed: unknown): Partial<SystemState> | null => {
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null;
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const sanitized: Partial<SystemState> = {};
+
+  if (typeof record.setupComplete === 'boolean') {
+    sanitized.setupComplete = record.setupComplete;
+  }
+
+  if (typeof record.connectionStatus === 'string' && record.connectionStatus.length <= 64) {
+    sanitized.connectionStatus = record.connectionStatus;
+  }
+
+  if (typeof record.evolutionCycle === 'number' && Number.isInteger(record.evolutionCycle) && record.evolutionCycle >= 0) {
+    sanitized.evolutionCycle = record.evolutionCycle;
+  }
+
+  if (typeof record.geminiGeoblocked === 'boolean') {
+    sanitized.geminiGeoblocked = record.geminiGeoblocked;
+  }
+
+  return sanitized;
+};
+
+/**
  * Safely parses JSON from storage with defensive type validation.
  */
 const readStoredState = (): Partial<SystemState> | null => {
@@ -36,9 +66,7 @@ const readStoredState = (): Partial<SystemState> | null => {
     if (saved === null) return null;
     
     const parsed = JSON.parse(saved) as unknown;
-    return (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) 
-      ? (parsed as Partial<SystemState>) 
-      : null;
+    return sanitizeStoredState(parsed);
   } catch (error) {
     console.error(`[EMG Engine] Failed to parse state from key "${STORAGE_KEY}":`, error);
     return null;
@@ -46,18 +74,23 @@ const readStoredState = (): Partial<SystemState> | null => {
 };
 
 /**
- * Safely persists state to storage with exception trapping.
+ * Safely persists state to storage with exception trapping and size bounds enforcement.
  */
 const writeStoredState = (state: SystemState): void => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const serialized = JSON.stringify(state);
+    if (serialized.length > 4096) {
+      console.warn(`[EMG Engine] State payload exceeds recommended size limits.`);
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY, serialized);
   } catch (error) {
     console.error(`[EMG Engine] Failed to persist state to key "${STORAGE_KEY}":`, error);
   }
 };
 
 /**
- * Custom React hook for managing, persisting, and synchronizing system state.
+ * Custom React hook for managing, persisting, and synchronizing system state with strict input validation.
  */
 export const useSystemState = () => {
   const [systemState, setSystemState] = useState<SystemState>(INITIAL_STATE);
