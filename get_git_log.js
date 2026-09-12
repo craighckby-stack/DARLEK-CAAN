@@ -1,5 +1,5 @@
 /**
- * DARLEK CANN ARCHITECTURAL HEADER
+ * ARCHITECTURAL HEADER
  * File: get_git_log.js
  * Role: Core system component participating in autonomous cognitive evolution cycles.
  * Architecture: Type-safe modular unit with resilient state interfaces.
