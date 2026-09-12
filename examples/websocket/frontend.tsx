@@ -1,14 +1,16 @@
-/**
- * DARLEK CANN ARCHITECTURAL HEADER
- * File: examples/websocket/frontend.tsx
- * Role: Core system component participating in autonomous cognitive evolution cycles.
- * Architecture: Type-safe modular unit with resilient state interfaces.
- */
-
 'use client';
 
-import { useEffect, useState, useRef, useCallback, ReactElement, KeyboardEvent, ChangeEvent } from 'react';
-import { io, Socket } from 'socket.io-client';
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  type ReactElement,
+  type KeyboardEvent,
+  type ChangeEvent,
+} from 'react';
+import { io, type Socket } from 'socket.io-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,19 +45,17 @@ type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 const MAX_INPUT_LENGTH = 1000;
 const MAX_USERNAME_LENGTH = 50;
+const CONTROL_CHAR_REGEX = /[\u0000-\u001F\u007F-\u009F]/g;
 
-const sanitizeInput = (input: string, maxLength: number): string => {
+const sanitizeInput = (input: unknown, maxLength: number): string => {
   if (typeof input !== 'string') return '';
-  return input.slice(0, maxLength).replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+  return input.slice(0, maxLength).replace(CONTROL_CHAR_REGEX, '');
 };
 
 const formatTimestamp = (timestamp: Date | string): string => {
-  try {
-    const date = new Date(timestamp);
-    return isNaN(date.getTime()) ? '' : date.toLocaleTimeString();
-  } catch {
-    return '';
-  }
+  if (!timestamp) return '';
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 export default function SocketDemo(): ReactElement {
@@ -63,7 +63,6 @@ export default function SocketDemo(): ReactElement {
   const [inputMessage, setInputMessage] = useState<string>('');
   const [username, setUsername] = useState<string>('');
   const [isUsernameSet, setIsUsernameSet] = useState<boolean>(false);
-  const [, setSocket] = useState<TypedSocket | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [users, setUsers] = useState<User[]>([]);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -90,7 +89,6 @@ export default function SocketDemo(): ReactElement {
     });
 
     socketRef.current = socketInstance;
-    setSocket(socketInstance);
 
     const handleConnect = () => {
       setIsConnected(true);
@@ -113,11 +111,11 @@ export default function SocketDemo(): ReactElement {
         content: sanitizeInput(msg.content, MAX_INPUT_LENGTH),
         username: sanitizeInput(msg.username, MAX_USERNAME_LENGTH),
       };
-      setMessages((prevMessages) => [...prevMessages, safeMsg]);
+      setMessages((prev) => [...prev, safeMsg]);
     };
 
     const handleUserJoined = (data: { user: User; message: Message }) => {
-      if (!data || !data.user || !data.message) return;
+      if (!data?.user || !data?.message) return;
       const safeMessage: Message = {
         ...data.message,
         content: sanitizeInput(data.message.content, MAX_INPUT_LENGTH),
@@ -128,24 +126,19 @@ export default function SocketDemo(): ReactElement {
         username: sanitizeInput(data.user.username, MAX_USERNAME_LENGTH),
       };
 
-      setMessages((prevMessages) => [...prevMessages, safeMessage]);
-      setUsers((prevUsers) => {
-        if (!prevUsers.some((u) => u.id === safeUser.id)) {
-          return [...prevUsers, safeUser];
-        }
-        return prevUsers;
-      });
+      setMessages((prev) => [...prev, safeMessage]);
+      setUsers((prev) => (prev.some((u) => u.id === safeUser.id) ? prev : [...prev, safeUser]));
     };
 
     const handleUserLeft = (data: { user: User; message: Message }) => {
-      if (!data || !data.user || !data.message) return;
+      if (!data?.user || !data?.message) return;
       const safeMessage: Message = {
         ...data.message,
         content: sanitizeInput(data.message.content, MAX_INPUT_LENGTH),
         username: sanitizeInput(data.message.username, MAX_USERNAME_LENGTH),
       };
-      setMessages((prevMessages) => [...prevMessages, safeMessage]);
-      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== data.user.id));
+      setMessages((prev) => [...prev, safeMessage]);
+      setUsers((prev) => prev.filter((u) => u.id !== data.user.id));
     };
 
     const handleUsersList = (data: { users: User[] }) => {
@@ -166,13 +159,7 @@ export default function SocketDemo(): ReactElement {
     socketInstance.on('users-list', handleUsersList);
 
     return () => {
-      socketInstance.off('connect', handleConnect);
-      socketInstance.off('disconnect', handleDisconnect);
-      socketInstance.off('connect_error', handleConnectError);
-      socketInstance.off('message', handleIncomingMessage);
-      socketInstance.off('user-joined', handleUserJoined);
-      socketInstance.off('user-left', handleUserLeft);
-      socketInstance.off('users-list', handleUsersList);
+      socketInstance.removeAllListeners();
       socketInstance.disconnect();
       socketRef.current = null;
     };
@@ -226,27 +213,29 @@ export default function SocketDemo(): ReactElement {
     setInputMessage(sanitizeInput(e.target.value, MAX_INPUT_LENGTH));
   }, []);
 
+  const statusBadge = useMemo(() => {
+    const text = isConnected ? 'Connected' : connectionError || 'Disconnected';
+    const colorClass = isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+    return (
+      <span className={`text-sm px-2 py-1 rounded transition-colors ${colorClass}`}>
+        {text}
+      </span>
+    );
+  }, [isConnected, connectionError]);
+
   return (
     <div className="container mx-auto p-4 max-w-2xl">
-      <Card>
+      <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>WebSocket Demo</span>
             <div className="flex items-center space-x-2">
               {users.length > 0 && isUsernameSet && (
-                <span className="text-xs text-gray-500 font-normal">
+                <span className="text-xs text-muted-foreground font-normal">
                   {users.length} user{users.length !== 1 ? 's' : ''} online
                 </span>
               )}
-              <span
-                className={`text-sm px-2 py-1 rounded ${
-                  isConnected
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                }`}
-              >
-                {isConnected ? 'Connected' : connectionError || 'Disconnected'}
-              </span>
+              {statusBadge}
             </div>
           </CardTitle>
         </CardHeader>
@@ -261,6 +250,7 @@ export default function SocketDemo(): ReactElement {
                 maxLength={MAX_USERNAME_LENGTH}
                 disabled={!isConnected}
                 className="flex-1"
+                aria-label="Username input"
               />
               <Button
                 onClick={handleJoin}
@@ -275,7 +265,7 @@ export default function SocketDemo(): ReactElement {
               <ScrollArea className="h-80 w-full border rounded-md p-4">
                 <div className="space-y-2">
                   {messages.length === 0 ? (
-                    <p className="text-gray-500 text-center">No messages yet</p>
+                    <p className="text-muted-foreground text-center">No messages yet</p>
                   ) : (
                     messages.map((msg) => (
                       <div key={msg.id} className="border-b pb-2 last:border-b-0">
@@ -283,24 +273,20 @@ export default function SocketDemo(): ReactElement {
                           <div className="flex-1">
                             <p
                               className={`text-sm font-medium ${
-                                msg.type === 'system'
-                                  ? 'text-blue-600 italic'
-                                  : 'text-gray-700'
+                                msg.type === 'system' ? 'text-blue-600 italic' : 'text-foreground'
                               }`}
                             >
                               {msg.username}
                             </p>
                             <p
                               className={`${
-                                msg.type === 'system'
-                                  ? 'text-blue-500 italic'
-                                  : 'text-gray-900'
+                                msg.type === 'system' ? 'text-blue-500 italic' : 'text-foreground'
                               }`}
                             >
                               {msg.content}
                             </p>
                           </div>
-                          <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">
+                          <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
                             {formatTimestamp(msg.timestamp)}
                           </span>
                         </div>
@@ -320,6 +306,7 @@ export default function SocketDemo(): ReactElement {
                   maxLength={MAX_INPUT_LENGTH}
                   disabled={!isConnected}
                   className="flex-1"
+                  aria-label="Message input"
                 />
                 <Button
                   onClick={sendMessage}
