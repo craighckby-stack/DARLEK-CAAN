@@ -53,7 +53,6 @@ export default function ChatPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom on new messages or loading state transitions
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -705,10 +704,8 @@ export default function ChatPanel({
         )}
       </div>
 
-      {/* Setup input area */}
       {!systemState.setupComplete && renderSetupInput()}
 
-      {/* Free text input (after setup) */}
       {systemState.setupComplete && (
         <div 
           className="p-3 flex-shrink-0 pb-safe sm:pb-3" 
