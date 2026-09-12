@@ -1,7 +1,7 @@
 /**
  * EMG Core v49 Neural Code & Documentation Optimizer Engine
  * File Path: "test-greedy2.js"
- * Optimization Goal: COMPREHENSIVE - Sovereign Overhaul
+ * Optimization Goal: SECURITY - Defensive input validation, memory safety, and strict bounds checking.
  */
 
 /**
@@ -16,11 +16,19 @@ function extractJSON(text) {
     return null;
   }
 
+  // Bounds check for maximum input length to prevent denial-of-service via memory exhaustion
+  if (text.length > 1048576) {
+    return null;
+  }
+
   // Phase 1: Try to match standard markdown code blocks (```json ... ``` or ``` ... ```)
   const jsonBlockMatch = text.match(/```(?:json)?\s*\n([\s\S]*?)```/);
   if (jsonBlockMatch?.[1]) {
     try {
-      return JSON.parse(jsonBlockMatch[1].trim());
+      const candidate = jsonBlockMatch[1].trim();
+      if (candidate.length <= 1048576) {
+        return JSON.parse(candidate);
+      }
     } catch {
       // Fallback to structural scanning if markdown block parsing fails
     }
