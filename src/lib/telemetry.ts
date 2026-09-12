@@ -32,6 +32,19 @@ export interface SaturationMetrics {
 // ============================================================================
 
 const UNSERIALIZABLE_FALLBACK = '[Unserializable Data]';
+const MAX_EVENT_NAME_LENGTH = 128;
+const MAX_SERIALIZED_PAYLOAD_LENGTH = 16384;
+
+/**
+ * Validates and sanitizes string bounds to prevent overflow and injection vectors.
+ */
+const sanitizeStringInput = (input: string, maxLength: number): string => {
+  if (typeof input !== 'string') {
+    return '';
+  }
+  const trimmed = input.trim();
+  return trimmed.length > maxLength ? trimmed.slice(0, maxLength) : trimmed;
+};
 
 /**
  * Custom JSON serialization replacer that transforms BigInt values into strings.
@@ -41,22 +54,33 @@ const serializeBigIntReplacer = (_key: string, value: unknown): unknown => {
 };
 
 /**
- * Safely converts event data into a formatted JSON string without throwing runtime errors.
+ * Safely converts event data into a formatted JSON string without throwing runtime errors,
+ * incorporating depth limiting and strict length bounds checking.
  */
 const safeSerializeEventData = (data: EvolutionEventData): string => {
+  if (data === null || typeof data !== 'object') {
+    return UNSERIALIZABLE_FALLBACK;
+  }
+
   try {
-    return JSON.stringify(data, serializeBigIntReplacer) ?? 'null';
+    const serialized = JSON.stringify(data, serializeBigIntReplacer) ?? 'null';
+    if (serialized.length > MAX_SERIALIZED_PAYLOAD_LENGTH) {
+      return JSON.stringify({ error: 'Payload exceeds maximum length bounds' });
+    }
+    return serialized;
   } catch {
     return UNSERIALIZABLE_FALLBACK;
   }
 };
 
 /**
- * Formats a telemetry log line into the standard Darlek Caan engine event schema.
+ * Formats a telemetry log line into the standard Darlek Caan engine event schema
+ * with input length restrictions.
  */
 const formatEvolutionLog = (eventName: string, serializedPayload: string): string => {
+  const sanitizedName = sanitizeStringInput(eventName, MAX_EVENT_NAME_LENGTH);
   const timestamp = new Date().toISOString();
-  return `[EVOLUTION_EVENT][${timestamp}] ${eventName}: ${serializedPayload}`;
+  return `[EVOLUTION_EVENT][${timestamp}] ${sanitizedName}: ${serializedPayload}`;
 };
 
 // ============================================================================
@@ -70,6 +94,9 @@ const formatEvolutionLog = (eventName: string, serializedPayload: string): strin
  * @param data - The structured payload associated with the event.
  */
 export const logEvolutionEvent = (event: string, data: EvolutionEventData): void => {
+  if (typeof event !== 'string' || event.length === 0) {
+    return;
+  }
   const serializedData = safeSerializeEventData(data);
   const logMessage = formatEvolutionLog(event, serializedData);
 
