@@ -182,3 +182,14 @@ Line 72, Col 38: '}' expected.
 Line 68, Col 16: Type alias declaration is missing a type definition after '='.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/types/omega-core.d.ts.
+
+### ❌ [2026-09-12] updateModule.js `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 140, Col 26: Type annotations can only be used in TypeScript files.
+Line 145, Col 13: Type annotations can only be used in TypeScript files.
+Line 148, Col 17: Type annotations can only be used in TypeScript files.
+Line 160, Col 19: Type annotations can only be used in TypeScript files.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on updateModule.js.
