@@ -10,7 +10,7 @@ import { toggleVariants } from "@/components/ui/toggle"
 /**
  * Shared configuration context for the ToggleGroup component hierarchy.
  */
-export interface ToggleGroupContextValue extends VariantProps<typeof toggleVariants> {}
+export type ToggleGroupContextValue = VariantProps<typeof toggleVariants>
 
 const ToggleGroupContext = React.createContext<ToggleGroupContextValue | undefined>(undefined)
 
