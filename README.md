@@ -68,7 +68,7 @@ This document serves as the **authoritative implementation and deployment manual
 │   │   ├── DashboardPanel.tsx         # Real-time metrics, telemetry graphs, and staging depot
 │   │   ├── AgentOrchestra.tsx         # Multi-agent debate visualization & voting matrix
 │   │   ├── MutationDiffView.tsx       # Side-by-side AST mutation diff inspect and review
-│   │   ├── AgiDosConsoleModal.tsx     # Retro MS-DOS C:\DALEK\SYS real-time terminal window
+│   │   ├── DosConsoleModal.tsx        # Retro MS-DOS C:\DALEK\SYS real-time terminal & telemetry console
 │   │   ├── NeuralSimulator.tsx        # High-dimensional state space visualizer
 │   │   └── ui/                        # Radix UI primitives with Tailwind styling
 │   ├── hooks/                         # Custom React hooks (useSystemState, useToast, etc.)

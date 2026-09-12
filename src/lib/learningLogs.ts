@@ -1,5 +1,6 @@
 import { collection, addDoc, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
+import { scheduleGitHubLogSync } from './githubLogSync';
 
 export interface LearningLog {
   readonly id?: string;
@@ -125,6 +126,10 @@ export async function syncPostmortemsToFirebase(): Promise<void> {
         });
       }
     }
+
+    try {
+      scheduleGitHubLogSync();
+    } catch {}
   } catch (error) {
     console.warn('[Darlek Caan] Firestore syncPostmortems offline, using local postmortems:', error);
   }
@@ -140,6 +145,9 @@ export async function saveLearningLog(
   const localId = `log_${Date.now()}`;
 
   if (!isFirebaseConfigured()) {
+    try {
+      scheduleGitHubLogSync();
+    } catch {}
     return localId;
   }
 
@@ -153,9 +161,17 @@ export async function saveLearningLog(
       constraint: log.constraint ?? '',
       timestamp
     });
+
+    try {
+      scheduleGitHubLogSync();
+    } catch {}
+
     return docRef.id;
   } catch (error) {
     console.warn('[Darlek Caan] Firestore saveLearningLog offline:', error);
+    try {
+      scheduleGitHubLogSync();
+    } catch {}
     return localId;
   }
 }

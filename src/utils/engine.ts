@@ -187,8 +187,7 @@ function evaluateBoardForJesus(chess: Chess): number {
     }
   }
 
-  const noise = (Math.random() < 0.5) ? 0 : 1; 
-  return score + noise;
+  return score;
 }
 
 // Minimax with Alpha-Beta Pruning
@@ -214,17 +213,12 @@ function minimax(
     return { score: 0, move: null };
   }
 
-  for (let i = moves.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = moves[i];
-    moves[i] = moves[j];
-    moves[j] = temp;
-  }
-
+  // Deterministic MVV-LVA (Most Valuable Victim - Least Valuable Aggressor) move ordering
+  const pieceValues: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
   moves.sort((a, b) => {
-    const aVal = a.captured ? 10 : 0;
-    const bVal = b.captured ? 10 : 0;
-    return bVal - aVal;
+    const aCap = a.captured ? (pieceValues[a.captured] || 1) * 10 - (pieceValues[a.piece] || 1) : 0;
+    const bCap = b.captured ? (pieceValues[b.captured] || 1) * 10 - (pieceValues[b.piece] || 1) : 0;
+    return bCap - aCap;
   });
 
   let bestMove: string | null = null;

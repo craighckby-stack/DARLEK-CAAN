@@ -25,7 +25,7 @@ model Post {
   updatedAt DateTime @updatedAt
 }
 
-// BRAIN — DARLEK CANN AGI Persistence Layer
+// BRAIN — DARLEK CANN Autonomous Cognitive Persistence Layer
 
 model Session {
   id            String    @id @default(cuid())

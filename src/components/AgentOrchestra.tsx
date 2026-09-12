@@ -42,7 +42,10 @@ interface AgentOrchestraProps {
 // ─────────────────────────────────────────────
 
 function createLogId(): string {
-  return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `log_${crypto.randomUUID()}`;
+  }
+  return `log_${Date.now().toString(36)}_${performance.now().toString(36).replace('.', '')}`;
 }
 
 function getStatusColor(status: OrchestraAgentStatus): string {

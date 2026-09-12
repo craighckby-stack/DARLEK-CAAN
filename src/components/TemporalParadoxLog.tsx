@@ -110,7 +110,7 @@ export default function TemporalParadoxLog({ logEntries, rejectionMemory }: Temp
       );
 
       if (isCriticalType || hasCriticalKeywords) {
-        const safeLogId = sanitizeInput(entry.id ?? Math.random().toString(36).substring(2, 9));
+        const safeLogId = sanitizeInput(entry.id ?? `log_${index}_${entry.timestamp ? new Date(entry.timestamp).getTime() : Date.now()}`);
         const safeType = sanitizeInput(entry.type ?? 'UNKNOWN');
 
         collectedParadoxes.push({
@@ -145,23 +145,27 @@ export default function TemporalParadoxLog({ logEntries, rejectionMemory }: Temp
   const hasParadoxes = useMemo(() => paradoxes.length > 0, [paradoxes.length]);
 
   return (
-    <div className="border border-red-900/30 bg-red-950/10 p-4 mt-6 rounded-md">
+    <div className="dalek-panel rounded-lg p-3 space-y-2 border border-red-900/30 bg-[#080202]">
       <div 
-        className="flex items-center gap-2 mb-1 cursor-pointer select-none hover:bg-red-900/10 p-1 -m-1 rounded transition-colors"
+        className="dalek-panel-header py-1 px-1 flex items-center justify-between cursor-pointer select-none hover:bg-red-900/10 rounded transition-colors"
         onClick={toggleExpanded}
         role="button"
         tabIndex={0}
         onKeyDown={handleKeyDown}
       >
-        <AlertTriangle className="text-red-500 animate-pulse" size={16} />
-        <h3 className="text-red-400 font-bold text-sm tracking-widest font-mono">
-          TEMPORAL PARADOX & REJECTION LOG
-        </h3>
-        <span className="ml-auto text-xs text-red-500/60 flex items-center gap-1">
-          <RefreshCw size={12} className={hasParadoxes ? "animate-spin" : ""} />
-          {paradoxes.length} LOGIC CONFLICTS
-          {isExpanded ? <ChevronDown size={14} className="ml-1" /> : <ChevronRight size={14} className="ml-1" />}
-        </span>
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="text-red-500 animate-pulse" size={14} />
+          <span style={{ fontSize: '11px', fontFamily: 'var(--font-orbitron), sans-serif', color: '#ff4444' }}>
+            TEMPORAL PARADOX & REJECTION LOG
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-red-900/40 bg-red-950/40 text-red-400 flex items-center gap-1">
+            <RefreshCw size={10} className={hasParadoxes ? "animate-spin" : ""} />
+            {paradoxes.length} CONFLICTS
+          </span>
+          {isExpanded ? <ChevronDown size={14} className="text-red-400" /> : <ChevronRight size={14} className="text-red-400" />}
+        </div>
       </div>
       
       <AnimatePresence>

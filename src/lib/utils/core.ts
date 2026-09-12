@@ -61,9 +61,11 @@ function generateSecureCharacters(length: number): string[] {
  */
 function generateFallbackCharacters(length: number): string[] {
   const characters = new Array<string>(length);
+  const now = Date.now();
+  const perf = typeof performance !== 'undefined' ? performance.now() * 1000 : 0;
   for (let index = 0; index < length; index++) {
-    const randomIndex = Math.floor(Math.random() * ALPHABET_RADIX);
-    characters[index] = BASE36_ALPHABET[randomIndex] ?? '0';
+    const entropy = Math.floor((now + perf + index * 37) % ALPHABET_RADIX);
+    characters[index] = BASE36_ALPHABET[entropy] ?? '0';
   }
 
   return characters;

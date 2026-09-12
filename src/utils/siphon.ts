@@ -80,8 +80,18 @@ function decodeBase64Utf8(base64Content: string): string {
   }
 }
 
+function getCryptoIndex(max: number): number {
+  if (max <= 0) return 0;
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    return buf[0] % max;
+  }
+  return Math.floor((Date.now() + (performance ? performance.now() : 0)) % max);
+}
+
 /**
- * Randomly samples up to `count` elements from an array efficiently using Fisher-Yates partial shuffle.
+ * Samples up to `count` elements from an array efficiently using Fisher-Yates shuffle with cryptographic entropy.
  */
 function sampleArray<T>(items: readonly T[], count: number): T[] {
   if (!Array.isArray(items) || items.length === 0 || count <= 0) {
@@ -90,7 +100,7 @@ function sampleArray<T>(items: readonly T[], count: number): T[] {
   const copy = [...items];
   const targetCount = Math.min(count, copy.length);
   for (let i = copy.length - 1; i > copy.length - 1 - targetCount; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = getCryptoIndex(i + 1);
     const temp = copy[i]!;
     copy[i] = copy[j]!;
     copy[j] = temp;
@@ -159,7 +169,7 @@ export async function siphonFetchFile(
 
     if (matchingFiles.length === 0) return "// No JS/TS files found";
 
-    const selectedFile = matchingFiles[Math.floor(Math.random() * matchingFiles.length)];
+    const selectedFile = matchingFiles[getCryptoIndex(matchingFiles.length)];
     if (!selectedFile?.path) return "// No JS/TS files found";
 
     const contentResponse = await fetch(

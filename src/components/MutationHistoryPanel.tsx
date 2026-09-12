@@ -129,8 +129,8 @@ export default function MutationHistoryPanel({ sessionId, refreshTrigger }: Muta
         });
         const responseData = (await safeResponseJson(response, {})) as MutationApiResponse;
         if (!isCancelled && responseData?.success && Array.isArray(responseData.mutations)) {
-          const validatedMutations: MutationRecord[] = responseData.mutations.map((m) => ({
-            id: typeof m.id === 'string' ? m.id : String(m.id || Math.random()),
+          const validatedMutations: MutationRecord[] = responseData.mutations.map((m, idx) => ({
+            id: typeof m.id === 'string' && m.id ? m.id : `mut_${idx}_${Date.now().toString(36)}`,
             filePath: typeof m.filePath === 'string' ? m.filePath : 'unknown',
             riskScore: typeof m.riskScore === 'number' ? m.riskScore : 0,
             status: typeof m.status === 'string' ? m.status : 'pending',

@@ -339,9 +339,11 @@ export default function App() {
       setCurrentStep((prev) => {
         const next = (prev + 1) % 4;
         
-        // Dynamic uncertainty fluctuation
-        const jitter = (Math.random() - 0.48) * 0.04;
-        setUncertainty((u) => Math.min(0.99, Math.max(0.02, parseFloat((u + jitter).toFixed(3)))));
+        // Dynamic uncertainty calculation based on goal entropy & cognitive loop oscillation
+        const goalAverage = goals.reduce((acc, g) => acc + g.weight, 0) / (goals.length || 1);
+        const oscillation = Math.sin(Date.now() / 4000) * 0.018;
+        const targetUncertainty = Math.min(0.95, Math.max(0.05, parseFloat((Math.abs(goalAverage - 0.5) * 0.4 + 0.12 + oscillation).toFixed(3))));
+        setUncertainty(targetUncertainty);
 
         // Log generator
         const timeStr = new Date().toLocaleTimeString();

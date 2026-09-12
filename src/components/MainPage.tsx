@@ -11,9 +11,10 @@ import DashboardPanel from '@/components/DashboardPanel';
 import QuickActions from '@/components/QuickActions';
 import MutationDiffView from '@/components/MutationDiffView';
 import AgentOrchestra from '@/components/AgentOrchestra';
-import NeuralSimulator from '@/components/NeuralSimulator';
-import TemporalParadoxLog from '@/components/TemporalParadoxLog';
-import AgiDosConsoleModal from '@/components/AgiDosConsoleModal';
+import DosConsoleModal from '@/components/DosConsoleModal';
+import { msDosEngine } from '@/lib/msDosEngine';
+import { saveLogToRag, saveMutationToRag, type HotswappedFileEntry } from '@/lib/ragBrain';
+import { syncAllLogsToGitHub, scheduleGitHubLogSync } from '@/lib/githubLogSync';
 import type {
   Message,
   SystemState,
@@ -51,7 +52,12 @@ export interface FailedSave {
 // ─────────────────────────────────────────────
 
 function createId(): string {
-  return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const timestamp = Date.now().toString(36);
+  const perf = (typeof performance !== 'undefined' ? performance.now().toString(36).replace('.', '') : '');
+  return `id_${timestamp}_${perf}`;
 }
 
 function createMessage(role: 'caan' | 'operator' | 'system', content: string): Message {
@@ -64,18 +70,18 @@ function createLogEntry(type: EvolutionLogEntry['type'], description: string): E
 
 const DEFAULT_PRELOADED_FILES: GitHubFile[] = [
   {
-    path: 'src/components/AgiCognitiveDashboard.tsx',
-    size: 124955,
-    sha: 'sha_agi_dashboard_310',
+    path: 'src/lib/githubLogSync.ts',
+    size: 6120,
+    sha: 'sha_log_sync_core',
     type: 'blob',
-    content: `'use client';\n// Agent OS Cognitive Engine Dashboard\nimport React from 'react';\nexport default function AgiCognitiveDashboard() {\n  return <div>AgiCognitiveDashboard Online</div>;\n}\n`,
+    content: `// GitHub and Firebase Logs Synchronizer Daemon\nexport { syncAllLogsToGitHub, scheduleGitHubLogSync } from '@/lib/githubLogSync';\n`,
   },
   {
-    path: 'src/utils/agi-engine.ts',
+    path: 'src/utils/cognitive-engine.ts',
     size: 79625,
-    sha: 'sha_agi_engine_v3',
+    sha: 'sha_cognitive_engine_v3',
     type: 'blob',
-    content: `// Autonomous Cognitive Core & Alignment V3 Engine\nexport class AGICore {\n  // Lifecycle perceive -> reason -> act -> learn -> self-modify\n}\n`,
+    content: `// Autonomous Cognitive Core & Alignment V3 Engine\nexport class CognitiveEngine {\n  // Lifecycle perceive -> reason -> act -> learn -> self-modify\n}\n`,
   },
   {
     path: 'src/app/page.tsx',
@@ -122,7 +128,8 @@ export default function Home() {
     sessionStart: new Date(),
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [isAgiDosOpen, setIsAgiDosOpen] = useState(false);
+  const [isDosConsoleOpen, setIsDosConsoleOpen] = useState(false);
+  const [isDosConsoleDocked, setIsDosConsoleDocked] = useState(false);
   const [logEntries, setLogEntries] = useState<EvolutionLogEntry[]>([
     createLogEntry('SYSTEM', 'DARLEK CANN v3.1 online. Coherence Gate ARMED.'),
   ]);
@@ -206,9 +213,6 @@ export default function Home() {
   // ── Mobile view navigation state ──
   const [activeTab, setActiveTab] = useState<'chat' | 'dashboard' | 'controls'>('dashboard');
 
-  // ── Center view toggle (Files vs Agi Cognitive Dashboard) ──
-  const [centerView, setCenterView] = useState<'files' | 'cognitive'>('files');
-
   // ── Auto setup states ──
   const [tokenInput, setTokenInput] = useState('');
   const [ownerInput, setOwnerInput] = useState('craighckby-stack');
@@ -271,6 +275,9 @@ export default function Home() {
 
   const addLogEntry = useCallback((type: EvolutionLogEntry['type'], description: string) => {
     setLogEntries((prev) => [createLogEntry(type, description), ...prev].slice(0, 20));
+    // Pipe into full-time MS-DOS daemon stream & RAG persistence
+    msDosEngine.addLog(type, description);
+    saveLogToRag({ type, description }).catch(() => {});
   }, []);
 
   const openFileInspector = useCallback(async (filePath: string, preloadedContent?: string) => {
@@ -318,6 +325,52 @@ export default function Home() {
       });
     }
   }, [systemState.apiKeys.github, systemState.repoConfig]);
+
+  // Provide active file content lookup to full-time MS-DOS background engine
+  useEffect(() => {
+    msDosEngine.setFileContentProvider((path: string) => {
+      const found = scannedFiles.find((f) => f.path === path);
+      return found?.content;
+    });
+  }, [scannedFiles]);
+
+  // Handle autonomous background file hotswaps executed by MS-DOS engine
+  useEffect(() => {
+    const unsubscribe = msDosEngine.onHotswap((entry: HotswappedFileEntry) => {
+      setScannedFiles((prev) => {
+        const idx = prev.findIndex((f) => f.path === entry.path);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = {
+            ...updated[idx],
+            content: entry.content,
+            size: entry.content.length,
+          };
+          return updated;
+        }
+        return [
+          ...prev,
+          {
+            path: entry.path,
+            content: entry.content,
+            size: entry.content.length,
+            sha: entry.sha || '',
+            type: 'blob',
+          },
+        ];
+      });
+
+      // Update inspecting file if open
+      setInspectingFile((curr) => {
+        if (curr && curr.path === entry.path) {
+          return { ...curr, content: entry.content };
+        }
+        return curr;
+      });
+    });
+
+    return unsubscribe;
+  }, []);
 
   // ─────────────────────────────────────────────
   // EFFECTS
@@ -856,13 +909,6 @@ export default function Home() {
       }
     } catch (e) {}
   }, [pendingMutation, isHydrated]);
-
-  useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      localStorage.setItem('darlek_cann_center_view', centerView);
-    } catch (e) {}
-  }, [centerView, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -1656,6 +1702,18 @@ export default function Home() {
           );
           addLogEntry('APPROVE', `Mutation applied to ${mutation.filePath}`);
 
+          // Persist mutation into RAG Brain so mutations never solely rely on LLMs
+          saveMutationToRag({
+            filePath: mutation.filePath,
+            originalCode: mutation.originalContent,
+            mutatedCode: mutation.proposedCode,
+            rationale: mutation.analysis,
+            riskScore: mutation.riskScore,
+            generation: systemState.evolutionCycle,
+            commitSha: data.commitSha || '',
+            hotswapped: true,
+          }).catch(() => {});
+
           // Record mutation in BRAIN
           if (brainSessionId) {
             fetch('/api/brain', {
@@ -2094,10 +2152,10 @@ export default function Home() {
       const isPropose =
         lowerRaw === 'propose' || lowerReversed === 'propose';
 
-      const isAgi = 
+      const isDosConsole = 
         lowerRaw === 'dos' || lowerRaw === 'msdos' || lowerRaw === 'ms-dos' ||
         lowerRaw === 'monitor' || lowerRaw === 'telemetry' || lowerRaw === 'rag monitor' ||
-        lowerRaw === 'console' || lowerRaw === 'agi';
+        lowerRaw === 'console' || lowerRaw === 'terminal' || lowerRaw === 'agi';
 
       const currentState = systemState;
       const lowerContent = cleaned.toLowerCase();
@@ -2108,7 +2166,7 @@ export default function Home() {
         addCaanMessage(
           `DALEK CAAN COMMAND DIRECTIVES:\n\n` +
           `• help / commands — Display this operational command manual.\n` +
-          `• dos / monitor — Launch MS-DOS black screen live system telemetry monitor window.\n` +
+          `• dos / monitor / console — Launch MS-DOS black screen live system telemetry monitor window.\n` +
           `• reboot / reset — Initiate full system reboot and purge chat, logs & cache.\n` +
           `• scan — Scan target repository (${currentState.repoConfig?.owner || 'owner'}/${currentState.repoConfig?.repo || 'repo'}) for code assets.\n` +
           `• 1, 2, ... — Select target file from scanned inventory to evolve.\n` +
@@ -2126,9 +2184,9 @@ export default function Home() {
       }
 
       // ── MS-DOS command ──
-      if (isAgi) {
+      if (isDosConsole) {
         setMessages((prev) => [...prev, createMessage('operator', content)]);
-        setIsAgiDosOpen(true);
+        setIsDosConsoleOpen(true);
         addCaanMessage(
           `[MS-DOS TELEMETRY MONITOR INITIALIZED]\n\nOpening C:\\DALEK\\SYS MS-DOS Screen...\n` +
           `Displaying real-time system executions: RAG writing/enhancing, AST self-mutating, vector persistence, and auto-push commit streams.`
@@ -5375,30 +5433,9 @@ export default function Home() {
             <div className="flex-1 flex flex-col min-h-0 p-4 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-red-900/20 pb-2">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                  <div className="flex rounded border border-red-900/30 bg-[#080303] p-0.5 shrink-0 overflow-x-auto">
-                    <button
-                      onClick={() => setCenterView('files')}
-                      type="button"
-                      className={`px-2 py-1 text-[8.5px] font-sans font-bold tracking-wider rounded-sm transition-all duration-200 cursor-pointer ${
-                        centerView === 'files' 
-                          ? 'bg-[#ff2020]/20 text-red-400 border border-red-500/40 shadow-sm' 
-                          : 'text-gray-400 hover:text-gray-200 border border-transparent'
-                      }`}
-                    >
-                      FILES
-                    </button>
-                    <button
-                      onClick={() => setCenterView('cognitive')}
-                      type="button"
-                      className={`px-2 py-1 text-[8.5px] font-sans font-bold tracking-wider rounded-sm transition-all duration-200 cursor-pointer ${
-                        centerView === 'cognitive' 
-                          ? 'bg-[#ff2020]/20 text-red-400 border border-red-500/40 shadow-sm' 
-                          : 'text-gray-400 hover:text-gray-200 border border-transparent'
-                      }`}
-                    >
-                      NEURAL SIMULATOR
-                    </button>
-                  </div>
+                  <span className="text-[10px] font-sans font-bold tracking-wider text-red-400 bg-red-950/40 px-2.5 py-1 rounded border border-red-900/40">
+                    SYSTEM REPOSITORY FILES & MUTATIONS
+                  </span>
                 </div>
                 {batchMode && (
                   <span className="text-[9px] text-[#00ccff] font-bold tracking-wider font-mono bg-[#00ccff]/10 px-2 py-0.5 rounded border border-[#00ccff]/20 animate-pulse">
@@ -5407,13 +5444,7 @@ export default function Home() {
                 )}
               </div>
 
-              {centerView === 'cognitive' ? (
-                <div className="flex-1 min-h-0">
-                  <NeuralSimulator systemCycle={systemState.evolutionCycle} />
-                </div>
-              ) : (
-                <>
-                  {/* Progress Container */}
+              {/* Progress Container */}
                   {batchMode && batchQueue.length > 0 && (
                     <div className="p-4 bg-red-950/10 border border-red-900/15 rounded-lg space-y-3">
                       <div className="flex items-center justify-between text-[11px] font-mono">
@@ -5547,8 +5578,6 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                </>
-              )}
             </div>
           )}
         </div>
@@ -5632,6 +5661,7 @@ export default function Home() {
               debateCognitiveFriction={debateCognitiveFriction ?? undefined}
               debateEpistemicRuling={debateEpistemicRuling}
               rejectionCount={rejectionMemory.length}
+              rejectionMemory={rejectionMemory}
               brainSessionId={brainSessionId}
               historyRefreshTrigger={historyRefreshTrigger}
               isLoading={isLoading}
@@ -5958,11 +5988,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* ── Paradox Log ── */}
-      <div className="px-4 sm:px-6">
-        <TemporalParadoxLog logEntries={logEntries} rejectionMemory={rejectionMemory} />
-      </div>
-
       {/* ── Neural Saturation Alert Modal ── */}
       <SaturationModal
         alert={saturationAlert}
@@ -6001,12 +6026,11 @@ export default function Home() {
           <span
             style={{
               fontSize: '8px',
-              color: COLORS.textMuted,
-              fontFamily: 'var(--font-orbitron), sans-serif',
-              letterSpacing: '0.1em',
+              color: '#444',
+              fontFamily: 'var(--font-share-tech-mono), monospace',
             }}
           >
-            DALEK CAAN v3.1
+            craighckby-stack © {new Date().getFullYear()}
           </span>
           {mutationsApplied > 0 && (
             <span
@@ -6019,64 +6043,31 @@ export default function Home() {
               · {mutationsApplied} mutations applied
             </span>
           )}
-          <button
-            onClick={() => setIsAgiDosOpen(true)}
-            className="ml-2 px-2 py-0.5 rounded bg-black border border-white/20 text-white hover:bg-white hover:text-black transition-colors font-mono text-[9px] flex items-center gap-1 cursor-pointer"
-            title="Open MS-DOS Real-Time Telemetry Monitor (or type 'dos' in chat)"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            <span>[MS-DOS TELEMETRY]</span>
-          </button>
         </div>
 
-      {/* MS-DOS Real-Time Console Modal */}
-      <AgiDosConsoleModal
-        isOpen={isAgiDosOpen}
-        onClose={() => setIsAgiDosOpen(false)}
-        systemState={systemState}
-      />
-        <div className="flex items-center gap-4">
-          <span
-            style={{
-              fontSize: '8px',
-              color: '#333',
-              fontFamily: 'var(--font-share-tech-mono), monospace',
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setIsDosConsoleOpen(true);
+              setIsDosConsoleDocked(false);
             }}
+            className="px-2 py-0.5 rounded bg-black border border-white/20 text-white hover:bg-white hover:text-black transition-colors font-mono text-[9px] flex items-center gap-1 cursor-pointer"
+            title="Open MS-DOS Full-Time Telemetry Monitor & Autonomous Hotswapper (or type 'dos' in chat)"
           >
-            craighckby-stack © {new Date().getFullYear()}
-          </span>
-          <a
-            href="https://github.com/craighckby-stack/DARLEK-CAAN-Cognitive-Engine/discussions"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1 hover:text-[#00ccff] transition-colors"
-            title="Help Wanted / Discussions"
-            style={{
-              fontSize: '8px',
-              color: COLORS.textMuted,
-              fontFamily: 'var(--font-orbitron), sans-serif',
-              letterSpacing: '0.1em',
-            }}
-          >
-            🤝 HELP WANTED
-          </a>
-          <a
-            href="https://github.com/sponsors/craighckby-stack"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1 hover:text-[#ff2020] transition-colors"
-            title="Donate/Support Development"
-            style={{
-              fontSize: '8px',
-              color: COLORS.textMuted,
-              fontFamily: 'var(--font-orbitron), sans-serif',
-              letterSpacing: '0.1em',
-            }}
-          >
-            ☕ DONATE
-          </a>
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            <span>[MS-DOS HOTSWAP: RUNNING | RAG SYNC: 100%]</span>
+          </button>
         </div>
       </footer>
+
+      {/* MS-DOS Real-Time Console Modal & Dockable Daemon */}
+      <DosConsoleModal
+        isOpen={isDosConsoleOpen}
+        onClose={() => setIsDosConsoleOpen(false)}
+        systemState={systemState}
+        isDocked={isDosConsoleDocked}
+        onToggleDock={() => setIsDosConsoleDocked((prev) => !prev)}
+      />
     </div>
   );
 }

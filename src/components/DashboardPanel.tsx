@@ -12,9 +12,24 @@ import SaturationMetricsPanel from './SaturationMetrics';
 import EvolutionLog from './EvolutionLog';
 import DebateChamber from './DebateChamber';
 import MutationHistoryPanel from './MutationHistoryPanel';
+import TemporalParadoxLog, { type RejectionItem } from './TemporalParadoxLog';
 import type { SystemState, EvolutionLogEntry, DebateAgent, AgentVote } from '@/lib/types';
 import { COLORS } from '@/lib/constants';
-import { Cpu, RotateCw, GitCommit, AlertCircle, CheckCircle2, HeartPulse, Activity } from 'lucide-react';
+import { 
+  Cpu, 
+  RotateCw, 
+  GitCommit, 
+  AlertCircle, 
+  CheckCircle2, 
+  HeartPulse, 
+  Activity, 
+  Brain, 
+  HardDrive, 
+  Database, 
+  Gauge, 
+  ShieldCheck, 
+  Zap 
+} from 'lucide-react';
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -25,6 +40,7 @@ import {
   Tooltip 
 } from 'recharts';
 import { safeResponseJson } from '@/lib/safe-json';
+import { getRagBrainRealMetrics, type RagBrainRealMetrics } from '@/lib/ragBrain';
 
 interface DashboardPanelProps {
   systemState: SystemState;
@@ -38,6 +54,7 @@ interface DashboardPanelProps {
   debateVotes?: AgentVote[];
   debateConsensus?: string;
   rejectionCount?: number;
+  rejectionMemory?: RejectionItem[];
   brainSessionId?: string;
   historyRefreshTrigger?: number;
   isLoading?: boolean;
@@ -98,6 +115,7 @@ export default function DashboardPanel({
   debateVotes,
   debateConsensus,
   rejectionCount: _rejectionCount,
+  rejectionMemory,
   brainSessionId,
   historyRefreshTrigger,
   isLoading = false,
@@ -114,6 +132,7 @@ export default function DashboardPanel({
   debateEpistemicRuling,
 }: DashboardPanelProps) {
   const [stagedMutations, setStagedMutations] = useState<StagedMutation[]>([]);
+  const [ragMetrics, setRagMetrics] = useState<RagBrainRealMetrics>(() => getRagBrainRealMetrics());
 
   const [ragBrainHealthHistory, setRagBrainHealthHistory] = useState<RagHealthPoint[]>(() => {
     if (typeof window === 'undefined') return DEFAULT_RAG_HISTORY;
@@ -121,7 +140,7 @@ export default function DashboardPanel({
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) return DEFAULT_RAG_HISTORY;
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.slice(-MAX_HISTORY_POINTS) as RagHealthPoint[];
       }
       return DEFAULT_RAG_HISTORY;
@@ -130,50 +149,41 @@ export default function DashboardPanel({
     }
   });
 
+  // Continuously refresh real RAG measurements
+  const refreshRealMeasurements = useCallback(() => {
+    const metrics = getRagBrainRealMetrics();
+    setRagMetrics(metrics);
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setRagBrainHealthHistory((prev: RagHealthPoint[]) => {
+      const lastPoint = prev[prev.length - 1];
+      if (lastPoint && lastPoint.time === timeStr && lastPoint.health === metrics.health && lastPoint.drift === metrics.drift) {
+        return prev;
+      }
+
+      const newPoint: RagHealthPoint = {
+        time: timeStr,
+        health: metrics.health,
+        drift: metrics.drift,
+        recovery: metrics.recovery
+      };
+      const updated = [...prev.slice(-(MAX_HISTORY_POINTS - 1)), newPoint];
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
   useEffect(() => {
-    if (mutationsApplied > 0) {
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setRagBrainHealthHistory((prev: RagHealthPoint[]) => {
-        const lastPoint = prev[prev.length - 1];
-        if (lastPoint && lastPoint.time === timeStr) return prev;
-        
-        const newPoint: RagHealthPoint = {
-          time: timeStr,
-          health: 95 + Math.floor(Math.random() * 6),
-          drift: Math.floor(Math.random() * 5),
-          recovery: 100
-        };
-        const updated = [...prev.slice(-(MAX_HISTORY_POINTS - 1)), newPoint];
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
-        return updated;
-      });
-    }
-  }, [mutationsApplied]);
+    refreshRealMeasurements();
+  }, [mutationsApplied, historyRefreshTrigger, logEntries.length, _rejectionCount, refreshRealMeasurements]);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setRagBrainHealthHistory((prev: RagHealthPoint[]) => {
-        const lastPoint = prev[prev.length - 1];
-        if (lastPoint && lastPoint.time === timeStr) return prev;
-
-        const currentDrift = lastPoint ? Math.min(40, Math.max(2, lastPoint.drift + (Math.random() > 0.4 ? 1 : -1))) : 5;
-        const currentHealth = 100 - currentDrift;
-
-        const newPoint: RagHealthPoint = {
-          time: timeStr,
-          health: currentHealth,
-          drift: currentDrift,
-          recovery: 0
-        };
-        const updated = [...prev.slice(-(MAX_HISTORY_POINTS - 1)), newPoint];
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
-        return updated;
-      });
-    }, 60000);
+      refreshRealMeasurements();
+    }, 5000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [refreshRealMeasurements]);
 
   useEffect(() => {
     if (!brainSessionId) {
@@ -258,30 +268,113 @@ export default function DashboardPanel({
 
       {/* RAG Brain Health Monitor Panel */}
       <div className="dalek-panel rounded-lg p-4 space-y-4">
-        <div className="dalek-panel-header py-1 px-1 flex items-center justify-between">
+        <div className="dalek-panel-header py-1 px-1 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <HeartPulse size={14} className="text-[#00ffcc] animate-pulse" />
-            <span style={{ fontSize: '11px', fontFamily: 'var(--font-orbitron), sans-serif', color: COLORS.cyan }}>RAG BRAIN COGNITIVE HEALTH</span>
+            <span style={{ fontSize: '11px', fontFamily: 'var(--font-orbitron), sans-serif', color: COLORS.cyan }}>
+              RAG BRAIN COGNITIVE HEALTH
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[8px] font-mono text-gray-400 uppercase">Resilience: ACTIVE</span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-[#00ffcc]/40 bg-[#00ffcc]/10 text-[#00ffcc] font-mono text-[9.5px] font-bold shadow-[0_0_8px_rgba(0,255,204,0.2)]">
+              <Brain size={12} className="text-[#00ffcc] animate-pulse" />
+              <span>RAG IQ: <span className="text-white text-[11px] font-extrabold">{ragMetrics.iq}</span></span>
+            </div>
+            <span className="text-[8px] font-mono text-gray-400 uppercase hidden sm:inline">Resilience: ACTIVE</span>
           </div>
         </div>
 
         <div style={{ background: '#080808', border: `1px solid ${COLORS.panelBorder}` }} className="p-3 rounded-sm space-y-3">
-          <div className="flex items-center justify-between text-[10px] font-mono text-gray-300">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#00ffcc] shadow-[0_0_6px_#00ffcc]" />
-              <span>Health: <span className="text-[#00ffcc] font-bold">{ragBrainHealthHistory[ragBrainHealthHistory.length - 1]?.health ?? 100}%</span></span>
+          {/* Cognitive State Rating Banner */}
+          <div className="flex flex-wrap items-center justify-between text-[9px] font-mono border-b border-white/[0.04] pb-2 text-gray-400">
+            <div className="flex items-center gap-1.5">
+              <Zap size={11} className="text-yellow-400" />
+              <span>COGNITIVE RATING: <span className="text-white font-bold">{ragMetrics.iqRating}</span></span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#ff2020]" />
-              <span>Drift: <span className="text-[#ff2020] font-bold">{ragBrainHealthHistory[ragBrainHealthHistory.length - 1]?.drift ?? 0}%</span></span>
+              <span className="text-emerald-400 font-bold">● REAL MEASUREMENTS ONLINE</span>
             </div>
           </div>
 
-          <div className="h-[140px] w-full relative">
-            {(ragBrainHealthHistory[ragBrainHealthHistory.length - 1]?.drift ?? 0) > 30 && (
+          {/* RAG Space Available Meter */}
+          <div className="p-2.5 rounded bg-black/60 border border-cyan-950/40 space-y-2">
+            <div className="flex items-center justify-between text-[9.5px] font-mono">
+              <div className="flex items-center gap-1.5 text-cyan-400 font-bold">
+                <HardDrive size={11} />
+                <span>RAG STORAGE ALLOCATION</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-300">
+                <span>AVAILABLE: <span className="text-[#00ffcc] font-bold">{ragMetrics.availableFormatted}</span></span>
+                <span className="text-gray-500 font-bold">({ragMetrics.availablePercent}% FREE)</span>
+              </div>
+            </div>
+
+            {/* Storage Progress Bar */}
+            <div className="w-full bg-gray-900 rounded-full h-2 overflow-hidden border border-white/10 flex">
+              <div 
+                className="h-full bg-gradient-to-r from-[#00ffcc] to-[#0099ff] transition-all duration-500 relative"
+                style={{ width: `${Math.max(1.5, Math.min(100, ragMetrics.usedPercent))}%` }}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+              </div>
+              <div 
+                className="h-full bg-emerald-950/60"
+                style={{ width: `${Math.max(0, 100 - ragMetrics.usedPercent)}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[8px] font-mono text-gray-500">
+              <span>USED: {ragMetrics.usedFormatted} / {ragMetrics.totalLimitFormatted} (Dedicated Quota)</span>
+              <span>BUFFER HEADROOM: {ragMetrics.availableFormatted}</span>
+            </div>
+          </div>
+
+          {/* 4-Quadrant Real-Time Telemetry Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            <div className="p-2 rounded bg-black/40 border border-white/[0.05] space-y-0.5">
+              <div className="text-[8px] font-mono text-gray-400 uppercase flex items-center gap-1">
+                <Brain size={9} className="text-[#00ffcc]" />
+                <span>RAG IQ</span>
+              </div>
+              <div className="text-sm font-mono font-bold text-[#00ffcc]">{ragMetrics.iq}</div>
+              <div className="text-[7.5px] font-mono text-gray-500 truncate">{ragMetrics.iqRating.split(' ')[0]}</div>
+            </div>
+
+            <div className="p-2 rounded bg-black/40 border border-white/[0.05] space-y-0.5">
+              <div className="text-[8px] font-mono text-gray-400 uppercase flex items-center gap-1">
+                <HardDrive size={9} className="text-emerald-400" />
+                <span>SPACE FREE</span>
+              </div>
+              <div className="text-sm font-mono font-bold text-emerald-400">{ragMetrics.availablePercent}%</div>
+              <div className="text-[7.5px] font-mono text-gray-500 truncate">{ragMetrics.availableFormatted} free</div>
+            </div>
+
+            <div className="p-2 rounded bg-black/40 border border-white/[0.05] space-y-0.5">
+              <div className="text-[8px] font-mono text-gray-400 uppercase flex items-center gap-1">
+                <HeartPulse size={9} className="text-[#00ffcc]" />
+                <span>HEALTH</span>
+              </div>
+              <div className="text-sm font-mono font-bold text-[#00ffcc]">{ragMetrics.health}%</div>
+              <div className="text-[7.5px] font-mono text-rose-400 truncate">Drift: {ragMetrics.drift}%</div>
+            </div>
+
+            <div className="p-2 rounded bg-black/40 border border-white/[0.05] space-y-0.5">
+              <div className="text-[8px] font-mono text-gray-400 uppercase flex items-center gap-1">
+                <Database size={9} className="text-amber-400" />
+                <span>SYNAPSES</span>
+              </div>
+              <div className="text-sm font-mono font-bold text-amber-400">
+                {ragMetrics.chunkCount + ragMetrics.logCount + ragMetrics.mutationCount}
+              </div>
+              <div className="text-[7.5px] font-mono text-gray-500 truncate">
+                {ragMetrics.chunkCount}c • {ragMetrics.logCount}l • {ragMetrics.mutationCount}m
+              </div>
+            </div>
+          </div>
+
+          {/* Area Chart Visualization */}
+          <div className="h-[130px] w-full relative pt-1">
+            {ragMetrics.drift > 30 && (
               <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-rose-500/20 border border-rose-500/50 text-rose-400 px-3 py-1.5 rounded shadow-[0_0_10px_rgba(255,32,32,0.3)] backdrop-blur-md flex items-center gap-2 animate-pulse">
                  <AlertCircle size={12} />
                  <span className="text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">Warning: Dalek cognition is becoming unstable</span>
@@ -364,7 +457,7 @@ export default function DashboardPanel({
 
           <div className="flex items-center justify-between text-[8px] font-mono text-gray-500 border-t border-white/[0.03] pt-2">
             <span>MUTATION RECOVERIES: {ragBrainHealthHistory.filter(h => h.recovery > 0).length} CYCLES</span>
-            <span className="text-[#ffaa00] animate-pulse">● COGNITIVE GATE SYNCHRONIZED</span>
+            <span className="text-[#00ffcc] animate-pulse">● RAG BRAIN REAL-TIME TELEMETRY SYNCHRONIZED</span>
           </div>
         </div>
       </div>
@@ -560,6 +653,7 @@ export default function DashboardPanel({
         epistemicRuling={debateEpistemicRuling}
       />
       {brainSessionId && <MutationHistoryPanel sessionId={brainSessionId} refreshTrigger={historyRefreshTrigger} />}
+      <TemporalParadoxLog logEntries={logEntries} rejectionMemory={rejectionMemory} />
     </div>
   );
 }

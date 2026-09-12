@@ -53,7 +53,7 @@ export interface MutationEventDetail {
 export class BrainTransaction {
   private readonly mutations: Map<string, string | null> = new Map();
   private committed: boolean = false;
-  public readonly id: string = Math.random().toString(36).substring(2, 15);
+  public readonly id: string = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `tx_${Date.now().toString(36)}_${performance.now().toString(36).replace('.', '')}`;
 
   update(path: string, content: string): this {
     if (this.committed) throw new Error('Transaction sealed');

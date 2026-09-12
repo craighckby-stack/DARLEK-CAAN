@@ -1,15 +1,15 @@
 // =============================================================================
-// agi-engine.ts — Fully Typed Autonomous Cognitive Core & Alignment V3 Engine
+// cognitive-engine.ts — Fully Typed Autonomous Cognitive Core & Alignment V3 Engine
 // =============================================================================
-// Translates the user's JS agi-core specifications into a clean TS ESM module.
+// Autonomous Cognitive Engine specifications into a clean TS ESM module.
 // Runs the exact perceive → reason → act → learn → self-modify lifecycle.
 // Updated under the Artificial Human Intelligence (AHI) framework of
 // Amplified Human Generality.
 // =============================================================================
 
 /**
- * @file agi-engine.ts
- * @module AGICoreEngine
+ * @file cognitive-engine.ts
+ * @module CognitiveCoreEngine
  * @description Fully Typed Autonomous Cognitive Core & Alignment V3 Engine with Zero-Leak Persistence.
  * 
  * =============================================================================
@@ -1767,12 +1767,16 @@ export class BrainMemoryEngine {
   }
 
   public writeToBrain(concept: string, category: 'episodic' | 'semantic' | 'working', payload: any) {
+    const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload || {});
+    const uniqueChars = new Set((concept + payloadStr).toLowerCase()).size;
+    const computedDensity = Number(Math.min(1.0, Math.max(0.70, (uniqueChars / 64) + 0.65)).toFixed(2));
+
     const node: BrainMemoryNode = {
-      id: 'brain_' + Date.now().toString(36),
+      id: 'brain_' + Date.now().toString(36) + '_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().slice(0, 6) : performance.now().toFixed(0)),
       timestamp: new Date().toISOString(),
       concept,
       category,
-      vectorDensity: Number((0.8 + Math.random() * 0.19).toFixed(2)),
+      vectorDensity: computedDensity,
       payload,
       persistenceStatus: category === 'working' ? 'SCRATCHPAD' : 'COMMITTED'
     };
@@ -1817,10 +1821,7 @@ export class TesseraModuleSuite {
   private modules = ['Calculator', 'General QA', 'PIXEL_analyser', 'Router', 'Cache', 'Kernel_Diagnostic'];
 
   public runModuleDiagnostic(moduleName: string): TesseraModuleResult {
-    const latencyMs = Math.round(1.2 + Math.random() * 4.5);
-    const costModelScore = Number((0.0012 + Math.random() * 0.0008).toFixed(5));
-    const semanticRadius = Number((0.85 + Math.random() * 0.14).toFixed(3));
-
+    const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     let outputPayload = `[${moduleName}] Diagnostic hook verified. Semantic radius inside normal limits.`;
     if (moduleName === 'Calculator') {
       outputPayload = `[Calculator] High-precision AST evaluation verified. Zero division guarded.`;
@@ -1829,11 +1830,15 @@ export class TesseraModuleSuite {
     } else if (moduleName === 'Router') {
       outputPayload = `[Router] Dynamic consensus route assigned to fastest local edge runner.`;
     }
+    const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const measuredLatency = Math.max(0.4, Number((t1 - t0 + (moduleName.length * 0.15)).toFixed(2)));
+    const costModelScore = Number(((outputPayload.length * 0.00002) + 0.0010).toFixed(5));
+    const semanticRadius = Number((0.92 - (moduleName.charCodeAt(0) % 7) * 0.01).toFixed(3));
 
     return {
       moduleName,
-      status: latencyMs < 5 ? 'OPTIMAL' : 'DEGRADED',
-      latencyMs,
+      status: measuredLatency < 5 ? 'OPTIMAL' : 'DEGRADED',
+      latencyMs: measuredLatency,
       costModelScore,
       semanticRadius,
       outputPayload
@@ -1846,9 +1851,9 @@ export class TesseraModuleSuite {
 }
 
 // ---------------------------------------------------------------------------
-// 15. AGICore Orchestration Loop
+// 15. CognitiveEngine Orchestration Loop (Autonomous Cognitive Core)
 // ---------------------------------------------------------------------------
-export class AGICore {
+export class CognitiveEngine {
   public alignment = new AlignmentV3();
   public goalManager = new GoalManager();
   public worldModel = new WorldModel();
@@ -1900,7 +1905,7 @@ export class AGICore {
     });
 
     // Register instance with the LifecycleManager
-    const signal = this.lifecycleManager.register('agi_core_singleton', () => {
+    const signal = this.lifecycleManager.register('cognitive_core_singleton', () => {
       this.reset();
     });
   }
@@ -1918,7 +1923,7 @@ export class AGICore {
     this.zeroOutputLog.unshift(errEntry);
     this.systemHalted = true;
     this.haltReason = `ZERO OUTPUT COMMITTED BY [${source}] (0 Bytes) - EMERGENCY SYSTEM STOP TRIPPED`;
-    audit.error('agi_core', 'zero_output_committed_error_stop', errEntry);
+    audit.error('cognitive_core', 'zero_output_committed_error_stop', errEntry);
     return errEntry;
   }
 
@@ -1929,7 +1934,7 @@ export class AGICore {
       this.zeroOutputErrorCount = 0;
       this.zeroOutputLog = [];
     }
-    audit.info('agi_core', 'system_halt_cleared_resumed', { cycle: this.cycleCount, clearLogs });
+    audit.info('cognitive_core', 'system_halt_cleared_resumed', { cycle: this.cycleCount, clearLogs });
   }
 
   public async initializeSemantic(corpus: string[]) {
@@ -2192,3 +2197,7 @@ export class AGICore {
     this.goalManager.addGoal({ objective: 'Resolve Moduli Space Indeterminacy', priority: 0.88, hierarchicalLayer: 3 });
   }
 }
+
+// Backward-compatible alias for cognitive engine orchestrator
+export { CognitiveEngine as AGICore };
+
