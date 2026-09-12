@@ -1,6 +1,6 @@
 /**
  * @file test-parse2.js
- * @version 4.2.17
+ * @version 4.2.18
  * @engine EMG Core v49 Neural Code and Documentation Optimizer Engine
  */
 
@@ -23,8 +23,9 @@
 /**
  * Sanitizes control characters from potential JSON strings for secure parsing.
  * Enforces strict input validation against non-string inputs.
- * @param {unknown} input
- * @returns {string}
+ * 
+ * @param {unknown} input - The input value to sanitize.
+ * @returns {string} The sanitized string.
  */
 function sanitizeControlCharacters(input) {
   if (typeof input !== 'string') {
