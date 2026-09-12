@@ -347,7 +347,7 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
         >
           <span className="text-white font-bold shrink-0">C:\DALEK\AGI&gt;</span>
           <input
-            ref={inputRef as React.RefObject<HTMLInputElement>}
+            ref={inputRef}
             maxLength={256}
             dir="ltr"
             type="text"
@@ -371,3 +371,8 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
     </div>
   );
 }
+
+
+
+
+
