@@ -22,7 +22,7 @@ export const Separator: React.ForwardRefExoticComponent<
     ...props
   },
   ref
-) {
+): React.ReactElement {
   const computedClassName: string = React.useMemo(
     () => cn(SEPARATOR_BASE_STYLES, className),
     [className]
