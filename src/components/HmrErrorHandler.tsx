@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-
 import { useEffect, type JSX } from 'react';
 
 /**
@@ -22,7 +21,7 @@ const SUPPRESSED_MESSAGE_PATTERNS = [
 /**
  * Set of exception class names designated for silent interception.
  */
-const SUPPRESSED_ERROR_NAMES = new Set<string>(['ChunkLoadError']);
+const SUPPRESSED_ERROR_NAMES: ReadonlySet<string> = new Set(['ChunkLoadError']);
 
 /**
  * Candidate structure representing generic error objects safely.
@@ -74,11 +73,7 @@ function shouldSuppressError(reason: unknown): boolean {
   }
 
   if (message !== undefined) {
-    for (const pattern of SUPPRESSED_MESSAGE_PATTERNS) {
-      if (message.includes(pattern)) {
-        return true;
-      }
-    }
+    return SUPPRESSED_MESSAGE_PATTERNS.some((pattern) => message.includes(pattern));
   }
 
   return false;
