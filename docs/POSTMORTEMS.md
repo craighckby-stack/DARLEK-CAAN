@@ -339,3 +339,13 @@ Line 207, Col 8: Property declaration is missing its type annotation.
 [LINT REJECT: NO_UNVERIFIABLE_SELF_PRAISE] Detected unsubstantiated self-description in commentary: "fully optimized". Output must adhere to neutral, factual documentation without marketing adjectives.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/evolution/propose/route.ts.
+
+### ❌ [2026-09-12] src/components/AgiDosConsoleModal.tsx `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 265, Col 7: Declaration or statement expected.
+Line 276, Col 3: Declaration or statement expected.
+Line 371, Col 1: Declaration or statement expected.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/AgiDosConsoleModal.tsx.
