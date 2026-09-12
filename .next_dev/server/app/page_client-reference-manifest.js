@@ -9,193 +9,100 @@
 globalThis.__RSC_MANIFEST = globalThis.__RSC_MANIFEST || {};
 
 /**
- * Shared helper to create a default module reference entry.
- * @param {string} id - Target module ID
- * @returns {Record<string, {id: string, name: string, chunks: Array, async: boolean}>}
+ * Creates a standard RSC module reference entry object.
+ * @param {string} id - Target module reference identifier.
+ * @returns {Record<string, { id: string, name: string, chunks: Array<string>, async: boolean }>}
  */
 const createModuleMappingEntry = (id) => ({
-  "*": {
-    id,
-    name: "*",
-    chunks: [],
-    async: false,
-  },
+  "*": { id, name: "*", chunks: [], async: false },
 });
 
 /**
- * Server-Side Rendering (SSR) Module Mapping
+ * Creates a client module definition object.
+ * @param {string} id - Browser module specifier identifier.
+ * @param {string[]} chunks - Associated bundle chunk paths.
+ * @returns {{ id: string, name: string, chunks: string[], async: boolean }}
  */
-const ssrModuleMapping = {
-  "(app-pages-browser)/./node_modules/next/dist/client/script.js": createModuleMappingEntry("(ssr)/./node_modules/next/dist/client/script.js"),
-  "(app-pages-browser)/./src/components/ui/toaster.tsx": createModuleMappingEntry("(ssr)/./src/components/ui/toaster.tsx"),
-  "(app-pages-browser)/./src/app/error.tsx": createModuleMappingEntry("(ssr)/./src/app/error.tsx"),
-  "(app-pages-browser)/./src/app/not-found.tsx": createModuleMappingEntry("(ssr)/./src/app/not-found.tsx"),
-  "(app-pages-browser)/./src/components/PageClient.tsx": createModuleMappingEntry("(ssr)/./src/components/PageClient.tsx"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js": createModuleMappingEntry("(ssr)/./node_modules/next/dist/client/components/client-page.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/client-segment.js": createModuleMappingEntry("(ssr)/./node_modules/next/dist/client/components/client-segment.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js": createModuleMappingEntry("(ssr)/./node_modules/next/dist/client/components/error-boundary.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createModuleMappingEntry("(ssr)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js": createModuleMappingEntry("(ssr)/./node_modules/next/dist/client/components/layout-router.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js": createModuleMappingEntry("(ssr)/./node_modules/next/dist/client/components/render-from-template-context.js"),
-  "(app-pages-browser)/./node_modules/next/dist/lib/metadata/metadata-boundary.js": createModuleMappingEntry("(ssr)/./node_modules/next/dist/lib/metadata/metadata-boundary.js"),
-};
+const createClientModuleEntry = (id, chunks) => ({
+  id,
+  name: "*",
+  chunks,
+  async: false,
+});
+
+// Target module relative paths shared between SSR and RSC mappings
+const ssrRelativePaths = [
+  "./node_modules/next/dist/client/script.js",
+  "./src/components/ui/toaster.tsx",
+  "./src/app/error.tsx",
+  "./src/app/not-found.tsx",
+  "./src/components/PageClient.tsx",
+  "./node_modules/next/dist/client/components/client-page.js",
+  "./node_modules/next/dist/client/components/client-segment.js",
+  "./node_modules/next/dist/client/components/error-boundary.js",
+  "./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js",
+  "./node_modules/next/dist/client/components/layout-router.js",
+  "./node_modules/next/dist/client/components/render-from-template-context.js",
+  "./node_modules/next/dist/lib/metadata/metadata-boundary.js",
+];
+
+const rscRelativePaths = [
+  "./node_modules/next/dist/client/script.js",
+  "./src/app/globals.css",
+  ...ssrRelativePaths.slice(1),
+];
 
 /**
- * React Server Components (RSC) Module Mapping
+ * Builds module mapping records for the specified environment scope.
+ * @param {string[]} relativePaths - List of component paths.
+ * @param {string} envScope - Execution environment scope ('ssr' | 'rsc').
+ * @returns {Record<string, Record<string, { id: string, name: string, chunks: string[], async: boolean }>>}
  */
-const rscModuleMapping = {
-  "(app-pages-browser)/./node_modules/next/dist/client/script.js": createModuleMappingEntry("(rsc)/./node_modules/next/dist/client/script.js"),
-  "(app-pages-browser)/./src/app/globals.css": createModuleMappingEntry("(rsc)/./src/app/globals.css"),
-  "(app-pages-browser)/./src/components/ui/toaster.tsx": createModuleMappingEntry("(rsc)/./src/components/ui/toaster.tsx"),
-  "(app-pages-browser)/./src/app/error.tsx": createModuleMappingEntry("(rsc)/./src/app/error.tsx"),
-  "(app-pages-browser)/./src/app/not-found.tsx": createModuleMappingEntry("(rsc)/./src/app/not-found.tsx"),
-  "(app-pages-browser)/./src/components/PageClient.tsx": createModuleMappingEntry("(rsc)/./src/components/PageClient.tsx"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js": createModuleMappingEntry("(rsc)/./node_modules/next/dist/client/components/client-page.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/client-segment.js": createModuleMappingEntry("(rsc)/./node_modules/next/dist/client/components/client-segment.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js": createModuleMappingEntry("(rsc)/./node_modules/next/dist/client/components/error-boundary.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": createModuleMappingEntry("(rsc)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js": createModuleMappingEntry("(rsc)/./node_modules/next/dist/client/components/layout-router.js"),
-  "(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js": createModuleMappingEntry("(rsc)/./node_modules/next/dist/client/components/render-from-template-context.js"),
-  "(app-pages-browser)/./node_modules/next/dist/lib/metadata/metadata-boundary.js": createModuleMappingEntry("(rsc)/./node_modules/next/dist/lib/metadata/metadata-boundary.js"),
-};
+const buildEnvironmentMapping = (relativePaths, envScope) =>
+  Object.fromEntries(
+    relativePaths.map((relativePath) => [
+      `(app-pages-browser)/${relativePath}`,
+      createModuleMappingEntry(`(${envScope})/${relativePath}`),
+    ])
+  );
 
-/**
- * Client Bundle Module Definitions
- */
-const layoutChunks = ["app/layout", "static/chunks/app/layout.js"];
-const internalChunks = ["app-pages-internals", "static/chunks/app-pages-internals.js"];
+// Bundle Chunk Definitions
+const LAYOUT_CHUNKS = ["app/layout", "static/chunks/app/layout.js"];
+const INTERNAL_CHUNKS = ["app-pages-internals", "static/chunks/app-pages-internals.js"];
+
+// Shared Internal Next.js Component Subpaths
+const INTERNAL_COMPONENT_SUBPATHS = [
+  "client/components/client-page.js",
+  "client/components/client-segment.js",
+  "client/components/error-boundary.js",
+  "client/components/http-access-fallback/error-boundary.js",
+  "client/components/layout-router.js",
+  "client/components/render-from-template-context.js",
+  "lib/metadata/metadata-boundary.js",
+];
 
 const clientModules = {
-  "/app/applet/node_modules/next/dist/client/script.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/script.js",
-    name: "*",
-    chunks: layoutChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/esm/client/script.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/script.js",
-    name: "*",
-    chunks: layoutChunks,
-    async: false,
-  },
-  "/app/applet/src/app/globals.css": {
-    id: "(app-pages-browser)/./src/app/globals.css",
-    name: "*",
-    chunks: layoutChunks,
-    async: false,
-  },
-  "/app/applet/src/components/ui/toaster.tsx": {
-    id: "(app-pages-browser)/./src/components/ui/toaster.tsx",
-    name: "*",
-    chunks: layoutChunks,
-    async: false,
-  },
-  "/app/applet/src/app/error.tsx": {
-    id: "(app-pages-browser)/./src/app/error.tsx",
-    name: "*",
-    chunks: ["app/error", "static/chunks/app/error.js"],
-    async: false,
-  },
-  "/app/applet/src/app/not-found.tsx": {
-    id: "(app-pages-browser)/./src/app/not-found.tsx",
-    name: "*",
-    chunks: ["app/not-found", "static/chunks/app/not-found.js"],
-    async: false,
-  },
-  "/app/applet/src/components/PageClient.tsx": {
-    id: "(app-pages-browser)/./src/components/PageClient.tsx",
-    name: "*",
-    chunks: ["app/page", "static/chunks/app/page.js"],
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/client/components/client-page.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/esm/client/components/client-page.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/client/components/client-segment.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/client-segment.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/esm/client/components/client-segment.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/client-segment.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/client/components/error-boundary.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/esm/client/components/error-boundary.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/client/components/http-access-fallback/error-boundary.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/esm/client/components/http-access-fallback/error-boundary.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/http-access-fallback/error-boundary.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/client/components/layout-router.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/esm/client/components/layout-router.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/client/components/render-from-template-context.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/esm/client/components/render-from-template-context.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/lib/metadata/metadata-boundary.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/lib/metadata/metadata-boundary.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
-  "/app/applet/node_modules/next/dist/esm/lib/metadata/metadata-boundary.js": {
-    id: "(app-pages-browser)/./node_modules/next/dist/lib/metadata/metadata-boundary.js",
-    name: "*",
-    chunks: internalChunks,
-    async: false,
-  },
+  // Script & Layout Assets
+  "/app/applet/node_modules/next/dist/client/script.js": createClientModuleEntry("(app-pages-browser)/./node_modules/next/dist/client/script.js", LAYOUT_CHUNKS),
+  "/app/applet/node_modules/next/dist/esm/client/script.js": createClientModuleEntry("(app-pages-browser)/./node_modules/next/dist/client/script.js", LAYOUT_CHUNKS),
+  "/app/applet/src/app/globals.css": createClientModuleEntry("(app-pages-browser)/./src/app/globals.css", LAYOUT_CHUNKS),
+  "/app/applet/src/components/ui/toaster.tsx": createClientModuleEntry("(app-pages-browser)/./src/components/ui/toaster.tsx", LAYOUT_CHUNKS),
+
+  // Route-Specific Application Components
+  "/app/applet/src/app/error.tsx": createClientModuleEntry("(app-pages-browser)/./src/app/error.tsx", ["app/error", "static/chunks/app/error.js"]),
+  "/app/applet/src/app/not-found.tsx": createClientModuleEntry("(app-pages-browser)/./src/app/not-found.tsx", ["app/not-found", "static/chunks/app/not-found.js"]),
+  "/app/applet/src/components/PageClient.tsx": createClientModuleEntry("(app-pages-browser)/./src/components/PageClient.tsx", ["app/page", "static/chunks/app/page.js"]),
 };
 
+// Programmatically register internal Next.js components (CJS and ESM formats)
+INTERNAL_COMPONENT_SUBPATHS.forEach((subpath) => {
+  const browserId = `(app-pages-browser)/./node_modules/next/dist/${subpath}`;
+  clientModules[`/app/applet/node_modules/next/dist/${subpath}`] = createClientModuleEntry(browserId, INTERNAL_CHUNKS);
+  clientModules[`/app/applet/node_modules/next/dist/esm/${subpath}`] = createClientModuleEntry(browserId, INTERNAL_CHUNKS);
+});
+
 /**
- * Entry CSS File Specifications
+ * Entry CSS Specification Mapping
  */
 const entryCSSFiles = {
   "/app/applet/src/": [],
@@ -210,16 +117,16 @@ const entryCSSFiles = {
   "/app/applet/src/app/page": [],
 };
 
-// Register page client reference manifest for '/page'
+// Register page client reference manifest entry for '/page'
 globalThis.__RSC_MANIFEST["/page"] = {
   moduleLoading: {
     prefix: "/_next/",
     crossOrigin: null,
   },
-  ssrModuleMapping,
+  ssrModuleMapping: buildEnvironmentMapping(ssrRelativePaths, "ssr"),
   edgeSSRModuleMapping: {},
   clientModules,
   entryCSSFiles,
-  rscModuleMapping,
+  rscModuleMapping: buildEnvironmentMapping(rscRelativePaths, "rsc"),
   edgeRscModuleMapping: {},
 };
