@@ -1,6 +1,6 @@
 /**
  * @file src/types/orchestrator.d.ts
- * @module Darlek Caan
+ * @module DarlekCaanOrchestrator
  * @description Darlek Caan type definitions for orchestrator agents and system states.
  * Maximizes type-safety, memory efficiency through readonly modifiers, and runtime predictability.
  */
@@ -23,7 +23,7 @@ export const enum AgentRole {
  * Operational life-cycle status indicators for the orchestrator system.
  */
 export const enum SystemStatus {
-  /** System is fully operational and actively dispatching tasks. */
+  /** System is operational and actively dispatching tasks. */
   ACTIVE = 'active',
 
   /** System is idle, awaiting external activation triggers. */
