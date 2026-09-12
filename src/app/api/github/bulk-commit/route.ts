@@ -1,3 +1,10 @@
+/**
+ * DARLEK CANN ARCHITECTURAL HEADER
+ * File: src/app/api/github/bulk-commit/route.ts
+ * Role: Core system component participating in autonomous cognitive evolution cycles.
+ * Architecture: Type-safe modular unit with resilient state interfaces.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import { resolve, dirname } from 'path';
