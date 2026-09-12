@@ -1,6 +1,6 @@
 /**
- * A secure, high-performance sandbox utilizing an isolated iframe to safely evaluate JavaScript/HTML code.
- * Optimized by EMG Core v49 Neural Code and Documentation Optimizer Engine.
+ * A secure sandbox utilizing an isolated iframe to safely evaluate JavaScript/HTML code.
+ * Optimized by EMG Core Neural Code and Documentation Optimizer Engine.
  */
 export interface SandboxResult {
   readonly success: boolean;
@@ -71,7 +71,7 @@ export async function testCodeInSandbox(code: string): Promise<SandboxResult> {
     
     let isCleanedUp = false;
 
-    const cleanup = () => {
+    const cleanup = (): void => {
       if (isCleanedUp) return;
       isCleanedUp = true;
       clearTimeout(timeoutId);
@@ -86,7 +86,7 @@ export async function testCodeInSandbox(code: string): Promise<SandboxResult> {
       resolve(TIMEOUT_ERROR_RESULT);
     }, EXECUTION_TIMEOUT_MS);
 
-    const handleMessage = (event: MessageEvent<SandboxMessageEvent>) => {
+    const handleMessage = (event: MessageEvent<SandboxMessageEvent>): void => {
       if (event.source !== iframe.contentWindow) return;
       
       const data = event.data;
