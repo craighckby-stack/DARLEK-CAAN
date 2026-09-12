@@ -1,7 +1,7 @@
 /**
  * @file src/types/omega.d.ts
- * @version 4.9.2-core-opt
- * @description Darlek Caan Neural Code Optimized Type Definitions for resilient task execution and deterministic outcomes.
+ * @version 5.0.0-core-opt
+ * @description Core Neural Code Optimized Type Definitions for resilient task execution and deterministic outcomes.
  */
 
 /**
