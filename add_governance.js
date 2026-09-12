@@ -15,7 +15,7 @@ const TARGET_FILE_PATH = resolve(__dirname, 'src/utils/agi-engine.ts');
 const MAX_PAYLOAD_SIZE_BYTES = 131072; // 128KB Wasm Sandbox limit
 
 // Pre-compiled RegExp for high-speed pattern matching with strict defensive input validation boundaries
-const UNSAFE_PATTERN_REGEX = /(?:constructor|__proto__|prototype|eval\(|exec\(|setTimeout\(|setInterval\())/;
+const UNSAFE_PATTERN_REGEX = /(?:constructor|__proto__|prototype|eval\(|exec\(|setTimeout\(|setInterval\()/;
 
 // Pre-allocate template string to avoid dynamic re-allocation overhead on each invocation
 const GOVERNANCE_CLASS_MODULE = `
