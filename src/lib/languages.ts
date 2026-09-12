@@ -147,6 +147,7 @@ export const ALL_SUPPORTED_LANGUAGES: readonly LanguageOption[] = Object.freeze(
 
 // Internal storage key constant to eliminate magic strings and optimize memory lookup
 const STORAGE_KEY_LANGUAGE = 'darlek_cann_language';
+const MAX_LANG_ID_LENGTH = 64;
 
 interface WindowTranslate {
   translate?: {
@@ -162,12 +163,26 @@ export function changeDisplayLanguage(langId: string): boolean {
     return false;
   }
   
+  const trimmedLangId = langId.trim();
+  if (trimmedLangId.length === 0 || trimmedLangId.length > MAX_LANG_ID_LENGTH) {
+    return false;
+  }
+  
+  // Strict validation against supported IDs or serviceIds to prevent injection
+  const isValidLanguage = ALL_SUPPORTED_LANGUAGES.some(
+    (lang) => lang.id === trimmedLangId || lang.serviceId === trimmedLangId
+  );
+
+  if (!isValidLanguage) {
+    return false;
+  }
+
   try {
-    localStorage.setItem(STORAGE_KEY_LANGUAGE, langId);
+    localStorage.setItem(STORAGE_KEY_LANGUAGE, trimmedLangId);
     const win = window as unknown as WindowTranslate;
     
     if (win.translate && typeof win.translate.changeLanguage === 'function') {
-      win.translate.changeLanguage(langId);
+      win.translate.changeLanguage(trimmedLangId);
       return true;
     }
   } catch (err: unknown) {
@@ -178,7 +193,7 @@ export function changeDisplayLanguage(langId: string): boolean {
 }
 
 /**
- * Retrieves the currently selected language with robust storage fallback mechanisms.
+ * Retrieves the currently selected language with robust storage fallback mechanisms and strict bounds checking.
  */
 export function getCurrentLanguage(): string {
   if (typeof window === 'undefined') {
@@ -187,9 +202,20 @@ export function getCurrentLanguage(): string {
   
   try {
     const storedLang = localStorage.getItem(STORAGE_KEY_LANGUAGE);
-    return storedLang !== null && storedLang.trim() !== '' ? storedLang : 'english';
+    if (storedLang !== null) {
+      const sanitized = storedLang.trim();
+      if (sanitized.length > 0 && sanitized.length <= MAX_LANG_ID_LENGTH) {
+        const exists = ALL_SUPPORTED_LANGUAGES.some(
+          (lang) => lang.id === sanitized || lang.serviceId === sanitized
+        );
+        if (exists) {
+          return sanitized;
+        }
+      }
+    }
   } catch (err: unknown) {
     console.warn('Could not access localStorage for current language:', err instanceof Error ? err.message : String(err));
-    return 'english';
   }
+  
+  return 'english';
 }
