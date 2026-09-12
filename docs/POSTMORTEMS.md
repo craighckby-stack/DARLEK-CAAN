@@ -579,3 +579,11 @@ Line 207, Col 8: Property declaration is missing its type annotation.
 [LINT REJECT: NO_UNVERIFIABLE_SELF_PRAISE] Detected unsubstantiated self-description in commentary: "fully optimized". Output must adhere to neutral, factual documentation without marketing adjectives.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/evolution/propose/route.ts.
+
+### ❌ [2026-09-12] src/app/api/setup/test-connection/route.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 107, Col 8: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/setup/test-connection/route.ts.
