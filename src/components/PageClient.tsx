@@ -13,6 +13,9 @@ interface LoadingScreenProperties {
  * during client-side hydration and dynamic bundle resolution.
  */
 const LoadingScreen = memo(function LoadingScreen({ message }: LoadingScreenProperties): JSX.Element {
+  // Input sanitization / safe string bounds checking on render boundary
+  const safeMessage: string = typeof message === 'string' ? message.slice(0, 256) : '';
+
   return (
     <div
       className="min-h-screen flex items-center justify-center font-mono text-xs"
@@ -21,7 +24,7 @@ const LoadingScreen = memo(function LoadingScreen({ message }: LoadingScreenProp
       aria-live="polite"
     >
       <div className="flex items-center gap-2 animate-pulse">
-        <span>{message}</span>
+        <span>{safeMessage}</span>
       </div>
     </div>
   );
