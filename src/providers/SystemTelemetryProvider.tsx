@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useMemo, type JSX, type ReactNode } from "react";
 
 /**
- * Represents the core telemetry metadata and operational context.
+ * Represents core telemetry metadata and operational context.
  */
 export interface SystemTelemetryContextType {
   readonly status: "active";
@@ -11,7 +11,7 @@ export interface SystemTelemetryContextType {
 }
 
 /**
- * Component props for supplying children to the telemetry provider.
+ * Component properties for supplying children to the system telemetry provider.
  */
 export interface SystemTelemetryProviderProps {
   readonly children: ReactNode;
@@ -26,7 +26,7 @@ const DEFAULT_TELEMETRY_STATE: SystemTelemetryContextType = Object.freeze({
 });
 
 /**
- * Internal helper to safely trigger client-side telemetry initialization logging.
+ * Internal utility to safely trigger client-side telemetry initialization logging.
  */
 const logTelemetryInitialization = (): void => {
   if (typeof window === "undefined") {
@@ -40,22 +40,21 @@ const logTelemetryInitialization = (): void => {
   }
 };
 
-// Perform immediate safe client-side telemetry initialization log
 logTelemetryInitialization();
 
 const TelemetryContext = createContext<SystemTelemetryContextType | undefined>(undefined);
 TelemetryContext.displayName = "TelemetryContext";
 
 /**
- * React Context Provider component for exposing system telemetry data to the component tree.
+ * React Context Provider component for exposing system telemetry data to downstream components.
  */
 export const SystemTelemetryProvider = ({
   children,
 }: SystemTelemetryProviderProps): JSX.Element => {
-  const value = useMemo(() => DEFAULT_TELEMETRY_STATE, []);
+  const contextValue = useMemo<SystemTelemetryContextType>(() => DEFAULT_TELEMETRY_STATE, []);
 
   return (
-    <TelemetryContext.Provider value={value}>
+    <TelemetryContext.Provider value={contextValue}>
       {children}
     </TelemetryContext.Provider>
   );
@@ -64,7 +63,7 @@ export const SystemTelemetryProvider = ({
 SystemTelemetryProvider.displayName = "SystemTelemetryProvider";
 
 /**
- * Custom React hook for accessing current system telemetry context with dynamic error handling.
+ * Custom React hook for consuming current system telemetry context with safety validation.
  */
 export const useTelemetry = (): SystemTelemetryContextType => {
   const context = useContext(TelemetryContext);
