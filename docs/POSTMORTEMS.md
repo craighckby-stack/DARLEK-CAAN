@@ -280,3 +280,11 @@ Line 20, Col 6: Property declaration is missing its type annotation.
 Line 482, Col 8: Property declaration is missing its type annotation.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/ui/sidebar.tsx.
+
+### ❌ [2026-09-12] src/lib/api-client.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 95, Col 2: Expression expected.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/lib/api-client.ts.
