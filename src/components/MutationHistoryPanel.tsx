@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { COLORS } from '@/lib/constants';

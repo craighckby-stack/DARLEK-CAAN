@@ -9,7 +9,7 @@
 
 /**
  * @file NeuralSimulator.tsx
- * @description Core optimized export module for the Neural Simulator and AGI Cognitive Dashboard components.
+ * @description Core optimized export module for the Neural Simulator and Cognitive Dashboard components.
  * @version 4.9.1
  * @module NeuralSimulator
  */

@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import { useState, useRef, useEffect, useCallback, type ChangeEvent, type KeyboardEvent } from 'react';
 import { Send, Loader2, GitBranch, RefreshCw, Paperclip, File, X, Languages } from 'lucide-react';

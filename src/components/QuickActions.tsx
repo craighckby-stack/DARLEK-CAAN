@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import React, { memo, useCallback, useMemo } from 'react';
 import { 
@@ -23,7 +22,10 @@ import {
   Radio, 
   Undo2, 
   GitCommit,
-  Languages
+  Languages,
+  Sparkles,
+  ShieldAlert,
+  Ban
 } from 'lucide-react';
 import { COLORS } from '@/lib/constants';
 import { ALL_SUPPORTED_LANGUAGES, changeDisplayLanguage, getCurrentLanguage } from '@/lib/languages';
@@ -60,6 +62,10 @@ export interface QuickActionsProps {
   onHallucinationLevelChange?: (level: number) => void;
   saturationLevel?: number;
   onSaturationLevelChange?: (level: number) => void;
+  autoPauseOnSaturation?: boolean;
+  onToggleAutoPauseOnSaturation?: () => void;
+  autoSkipSaturated?: boolean;
+  onToggleAutoSkipSaturated?: () => void;
 }
 
 interface ActionDefinition {
@@ -313,6 +319,10 @@ export default function QuickActions({
   onHallucinationLevelChange,
   saturationLevel,
   onSaturationLevelChange,
+  autoPauseOnSaturation,
+  onToggleAutoPauseOnSaturation,
+  autoSkipSaturated,
+  onToggleAutoSkipSaturated,
 }: QuickActionsProps) {
 
   const handleLazyAssClick = useCallback((e: React.MouseEvent) => {
@@ -424,6 +434,47 @@ export default function QuickActions({
               />
             )}
 
+            {autoApproveRisk !== undefined && onAutoApproveRiskChange && (
+              <ControlToggle
+                active={autoApproveRisk === 'hallucinate' || (hallucinationLevel !== undefined && hallucinationLevel >= 75)}
+                activeColor="#c800ff"
+                label="HALLUCINATE"
+                icon={<Sparkles size={9} />}
+                onToggle={() => {
+                  if (autoApproveRisk === 'hallucinate') {
+                    onAutoApproveRiskChange('high');
+                    onHallucinationLevelChange?.(50);
+                  } else {
+                    onAutoApproveRiskChange('hallucinate');
+                    onHallucinationLevelChange?.(85);
+                  }
+                }}
+                title={autoApproveRisk === 'hallucinate' ? 'Hallucination Mode ON — radical architectural leaps & zero limits' : 'Hallucination Mode OFF — standard controlled thresholds'}
+              />
+            )}
+
+            {autoPauseOnSaturation !== undefined && onToggleAutoPauseOnSaturation && (
+              <ControlToggle
+                active={autoPauseOnSaturation}
+                activeColor="#ffaa00"
+                label="SATURATION GUARD"
+                icon={<ShieldAlert size={9} />}
+                onToggle={onToggleAutoPauseOnSaturation}
+                title={autoPauseOnSaturation ? 'Saturation Guard ON — auto-pauses when 0-diff architectural equilibrium is reached' : 'Saturation Guard OFF — continues mutating regardless of 0 diffs'}
+              />
+            )}
+
+            {autoSkipSaturated !== undefined && onToggleAutoSkipSaturated && (
+              <ControlToggle
+                active={autoSkipSaturated}
+                activeColor="#00e5ff"
+                label="SATURATION BLACKLIST"
+                icon={<Ban size={9} />}
+                onToggle={onToggleAutoSkipSaturated}
+                title={autoSkipSaturated ? 'Auto-Blacklist ON — files reaching 0 diffs are blacklisted from duplicate churn' : 'Auto-Blacklist OFF — all files continuously eligible for mutation'}
+              />
+            )}
+
             {onEngageLazyAssCycle && (
               <button
                 type="button"
@@ -474,9 +525,9 @@ export default function QuickActions({
                         borderStyle: 'solid',
                         textShadow: isActive && isHallucinate ? '0 0 8px rgba(200, 0, 255, 0.6)' : 'none'
                       }}
-                      title={isHallucinate ? 'Auto-approve ANY risk level (No limits)' : `Auto-approve mutations up to ${risk.toUpperCase()} risk`}
+                      title={isHallucinate ? 'Auto-approve ANY risk level & engage Hallucination Engine' : `Auto-approve mutations up to ${risk.toUpperCase()} risk`}
                     >
-                      {isHallucinate ? 'NO LIMITS' : risk}
+                      {isHallucinate ? 'HALLUCINATE' : risk}
                     </button>
                   );
                 })}
@@ -503,6 +554,28 @@ export default function QuickActions({
                 onChange={handleHallucinationChange}
                 className="w-full accent-[#c800ff] cursor-pointer"
               />
+              <div className="flex gap-1 mt-0.5">
+                {[
+                  { label: 'CONSERVATIVE (20%)', val: 20 },
+                  { label: 'ADAPTIVE (50%)', val: 50 },
+                  { label: 'CHAOTIC (85%)', val: 85 },
+                ].map((tier) => (
+                  <button
+                    key={tier.val}
+                    type="button"
+                    onClick={() => onHallucinationLevelChange(tier.val)}
+                    className={`flex-1 py-0.5 text-[6.5px] font-mono rounded border transition-colors cursor-pointer ${
+                      (tier.val === 20 && hallucinationLevel < 33) ||
+                      (tier.val === 50 && hallucinationLevel >= 33 && hallucinationLevel < 66) ||
+                      (tier.val === 85 && hallucinationLevel >= 66)
+                        ? 'bg-[#c800ff]/20 text-[#c800ff] border-[#c800ff]/40 font-bold'
+                        : 'bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 hover:text-white border-white/5'
+                    }`}
+                  >
+                    {tier.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -533,6 +606,28 @@ export default function QuickActions({
                   className={`h-full transition-all duration-300 ${saturationLevel > 80 ? 'animate-pulse' : ''}`}
                   style={saturationFillStyle}
                 />
+              </div>
+              <div className="flex gap-1 mt-0.5">
+                {[
+                  { label: 'SENSITIVE (25%)', val: 25 },
+                  { label: 'BALANCED (50%)', val: 50 },
+                  { label: 'STRICT (80%)', val: 80 },
+                ].map((tier) => (
+                  <button
+                    key={tier.val}
+                    type="button"
+                    onClick={() => onSaturationLevelChange(tier.val)}
+                    className={`flex-1 py-0.5 text-[6.5px] font-mono rounded border transition-colors cursor-pointer ${
+                      (tier.val === 25 && saturationLevel < 33) ||
+                      (tier.val === 50 && saturationLevel >= 33 && saturationLevel < 66) ||
+                      (tier.val === 80 && saturationLevel >= 66)
+                        ? 'bg-[#00e5ff]/20 text-[#00e5ff] border-[#00e5ff]/40 font-bold'
+                        : 'bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 hover:text-white border-white/5'
+                    }`}
+                  >
+                    {tier.label}
+                  </button>
+                ))}
               </div>
             </div>
           )}

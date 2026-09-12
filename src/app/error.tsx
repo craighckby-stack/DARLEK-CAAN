@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import { useEffect, useCallback, type JSX, type MouseEvent } from 'react';
 

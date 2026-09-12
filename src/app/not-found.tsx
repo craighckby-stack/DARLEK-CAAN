@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';

@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { SystemState, EvolutionLogEntry } from '@/lib/types';
@@ -74,7 +73,7 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
     const bootLines: LogLine[] = [
       { id: 'b1', time: '00:00:00', addr: '0x00400000', tag: 'BOOT', message: 'Microsoft(R) MS-DOS(R) Version 6.22' },
       { id: 'b2', time: '00:00:00', addr: '0x00400004', tag: 'BOOT', message: '(C)Copyright Microsoft Corp 1981-1994.' },
-      { id: 'b3', time: '00:00:01', addr: '0x00401000', tag: 'INIT', message: 'DALEK CAAN AGI ENGINE v4.2.0 KERNEL DRIVER LOADED' },
+      { id: 'b3', time: '00:00:01', addr: '0x00401000', tag: 'INIT', message: 'DALEK CAAN AUTONOMOUS ENGINE v4.2.0 KERNEL DRIVER LOADED' },
       { id: 'b4', time: '00:00:01', addr: '0x00401020', tag: 'INIT', message: `TARGET REPOSITORY: ${owner}/${repo}` },
       { id: 'b5', time: '00:00:02', addr: '0x00401040', tag: 'RAG', message: `RAG BRAIN STATUS: ${totalChunks} CHUNKS ONLINE | FIRESTORE SYNC ACTIVE` },
       { id: 'b6', time: '00:00:02', addr: '0x00401060', tag: 'AST', message: 'AST MUTATION ENGINE: READY FOR ENHANCEMENT PULSES' },
@@ -109,7 +108,7 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
       }),
       () => ({
         tag: 'RAG_ENHANCE',
-        message: `Semantic embedding recalculation complete: query similarity score 0.9842 (target: src/utils/agi-engine.ts)`
+        message: `Semantic embedding recalculation complete: query similarity score 0.9842 (target: src/utils/cognitive-engine.ts)`
       }),
       () => ({
         tag: 'AST_MUTATE',
@@ -179,7 +178,7 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
     const userLine: LogLine = {
       id: `cmd-${Date.now()}`,
       time: nowStr,
-      addr: 'C:\\DALEK\\AGI>',
+      addr: 'C:\\DALEK\\SYS>',
       tag: 'INPUT',
       message: cmd
     };
@@ -189,7 +188,7 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
 
     if (lower === 'help' || lower === '?') {
       responseLines.push(
-        { id: `r-${Date.now()}-1`, time: nowStr, addr: 'DOS_CMD', tag: 'HELP', message: 'MS-DOS DALEK AGI COMMAND LIST:' },
+        { id: `r-${Date.now()}-1`, time: nowStr, addr: 'DOS_CMD', tag: 'HELP', message: 'MS-DOS DALEK SYSTEM COMMAND LIST:' },
         { id: `r-${Date.now()}-2`, time: nowStr, addr: 'DOS_CMD', tag: 'HELP', message: '  DIR        - List system binaries & memory files' },
         { id: `r-${Date.now()}-3`, time: nowStr, addr: 'DOS_CMD', tag: 'HELP', message: '  RAG        - Display live RAG Brain vector database status' },
         { id: `r-${Date.now()}-4`, time: nowStr, addr: 'DOS_CMD', tag: 'HELP', message: '  MUTATE     - Trigger AST self-mutation enhancement engine' },
@@ -200,8 +199,8 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
       );
     } else if (lower === 'dir') {
       responseLines.push(
-        { id: `r-${Date.now()}-1`, time: nowStr, addr: 'DOS_CMD', tag: 'DIR', message: ' Volume in drive C is DALEK_AGI' },
-        { id: `r-${Date.now()}-2`, time: nowStr, addr: 'DOS_CMD', tag: 'DIR', message: ' Directory of C:\\DALEK\\AGI' },
+        { id: `r-${Date.now()}-1`, time: nowStr, addr: 'DOS_CMD', tag: 'DIR', message: ' Volume in drive C is DALEK_SYS' },
+        { id: `r-${Date.now()}-2`, time: nowStr, addr: 'DOS_CMD', tag: 'DIR', message: ' Directory of C:\\DALEK\\SYS' },
         { id: `r-${Date.now()}-3`, time: nowStr, addr: 'DOS_CMD', tag: 'DIR', message: 'ENGINE   EXE       124,955  09-11-26  19:18a' },
         { id: `r-${Date.now()}-4`, time: nowStr, addr: 'DOS_CMD', tag: 'DIR', message: 'RAGBRAIN DAT        79,625  09-11-26  19:18a' },
         { id: `r-${Date.now()}-5`, time: nowStr, addr: 'DOS_CMD', tag: 'DIR', message: 'MUTATOR  SYS        45,120  09-11-26  19:18a' },
@@ -296,7 +295,7 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
         <div className="bg-white text-black px-3 py-1 flex items-center justify-between font-bold text-xs sm:text-sm select-none shrink-0 border-b border-white">
           <div className="flex items-center gap-2 truncate">
             <Terminal size={14} className="stroke-[2.5]" />
-            <span className="truncate">MS-DOS Executive - C:\DALEK\AGI\ENGINE.EXE [REAL SYSTEM ENGINE TELEMETRY]</span>
+            <span className="truncate">MS-DOS Executive - C:\DALEK\SYS\ENGINE.EXE [REAL SYSTEM ENGINE TELEMETRY]</span>
           </div>
           <div className="flex items-center gap-2">
             <button 
@@ -352,7 +351,7 @@ export default function AgiDosConsoleModal({ isOpen, onClose, systemState }: Agi
           className="bg-black border-t border-white/40 p-2 sm:p-3 flex items-center gap-2 shrink-0 text-white font-mono text-xs sm:text-sm"
           style={{ unicodeBidi: 'normal', direction: 'ltr' }}
         >
-          <span className="text-white font-bold shrink-0">C:\DALEK\AGI&gt;</span>
+          <span className="text-white font-bold shrink-0">C:\DALEK\SYS&gt;</span>
           <input
             ref={inputRef}
             maxLength={256}

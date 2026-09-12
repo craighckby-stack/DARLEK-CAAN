@@ -1,4 +1,3 @@
-"use client"
 
 /**
  * @fileoverview Accessible tooltip components built on top of Radix UI primitives.

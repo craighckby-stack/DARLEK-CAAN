@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-"use client"
 
 /**
  * @fileoverview Form component system built on top of React Hook Form and Radix UI primitives.

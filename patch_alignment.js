@@ -8,7 +8,7 @@
 
 const { readFileSync, writeFileSync } = require('node:fs');
 
-/** Target source file path for the AGI engine patch alignment. @type {string} */
+/** Target source file path for the cognitive engine patch alignment. @type {string} */
 const TARGET_FILE_PATH = 'src/utils/agi-engine.ts';
 
 /** Code injection for initializing the Edge Governance Gatekeeper dependency. @type {string} */

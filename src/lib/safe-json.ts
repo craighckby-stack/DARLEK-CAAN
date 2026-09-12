@@ -1,5 +1,3 @@
-import type { NextRequest } from 'next/server';
-
 export interface SafeFetchResult<T> {
   readonly success: boolean;
   readonly data: T | null;
@@ -45,7 +43,7 @@ export function safeParseJson<T = unknown>(str: string | null | undefined, fallb
 /**
  * Safely extracts and parses JSON payload from incoming HTTP requests.
  */
-export async function safeReqJson<T = unknown>(req: Request | NextRequest, fallback: T = {} as T): Promise<T> {
+export async function safeReqJson<T = unknown>(req: Request, fallback: T = {} as T): Promise<T> {
   try {
     const text = await req.text();
     return safeParseJson(text, fallback);

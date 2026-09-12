@@ -355,7 +355,7 @@ async function ensureGitHubRepositoryExists({ token, owner, repoName, descriptio
       },
       body: JSON.stringify({
         name: repoName,
-        description: description || `Compiled with Dalek Caan AGI Evolution Engine based on "${blueprintName || 'Custom'}" blueprint`,
+        description: description || `Compiled with Dalek Caan Cognitive Evolution Engine based on "${blueprintName || 'Custom'}" blueprint`,
         auto_init: true,
         private: false,
       }),

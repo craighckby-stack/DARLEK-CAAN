@@ -1,7 +1,7 @@
 /**
  * @file replace_random.js
  * @description Script to systematically replace non-deterministic pseudo-random code 
- * patterns in the AGI engine with predictable, deterministic values for testing and auditing.
+ * patterns in the cognitive engine with predictable, deterministic values for testing and auditing.
  */
 
 import fs from 'node:fs';

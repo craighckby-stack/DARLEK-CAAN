@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import StatusBar from './StatusBar';

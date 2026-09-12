@@ -1,4 +1,3 @@
-"use client"
 
 /**
  * @file src/components/ui/progress.tsx

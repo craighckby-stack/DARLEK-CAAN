@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import type { DebateAgent, AgentVote } from '@/lib/types';

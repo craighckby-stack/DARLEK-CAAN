@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-"use client"
 
 import * as React from "react"
 import * as HoverCardPrimitive from "@radix-ui/react-hover-card"

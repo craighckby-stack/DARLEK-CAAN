@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
@@ -250,7 +249,7 @@ export function NeuralSimulator({ systemCycle = 0 }: NeuralSimulatorProps) {
           branch,
           path: filePath,
           content: logContent,
-          commitMessage: `[AGI CORE] Emergency Stop: 0-Byte Output Error Committed (${errEntry.source})`
+          commitMessage: `[COGNITIVE CORE] Emergency Stop: 0-Byte Output Error Committed (${errEntry.source})`
         })
       });
 

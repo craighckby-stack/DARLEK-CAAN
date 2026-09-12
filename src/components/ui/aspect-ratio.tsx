@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-"use client"
 
 import * as AspectRatioPrimitive from "@radix-ui/react-aspect-ratio"
 import type { ComponentPropsWithoutRef, ElementRef, ReactElement } from "react"

@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import { useState, useCallback, useMemo, type ChangeEvent } from 'react';
 import type { PendingMutation } from '@/lib/types';

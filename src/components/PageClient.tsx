@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import { useState, useEffect, memo, type JSX } from 'react';
 import dynamic from 'next/dynamic';

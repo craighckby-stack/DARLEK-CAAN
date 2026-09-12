@@ -1,4 +1,3 @@
-"use client"
 
 import React, { memo, type JSX } from "react"
 import { useToast } from "@/hooks/use-toast"

@@ -13,7 +13,6 @@
  * Role: System License & Intellectual Property Modal displaying Creative Commons CC BY-NC-SA 4.0.
  */
 
-'use client';
 
 import React, { useState, useCallback } from 'react';
 import {

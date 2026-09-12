@@ -49,6 +49,7 @@ interface ExtendedProposeBody extends ProposeBody {
   readonly userReposContext?: readonly UserRepoItem[];
   readonly isArchitecturalGenesis?: boolean;
   readonly hallucinationLevel?: number;
+  readonly saturationLevel?: number;
   readonly repoFiles?: readonly string[];
 }
 
@@ -512,11 +513,26 @@ ${fileContent.slice(0, MAX_PROPOSE_CONTENT_LENGTH)}
 \`\`\``;
 
     const geminiKey = apiKeys?.gemini || getDefaultGeminiKey();
-    const hallucinationLevel = body.hallucinationLevel;
-    const temperature = hallucinationLevel !== undefined ? hallucinationLevel / 100 : 0.3;
+    const hallucinationLevel = typeof body.hallucinationLevel === 'number' ? body.hallucinationLevel : undefined;
+    const saturationLevel = typeof body.saturationLevel === 'number' ? body.saturationLevel : undefined;
+    const temperature = hallucinationLevel !== undefined 
+      ? Math.min(1.0, Math.max(0.05, hallucinationLevel / 100)) 
+      : 0.3;
+
+    let systemPromptWithDirectives = promptContext.proposeSystemPrompt;
+    if (hallucinationLevel !== undefined) {
+      if (hallucinationLevel > 66) {
+        systemPromptWithDirectives += '\n\nHALLUCINATION DIRECTIVE [CHAOTIC/RADICAL]: Push algorithmic boundaries, propose novel paradigm shifts, aggressive modular refactoring, and bold architectural enhancements.';
+      } else if (hallucinationLevel < 33) {
+        systemPromptWithDirectives += '\n\nHALLUCINATION DIRECTIVE [CONSERVATIVE/PRECISE]: Zero speculative departures. Focus strictly on deterministic bugfixes, rock-solid TypeScript types, and minimal surgical changes.';
+      }
+    }
+    if (saturationLevel !== undefined && saturationLevel > 60) {
+      systemPromptWithDirectives += `\n\nSATURATION DIRECTIVE [SENSITIVITY: ${saturationLevel}%]: If this file already demonstrates mature architectural equilibrium and requires no meaningful functional mutations, you may retain code integrity with zero diffs rather than generating superficial churn.`;
+    }
 
     const llmResult = await callLlm({
-      systemPrompt: promptContext.proposeSystemPrompt,
+      systemPrompt: systemPromptWithDirectives,
       userPrompt,
       geminiApiKey: geminiKey,
       maxTokens: 8192,

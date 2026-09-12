@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useState, useMemo, useCallback, JSX } from 'react';
 import { sanitizeContent, Finding, SENSITIVE_PATTERNS } from '@/lib/scanner';

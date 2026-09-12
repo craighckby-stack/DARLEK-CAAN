@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import React, { useState, useMemo, useRef } from 'react';
 import { useFolderScanner, FolderScanFileResult } from '@/hooks/useFolderScanner';

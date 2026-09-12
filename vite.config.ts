@@ -1,4 +1,3 @@
-import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +8,7 @@ const projectRootDir = dirname(fileURLToPath(import.meta.url));
 
 /** Path resolution aliases for modular imports */
 const pathAliases = {
-  '@': resolve(projectRootDir, '.'),
+  '@': resolve(projectRootDir, './src'),
 };
 
 /**
@@ -28,10 +27,23 @@ export default defineConfig(() => {
   const isHmrDisabled = process.env['DISABLE_HMR'] === 'true';
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react()],
     resolve: {
       alias: pathAliases,
     },
     server: createServerConfig(isHmrDisabled),
+    build: {
+      rollupOptions: {
+        onwarn(warning, defaultHandler) {
+          if (
+            warning.code === 'MODULE_LEVEL_DIRECTIVE' ||
+            warning.message?.includes('use client')
+          ) {
+            return;
+          }
+          defaultHandler(warning);
+        },
+      },
+    },
   };
 });

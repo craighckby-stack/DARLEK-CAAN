@@ -9,10 +9,33 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
+import tsParser from "@typescript-eslint/parser";
+
 const eslintConfig = [
-  { ignores: [".next/**", ".next_dev/**", "node_modules/**", "out/**", "build/**", "dist/**"] },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
+    ignores: [
+      ".next/**",
+      ".next_dev/**",
+      "node_modules/**",
+      "out/**",
+      "build/**",
+      "dist/**",
+      "*.js",
+      "*.mjs"
+    ]
+  },
+  {
+    files: ["src/**/*.{ts,tsx,js,jsx}"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        ecmaFeatures: {
+          jsx: true
+        }
+      }
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",

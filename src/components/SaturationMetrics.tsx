@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import React, { memo } from 'react';
 import type { SaturationMetrics } from '@/lib/types';

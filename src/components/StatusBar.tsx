@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import React, { useMemo } from 'react';
 import type { ConnectionStatus, RepoConfig } from '@/lib/types';

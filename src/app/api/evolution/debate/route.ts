@@ -283,7 +283,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       `Line change: ${lineDelta >= 0 ? '+' : ''}${lineDelta} lines`,
     ].join('\n');
 
-    const githubToken = apiKeys.github ?? '';
+    const githubToken = apiKeys['github'] ?? '';
     const repoOwner = body.owner ?? 'unknown';
     const repoName = body.repo ?? 'unknown';
     const repoBranch = body.branch ?? 'main';
@@ -315,7 +315,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         : '';
 
     const effectiveRounds = Math.min(Math.max(1, rounds), 100);
-    const geminiApiKey = apiKeys.gemini ?? getDefaultGeminiKey();
+    const geminiApiKey = apiKeys['gemini'] ?? getDefaultGeminiKey();
     const temperature = typeof body.hallucinationLevel === 'number' ? body.hallucinationLevel / 100 : 0.6;
 
     let currentVotes: AgentVote[] = [];

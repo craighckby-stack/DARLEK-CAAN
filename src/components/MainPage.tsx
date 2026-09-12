@@ -5,8 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ChatPanel from '@/components/ChatPanel';
 import DashboardPanel from '@/components/DashboardPanel';
@@ -77,7 +75,7 @@ const DEFAULT_PRELOADED_FILES: GitHubFile[] = [
     size: 79625,
     sha: 'sha_agi_engine_v3',
     type: 'blob',
-    content: `// AGI Core & Alignment V3 Engine\nexport class AGICore {\n  // Lifecycle perceive -> reason -> act -> learn -> self-modify\n}\n`,
+    content: `// Autonomous Cognitive Core & Alignment V3 Engine\nexport class AGICore {\n  // Lifecycle perceive -> reason -> act -> learn -> self-modify\n}\n`,
   },
   {
     path: 'src/app/page.tsx',
@@ -2097,9 +2095,9 @@ export default function Home() {
         lowerRaw === 'propose' || lowerReversed === 'propose';
 
       const isAgi = 
-        lowerRaw === 'agi' || lowerRaw === 'agi-dos' || lowerRaw === 'dos' || lowerRaw === 'msdos' || lowerRaw === 'ms-dos' ||
-        lowerRaw === 'agi monitor' || lowerRaw === 'agi screen' || lowerRaw === 'agi telemetry' || lowerRaw === 'rag monitor' ||
-        lowerReversed === 'iga' || lowerRaw === 'iga';
+        lowerRaw === 'dos' || lowerRaw === 'msdos' || lowerRaw === 'ms-dos' ||
+        lowerRaw === 'monitor' || lowerRaw === 'telemetry' || lowerRaw === 'rag monitor' ||
+        lowerRaw === 'console' || lowerRaw === 'agi';
 
       const currentState = systemState;
       const lowerContent = cleaned.toLowerCase();
@@ -2110,7 +2108,7 @@ export default function Home() {
         addCaanMessage(
           `DALEK CAAN COMMAND DIRECTIVES:\n\n` +
           `• help / commands — Display this operational command manual.\n` +
-          `• agi / dos — Launch MS-DOS black screen live system telemetry monitor window.\n` +
+          `• dos / monitor — Launch MS-DOS black screen live system telemetry monitor window.\n` +
           `• reboot / reset — Initiate full system reboot and purge chat, logs & cache.\n` +
           `• scan — Scan target repository (${currentState.repoConfig?.owner || 'owner'}/${currentState.repoConfig?.repo || 'repo'}) for code assets.\n` +
           `• 1, 2, ... — Select target file from scanned inventory to evolve.\n` +
@@ -2127,15 +2125,15 @@ export default function Home() {
         return;
       }
 
-      // ── AGI MS-DOS command ──
+      // ── MS-DOS command ──
       if (isAgi) {
         setMessages((prev) => [...prev, createMessage('operator', content)]);
         setIsAgiDosOpen(true);
         addCaanMessage(
-          `[MS-DOS AGI MONITOR INITIALIZED]\n\nOpening C:\\DALEK\\AGI MS-DOS Screen...\n` +
+          `[MS-DOS TELEMETRY MONITOR INITIALIZED]\n\nOpening C:\\DALEK\\SYS MS-DOS Screen...\n` +
           `Displaying real-time system executions: RAG writing/enhancing, AST self-mutating, vector persistence, and auto-push commit streams.`
         );
-        addLogEntry('SYSTEM', 'MS-DOS AGI telemetry screen launched via operator command.');
+        addLogEntry('SYSTEM', 'MS-DOS system telemetry screen launched via operator command.');
         return;
       }
 
@@ -2825,6 +2823,8 @@ export default function Home() {
                       isArchitecturalGenesis: systemState.evolutionCycle === 1,
                       sessionId: brainSessionId,
                       userReposContext: allUserRepositories,
+                      hallucinationLevel,
+                      saturationLevel,
                       rejectionMemory:
                         rejectionMemory.length > 0
                           ? rejectionMemory.map((r) => ({
@@ -2955,6 +2955,7 @@ export default function Home() {
                         isArchitecturalGenesis: systemState.evolutionCycle === 1,
                         sessionId: brainSessionId,
                         rounds: cycleAmount,
+                        hallucinationLevel,
                         owner: repoConfig.owner,
                         repo: repoConfig.repo,
                         branch: repoConfig.branch,
@@ -3151,6 +3152,8 @@ export default function Home() {
                     isArchitecturalGenesis: batchMode && systemState.evolutionCycle === 1,
                     sessionId: brainSessionId,
                     userReposContext: allUserRepositories,
+                    hallucinationLevel,
+                    saturationLevel,
                     rejectionMemory:
                       rejectionMemory.length > 0
                         ? rejectionMemory.map((r) => ({
@@ -3279,7 +3282,7 @@ export default function Home() {
                         apiKeys,
                         isArchitecturalGenesis: systemState.evolutionCycle === 1,
                         sessionId: brainSessionId,
-                        rounds: 2,
+                        rounds: cycleAmount,
                         hallucinationLevel,
                       }),
                     });
@@ -5209,19 +5212,6 @@ export default function Home() {
               TIMELINE: ALPHA
             </span>
           </div>
-          <button
-            onClick={() => setShowStatsModal(true)}
-            className="flex items-center gap-1 px-2 py-1 rounded border border-[#ff2020]/30 hover:border-[#ff2020] bg-red-950/20 text-gray-300 hover:text-white cursor-pointer transition-colors text-[8px]"
-            title="Compare DARLEK CANN with other agents"
-            style={{
-              fontFamily: 'var(--font-orbitron), sans-serif',
-              letterSpacing: '0.05em',
-            }}
-          >
-            <Activity size={10} className="text-red-500 animate-pulse shrink-0" />
-            <span className="hidden sm:inline">DIFFERENTIALS</span>
-            <span className="sm:hidden font-semibold">DIFFS</span>
-          </button>
           {systemState.setupComplete && (
             <button
               id="reconfigure-button"
@@ -5606,6 +5596,22 @@ export default function Home() {
                     velocity: Math.min(5, (val / 100) * 5),
                   },
                 }));
+              }}
+              autoPauseOnSaturation={autoPauseOnSaturation}
+              onToggleAutoPauseOnSaturation={() => {
+                setAutoPauseOnSaturation((prev) => {
+                  const next = !prev;
+                  localStorage.setItem('darlek_cann_auto_pause_saturation', String(next));
+                  return next;
+                });
+              }}
+              autoSkipSaturated={autoSkipSaturated}
+              onToggleAutoSkipSaturated={() => {
+                setAutoSkipSaturated((prev) => {
+                  const next = !prev;
+                  localStorage.setItem('darlek_cann_auto_skip_saturation', String(next));
+                  return next;
+                });
               }}
             />
           )}
@@ -6016,14 +6022,14 @@ export default function Home() {
           <button
             onClick={() => setIsAgiDosOpen(true)}
             className="ml-2 px-2 py-0.5 rounded bg-black border border-white/20 text-white hover:bg-white hover:text-black transition-colors font-mono text-[9px] flex items-center gap-1 cursor-pointer"
-            title="Open MS-DOS Real-Time Telemetry Monitor (or type 'agi' in chat)"
+            title="Open MS-DOS Real-Time Telemetry Monitor (or type 'dos' in chat)"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            <span>[MS-DOS AGI]</span>
+            <span>[MS-DOS TELEMETRY]</span>
           </button>
         </div>
 
-      {/* MS-DOS AGI Real-Time Console Modal */}
+      {/* MS-DOS Real-Time Console Modal */}
       <AgiDosConsoleModal
         isOpen={isAgiDosOpen}
         onClose={() => setIsAgiDosOpen(false)}

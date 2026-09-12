@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-'use client';
 
 import React, { useState, useMemo, useCallback, type JSX } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';

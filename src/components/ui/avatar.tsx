@@ -1,4 +1,3 @@
-"use client"
 
 /**
  * @fileoverview Avatar UI components built on top of Radix UI primitives.
