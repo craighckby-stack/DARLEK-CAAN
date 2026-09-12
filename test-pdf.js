@@ -1,8 +1,8 @@
 /**
  * @file test-pdf.js
- * @version 4.8.0
+ * @version 4.9.0
  * @author EMG Core v49 Neural Code and Documentation Optimizer Engine
- * @description Diagnostic module for validating PDF parsing capabilities and executing test extractions with enhanced type safety and robust memory efficiency.
+ * @description Diagnostic module for validating PDF parsing capabilities and executing test extractions with pristine modern idioms, robust memory efficiency, and strict modular decomposition.
  */
 
 'use strict';
@@ -11,6 +11,12 @@ const pdfParse = require('pdf-parse');
 
 /** @type {Readonly<string>} Standard diagnostic output log prefix */
 const LOG_PREFIX = Object.freeze('[EMG-CORE-49]');
+
+/** Maximum allowed buffer/array size in bytes (50MB) */
+const MAX_PDF_BUFFER_SIZE = 52428800;
+
+/** Maximum allowed path string length */
+const MAX_PDF_PATH_LENGTH = 1024;
 
 /**
  * Validates that the external PDF parser dependency is loaded correctly and efficiently.
@@ -21,6 +27,38 @@ function validateParserDependency() {
     if (typeof pdfParse !== 'function') {
         throw new TypeError('CRITICAL: "pdf-parse" module failed to initialize or export a valid function.');
     }
+}
+
+/**
+ * Validates buffer and typed array inputs against memory and bounds restrictions.
+ * 
+ * @param {Buffer | Uint8Array} bufferSource - Binary PDF source to inspect.
+ * @returns {Buffer | Uint8Array} Verified buffer source.
+ */
+function sanitizeBufferSource(bufferSource) {
+    if (bufferSource.length === 0) {
+        throw new TypeError('CRITICAL: PDF buffer/array is empty.');
+    }
+    if (bufferSource.length > MAX_PDF_BUFFER_SIZE) {
+        throw new RangeError('CRITICAL: PDF source exceeds maximum allowable size bounds (50MB).');
+    }
+    return bufferSource;
+}
+
+/**
+ * Validates string path or text inputs against length constraints.
+ * 
+ * @param {string} stringSource - String PDF path or content to inspect.
+ * @returns {string} Verified string source.
+ */
+function sanitizeStringSource(stringSource) {
+    if (stringSource.trim().length === 0) {
+        throw new TypeError('CRITICAL: PDF source path or string is empty.');
+    }
+    if (stringSource.length > MAX_PDF_PATH_LENGTH) {
+        throw new RangeError('CRITICAL: PDF path string exceeds maximum length constraints.');
+    }
+    return stringSource;
 }
 
 /**
@@ -36,23 +74,11 @@ function sanitizePdfSource(pdfSource) {
     }
 
     if (Buffer.isBuffer(pdfSource) || pdfSource instanceof Uint8Array) {
-        if (pdfSource.length === 0) {
-            throw new TypeError('CRITICAL: PDF buffer/array is empty.');
-        }
-        if (pdfSource.length > 52428800) { // 50MB bounds check
-            throw new RangeError('CRITICAL: PDF source exceeds maximum allowable size bounds (50MB).');
-        }
-        return pdfSource;
+        return sanitizeBufferSource(pdfSource);
     }
 
     if (typeof pdfSource === 'string') {
-        if (pdfSource.trim().length === 0) {
-            throw new TypeError('CRITICAL: PDF source path or string is empty.');
-        }
-        if (pdfSource.length > 1024) {
-            throw new RangeError('CRITICAL: PDF path string exceeds maximum length constraints.');
-        }
-        return pdfSource;
+        return sanitizeStringSource(pdfSource);
     }
 
     throw new TypeError('CRITICAL: Invalid PDF source type provided.');
