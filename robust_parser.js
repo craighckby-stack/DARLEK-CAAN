@@ -1,7 +1,7 @@
 /**
- * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * EMG Core Neural Code and Documentation Optimizer Engine
  * File Path: "robust_parser.js"
- * Extreme Performance & Memory Optimization Variant.
+ * Readability and Modern Idioms Optimization Variant.
  */
 
 'use strict';
@@ -105,9 +105,9 @@ function executeSovereignOverhaul() {
     const optimizedSourceCode = sourceCode.replace(LEGACY_PARSER_PATTERN, MODERN_PARSER_BLOCK);
     
     fs.writeFileSync(TARGET_FILE_PATH, optimizedSourceCode, FILE_ENCODING);
-    console.log('[EMG Core v49] robust_parser.js applied optimization successfully to target route.');
+    console.log('[EMG Core] robust_parser.js applied optimization successfully to target route.');
   } catch (error) {
-    console.error('[EMG Core v49] Critical execution failure during parser optimization:', error);
+    console.error('[EMG Core] Critical execution failure during parser optimization:', error);
     process.exitCode = 1;
   }
 }
