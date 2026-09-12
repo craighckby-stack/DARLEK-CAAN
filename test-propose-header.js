@@ -1,6 +1,6 @@
 /**
- * @fileoverview Secure, type-safe API proposal utility utilizing native fetch with AbortController,
- * comprehensive error boundary handling, and optimized payload serialization.
+ * @fileoverview Secure API proposal utility utilizing native fetch with AbortController,
+ * error boundary handling, and payload serialization.
  * @path "test-propose-header.js"
  */
 
@@ -24,8 +24,8 @@
  * @throws {Error} Throws an error if the network request fails or returns a non-2xx status code.
  */
 async function proposeEvolution(overrides = {}) {
-  const ENDPOINT = 'http://localhost:3000/api/evolution/propose';
-  const TIMEOUT_MS = 10000;
+  const endpoint = 'http://localhost:3000/api/evolution/propose';
+  const timeoutMs = 10000;
 
   const defaultPayload = {
     fileContent: "/**\n * Header\n */\nexport const hello = 'world';",
@@ -37,10 +37,10 @@ async function proposeEvolution(overrides = {}) {
   const payload = { ...defaultPayload, ...overrides };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(ENDPOINT, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -57,11 +57,10 @@ async function proposeEvolution(overrides = {}) {
       throw new Error(`HTTP Error Status: ${response.status} ${response.statusText} - ${errorBody}`);
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Evolution proposal request timed out after ${TIMEOUT_MS}ms`);
+      throw new Error(`Evolution proposal request timed out after ${timeoutMs}ms`);
     }
     throw error;
   } finally {
@@ -69,13 +68,14 @@ async function proposeEvolution(overrides = {}) {
   }
 }
 
-// Immediate execution block with robust error boundary tracking
+// Immediate execution block with error boundary tracking
 (async () => {
   try {
     const result = await proposeEvolution();
     console.log('Evolution proposal successful:', result);
   } catch (err) {
-    console.error('Failed to execute evolution proposal:', err instanceof Error ? err.message : err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error('Failed to execute evolution proposal:', errorMessage);
     process.exitCode = 1;
   }
 })();
