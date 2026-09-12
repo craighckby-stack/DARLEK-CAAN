@@ -88,10 +88,6 @@ const ANALYSIS_KEYWORDS = Object.freeze([
   'repository analysis', 'architecture overview', 'describe the project',
 ]);
 
-const REVERSE_TRANSFORM_WORDS = Object.freeze([
-  'help', 'create', 'status', 'scan', 'propose', 'abort', 'skip', 'done', 'hello', 'hi', 'exterminate'
-]);
-
 export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ status: 'online', service: 'DALEK_CHAT_API' });
 }
@@ -113,7 +109,7 @@ async function fetchGithubFile(token: string, owner: string, repo: string, branc
       return await res.text();
     }
   } catch (error) {
-    console.warn(`[CHAT] Failed to fetch raw file for path ${path}:`, error);
+    console.warn('[CHAT] Failed to fetch raw file for path:', path, error);
   }
   return '';
 }
@@ -143,10 +139,6 @@ async function fetchGithubRepoTree(token: string, owner: string, repo: string, b
     console.error('[CHAT] Failed to fetch github repo tree:', error);
   }
   return [];
-}
-
-function processUserMessage(message: string): string {
-  return message.trim();
 }
 
 function isAnalysisRequest(message: string): boolean {
@@ -264,7 +256,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ content: '', success: false, error: 'Message is required' }, { status: 400 });
     }
 
-    const processedMessage = processUserMessage(message);
+    const processedMessage = message.trim();
 
     const state = systemState || {
       setupComplete: false,
@@ -319,7 +311,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       temperature: 0.7,
     });
 
-    const fallbackChat = dalekBrainChat(enhancedSystemPrompt, processedMessage, history ? [...history] : []);
+    const fallbackChat = dalekBrainChat(enhancedSystemPrompt, processedMessage, history ? [...history] : undefined);
     const content = result.text || fallbackChat || 'Processing error. Try again.';
 
     return NextResponse.json({
