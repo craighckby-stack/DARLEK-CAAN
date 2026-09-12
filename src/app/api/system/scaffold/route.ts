@@ -18,16 +18,16 @@ interface ErrorResponse {
   readonly timestamp: string;
 }
 
-const SERVICE_NAME = 'SYSTEM_SCAFFOLD_API';
-const SUCCESS_MESSAGE = 'System scaffold initialized successfully';
-const DEFAULT_ERROR_MESSAGE = 'An unexpected error occurred during system scaffold initialization';
+const SERVICE_NAME: string = 'SYSTEM_SCAFFOLD_API';
+const SUCCESS_MESSAGE: string = 'System scaffold initialized successfully';
+const DEFAULT_ERROR_MESSAGE: string = 'An unexpected error occurred during system scaffold initialization';
 
 const STATIC_GET_RESPONSE: SystemStatusResponse = {
   status: 'online',
   service: SERVICE_NAME,
 };
 
-const JSON_HEADERS = {
+const JSON_HEADERS: Readonly<Record<string, string>> = {
   'Content-Type': 'application/json',
 } as const;
 
@@ -39,19 +39,27 @@ function getCurrentTimestamp(): string {
 }
 
 /**
- * Safely parses the request JSON body if the content type is application/json.
+ * Safely parses the request JSON body if the content type is application/json with strict bounds and size validation.
  */
 async function parseOptionalJsonBody(request: NextRequest): Promise<unknown> {
-  const contentType = request.headers.get('content-type');
+  const contentType: string | null = request.headers.get('content-type');
   
-  if (!contentType?.includes('application/json')) {
+  if (!contentType || !contentType.toLowerCase().includes('application/json')) {
     return null;
+  }
+
+  const contentLengthHeader: string | null = request.headers.get('content-length');
+  if (contentLengthHeader) {
+    const contentLength: number = Number.parseInt(contentLengthHeader, 10);
+    if (Number.isNaN(contentLength) || contentLength > 1048576) {
+      throw new Error('Payload too large or malformed content-length header.');
+    }
   }
   
   try {
     return await request.json();
   } catch {
-    return null;
+    throw new Error('Invalid JSON payload format.');
   }
 }
 
@@ -71,13 +79,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScaffoldS
 
     return NextResponse.json(successPayload, { headers: JSON_HEADERS });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
+    const errorMessage: string = error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
     
     const errorPayload: ErrorResponse = {
       error: errorMessage,
       timestamp: getCurrentTimestamp(),
     };
 
-    return NextResponse.json(errorPayload, { status: 500, headers: JSON_HEADERS });
+    return NextResponse.json(errorPayload, { status: 400, headers: JSON_HEADERS });
   }
 }
