@@ -1,12 +1,12 @@
-import * as React from "node:react"
+import * as React from "react"
 
 /**
- * The standard mobile layout breakpoint query matching screens below 768px.
+ * Standard mobile layout breakpoint query matching screens below 768px.
  */
 const MOBILE_BREAKPOINT_QUERY = "(max-width: 767px)" as const
 
 /**
- * Lazily initializes and caches the global MediaQueryList instance to prevent redundant allocations.
+ * Caches the global MediaQueryList instance to prevent redundant allocations.
  */
 let sharedMediaQueryList: MediaQueryList | null = null
 
@@ -15,7 +15,7 @@ function getCachedMediaQueryList(): MediaQueryList | null {
     return null
   }
 
-  if (!sharedMediaQueryList) {
+  if (sharedMediaQueryList === null) {
     try {
       sharedMediaQueryList = window.matchMedia(MOBILE_BREAKPOINT_QUERY)
     } catch {
@@ -27,7 +27,7 @@ function getCachedMediaQueryList(): MediaQueryList | null {
 }
 
 /**
- * Resolves the initial mobile state safely across server and client environments.
+ * Resolves initial mobile state across server and client environments.
  */
 function evaluateInitialMobileState(): boolean {
   const mediaQueryList = getCachedMediaQueryList()
@@ -43,7 +43,7 @@ export function useIsMobile(): boolean {
   React.useEffect(() => {
     const mediaQueryList = getCachedMediaQueryList()
     
-    if (!mediaQueryList) {
+    if (mediaQueryList === null) {
       return
     }
 
@@ -51,25 +51,24 @@ export function useIsMobile(): boolean {
       setIsMobile(event.matches)
     }
 
-    // Sync current state immediately upon mount
     setIsMobile(mediaQueryList.matches)
 
-    // Modern browsers support addEventListener/removeEventListener on MediaQueryList
     if (typeof mediaQueryList.addEventListener === "function") {
       mediaQueryList.addEventListener("change", handleBreakpointChange)
       return () => {
         mediaQueryList.removeEventListener("change", handleBreakpointChange)
       }
     } 
-    // Fallback for legacy environments supporting addListener
-    else if (typeof (mediaQueryList as MediaQueryList & { addListener?: (listener: (event: MediaQueryListEvent) => void) => void }).addListener === "function") {
-      const legacyQuery = mediaQueryList as MediaQueryList & {
-        addListener: (listener: (event: MediaQueryListEvent) => void) => void
-        removeListener: (listener: (event: MediaQueryListEvent) => void) => void
-      }
+    
+    const legacyQuery = mediaQueryList as MediaQueryList & {
+      addListener?: (listener: (event: MediaQueryListEvent) => void) => void
+      removeListener?: (listener: (event: MediaQueryListEvent) => void) => void
+    }
+
+    if (typeof legacyQuery.addListener === "function" && typeof legacyQuery.removeListener === "function") {
       legacyQuery.addListener(handleBreakpointChange)
       return () => {
-        legacyQuery.removeListener(handleBreakpointChange)
+        legacyQuery.removeListener!(handleBreakpointChange)
       }
     }
   }, [])
