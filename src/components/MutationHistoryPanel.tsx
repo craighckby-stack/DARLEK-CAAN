@@ -5,7 +5,6 @@
  * Architecture: Type-safe modular unit with resilient state interfaces.
  */
 
-
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { COLORS } from '@/lib/constants';
 import { Activity } from 'lucide-react';
