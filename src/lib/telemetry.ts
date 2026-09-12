@@ -34,6 +34,7 @@ export interface SaturationMetrics {
 const UNSERIALIZABLE_FALLBACK = '[Unserializable Data]';
 const MAX_EVENT_NAME_LENGTH = 128;
 const MAX_SERIALIZED_PAYLOAD_LENGTH = 16384;
+const MAX_NESTING_DEPTH = 8;
 
 /**
  * Validates and sanitizes string bounds to prevent overflow and injection vectors.
@@ -47,10 +48,16 @@ const sanitizeStringInput = (input: string, maxLength: number): string => {
 };
 
 /**
- * Custom JSON serialization replacer that transforms BigInt values into strings.
+ * Custom JSON serialization replacer that transforms BigInt values into strings and guards depth.
  */
 const serializeBigIntReplacer = (_key: string, value: unknown): unknown => {
-  return typeof value === 'bigint' ? value.toString() : value;
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  if (typeof value === 'function' || typeof value === 'symbol') {
+    return String(value);
+  }
+  return value;
 };
 
 /**
@@ -97,8 +104,12 @@ export const logEvolutionEvent = (event: string, data: EvolutionEventData): void
   if (typeof event !== 'string' || event.length === 0) {
     return;
   }
+  const sanitizedEvent = sanitizeStringInput(event, MAX_EVENT_NAME_LENGTH);
+  if (sanitizedEvent.length === 0) {
+    return;
+  }
   const serializedData = safeSerializeEventData(data);
-  const logMessage = formatEvolutionLog(event, serializedData);
+  const logMessage = formatEvolutionLog(sanitizedEvent, serializedData);
 
   console.log(logMessage);
 };
