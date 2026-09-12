@@ -36,7 +36,7 @@ interface GitHubContentResponse {
   content?: string;
 }
 
-const ALLOWED_ROOT_FILES = new Set([
+const ALLOWED_ROOT_FILES: ReadonlySet<string> = new Set([
   'package.json',
   'next.config.ts',
   'next.config.js',
@@ -50,7 +50,7 @@ const ALLOWED_ROOT_FILES = new Set([
   '.eslintrc.js',
 ]);
 
-const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.css', '.json', '.html']);
+const SOURCE_EXTENSIONS: ReadonlySet<string> = new Set(['.ts', '.tsx', '.js', '.jsx', '.css', '.json', '.html']);
 const RATE_LIMIT_DELAY_MS = 300;
 const FETCH_TIMEOUT_MS = 8000;
 
