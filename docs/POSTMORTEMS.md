@@ -272,3 +272,11 @@ Line 18, Col 10: Property declaration is missing its type annotation.
 Line 20, Col 6: Property declaration is missing its type annotation.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/ui/button.tsx.
+
+### ❌ [2026-09-12] src/components/ui/sidebar.tsx `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 482, Col 8: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/ui/sidebar.tsx.
