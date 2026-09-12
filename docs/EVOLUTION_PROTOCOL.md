@@ -1,96 +1,173 @@
-# DALEK CAAN v3.1: Evolution Protocol
+# DARLEK CANN v3.2: Autonomous Evolution Protocol
 
-> **SECURITY WARNING:** This protocol manages dynamic runtime DOM injection and filesystem modifications. Unauthorized access, improper configuration, or a lack of strict boundary enforcement can lead to severe memory corruption, DOM-based Cross-Site Scripting (XSS), or arbitrary code execution vulnerabilities. Always adhere to secure coding guidelines.
+> **CRITICAL SECURITY DIRECTIVE:** This protocol governs automated filesystem state mutation, GitHub API payload ingestion, and dynamic runtime component integration. Improper configuration or boundary enforcement failure can lead to severe DOM-based Cross-Site Scripting (XSS), state desynchronization, or unauthorized code execution. All mutations must strictly satisfy structural schema verification and cryptographic integrity checks prior to dispatch.
 
 ---
 
 ## Executive Summary
 
-The **Evolution Protocol** (Dalek Caan v3.1) manages runtime DOM injection and UI component updates via an idempotent marker system. This document outlines architectural integration parameters, execution workflows, security compliance requirements, vulnerability disclosure policies, and a reference TypeScript implementation to ensure high rendering efficiency and robust system integrity.
+The **Autonomous Evolution Protocol (v3.2)** defines the structural framework for dynamic runtime mutation and self-refactoring across the **DARLEK CANN** ecosystem. Working in tandem with the *GitHub API Integration Module*, the protocol ingests verified repository states, calculates AST delta transformations, and safely injects generated UI components via idempotent marker boundaries (`DARLEK_UI_START` / `DARLEK_UI_END`). 
+
+This document details integration schemas, state verification workflows, strict security boundaries, and reference TypeScript runtime interfaces.
 
 ---
 
 ## Table of Contents
+
 1. [Architectural Blueprint](#architectural-blueprint)
-2. [Integration Schema](#integration-schema)
-3. [Execution Workflow](#execution-workflow)
-4. [Security Best Practices & Compliance](#security-best-practices--compliance)
-5. [Vulnerability Disclosure & Reporting](#vulnerability-disclosure--reporting)
+2. [Integration Schema & Marker Governance](#integration-schema--marker-governance)
+3. [Autonomous Execution Lifecycle](#autonomous-execution-lifecycle)
+4. [Security & Boundary Enforcement](#security--boundary-enforcement)
+5. [Vulnerability Disclosure Protocol](#vulnerability-disclosure-protocol)
 6. [Implementation Blueprint](#implementation-blueprint)
 
 ---
 
 ## Architectural Blueprint
 
-The **Evolution Protocol** serves as the primary injection vector for **Dalek Caan UI components**. Utilizing an advanced idempotent marker system, this module ensures that dynamic runtime UI updates maintain high rendering efficiency. By enforcing strict marker boundaries, the system prevents duplicate Document Object Model (DOM) node generation and actively mitigates potential memory leaks across continuous rendering cycles.
+The Evolution Protocol operates as the dynamic mutation phase of the DARLEK CANN self-refactoring pipeline:
+
+```
+[ GitHub REST API v3 ]
+          │
+          ▼ (Validated Ingestion via ReadFileSchema)
+[ GitHub Integration Module ]
+          │
+          ▼ (Decoded Content + SHA Metadata)
+[ Darlek Caan Evolution Engine ]
+          │
+  ┌───────┴─────────────────────────┐
+  ▼                                 ▼
+[ AST Marker Boundary Scan ]   [ Immutable Pre-mutation Backup ]
+  │                                 │
+  └───────┬─────────────────────────┘
+          ▼
+[ Idempotent Marker Mutation ]
+          │
+          ▼
+[ React Component Injection & Build Verification ]
+```
+
+By decoupling target state fetching (via the GitHub API module) from the local target transformation, the system guarantees zero-trust boundary validation prior to writing code changes to disk or virtual DOM instances.
 
 ---
 
-## Integration Schema
+## Integration Schema & Marker Governance
 
 | Parameter | Specification |
 | :--- | :--- |
-| **Target File** | `src/App.tsx` |
-| **Injection Markers** | `DALEK_UI_START` / `DALEK_UI_END` |
-| **Backup Path** | `.evolve_backups/` |
-| **Safety Protocol** | Automated, pre-mutation state backups generated prior to filesystem mutations |
+| **Primary Target File** | `src/App.tsx` |
+| **Boundary Markers** | `// DARLEK_UI_START` and `// DARLEK_UI_END` |
+| **Backup Path** | `.evolve_backups/` (POSIX Mode `0600`) |
+| **Timeout Protection** | 15,000 ms limit for upstream state retrieval |
+| **State Tracking** | Git Blob SHA matching + Base64 content decoding |
+| **Mutation Engine** | Idempotent AST/Regex Boundary Replacement |
 
 ---
 
-## Execution Workflow
+## Autonomous Execution Lifecycle
 
-1. **Scan**: Analyze `src/App.tsx` for existing injection markers to assess the current state and verify integrity.
-2. **Replace**: If valid markers are detected, perform an atomic replacement of the enclosed block with validated, sanitized payloads.
-3. **Fallback**: If markers are absent, execute a safe placeholder injection protocol under restricted privilege scopes.
-4. **Log**: Emit real-time operational metrics to `stdout` to support Continuous Integration/Continuous Deployment (CI/CD) pipelines while redacting sensitive environment variables.
-
----
-
-## Security Best Practices & Compliance
-
-To maintain a secure operational posture during execution, developers and automated pipelines must observe the following constraints:
-* **Sanitization:** All injected UI components and runtime parameters must be strictly validated and sanitized to prevent injection attacks.
-* **Access Control:** Ensure `.evolve_backups/` and target files maintain restrictive file-system permissions (e.g., `chmod 600` or equivalent) to prevent unauthorized read/write tampering.
-* **Integrity Auditing:** Regularly audit CI/CD logs for unexpected filesystem mutations or marker boundary mismatches.
+1. **Ingestion & Validation**: Target state is requested via the GitHub API Ingestion Module using `ReadFileSchema`. The fetched blob is validated and decoded into UTF-8.
+2. **Pre-Flight Snapshot**: An immutable backup snapshot is saved to `.evolve_backups/${timestamp}_${sha}.bak` before disk mutation occurs.
+3. **Marker Boundary Scan**: Target file `src/App.tsx` is parsed to locate strict marker delimiters (`DARLEK_UI_START` / `DARLEK_UI_END`).
+4. **Atomic Transformation**:
+   - *If markers exist*: The enclosed block is atomically replaced with the sanitized, compiled component payload.
+   - *If markers are missing*: The protocol falls back to a structural wrapper insertion routine with default fallback boundaries.
+5. **Post-Mutation Integrity Audit**: The file is re-parsed via TypeScript AST tools to confirm valid syntax before trigger signal dispatch.
 
 ---
 
-## Vulnerability Disclosure & Reporting
+## Security & Boundary Enforcement
 
-If you discover a security vulnerability or critical flaw within the Evolution Protocol or Dalek Caan UI components, please adhere to our responsible disclosure guidelines:
+- **Schema Authorization**: Payloads must strictly adhere to internal component schemas (`Zod` validated) before injection. Unsanitized strings or dynamic `eval()` expressions are strictly banned.
+- **Strict File Permissions**: Pre-mutation backup directories (`.evolve_backups/`) and target configuration paths are restricted to owner-only read/write (`chmod 600`).
+- **Cryptographic Tracking**: Every mutation payload carries an upstream GitHub Git SHA identifier to maintain strict causality and facilitate rollbacks.
+- **Redaction Policy**: Continuous Integration (CI/CD) pipelines filtering runner stdout must automatically redact environment variables, authorization tokens, and raw private keys.
 
-1. **Do Not Open Public Issues:** Avoid disclosing vulnerabilities through public GitHub issues, pull requests, or social media channels.
-2. **Report Privately:** Send detailed reports directly to the security team via our designated security contact or private reporting mechanism.
-3. **Include Reproduction Steps:** Provide a comprehensive description of the vulnerability, proof-of-concept (PoC) scripts, and potential remediation steps.
-4. **Coordinated Disclosure:** Allow our security team adequate time to validate, patch, and release secure updates before any public announcement.
+---
+
+## Vulnerability Disclosure Protocol
+
+Security vulnerabilities regarding dynamic runtime injection or filesystem mutation within the DARLEK CANN ecosystem must follow standard coordinated disclosure:
+
+1. **Private Reporting Only**: Do not open public GitHub issues or publicly disclose reproduction scripts.
+2. **Direct Incident Vector**: Transmit report payloads directly to the designated DARLEK CANN Security Team.
+3. **Payload Trace & PoC**: Include target Git SHA, AST output snippets, and concrete steps to reproduce.
+4. **Validation Grace Period**: Allow a minimum 90-day window for team validation, patch compilation, and emergency protocol deployment.
 
 ---
 
 ## Implementation Blueprint
 
-The following TypeScript implementation demonstrates the required marker structure, security-conscious documentation, and component wrapping in `src/App.tsx`:
+The following TypeScript code demonstrates the structural integration within `src/App.tsx`, complete with strict type definitions and boundary encapsulation:
 
 ```typescript
 /**
- * @fileoverview Example Integration Marker Structure in src/App.tsx
- * @module DalekCaanUIIntegration
- * @version 3.1.0
- * @see {@link https://reactjs.org/} React Documentation
+ * @fileoverview Dynamic Integration Marker Structure in src/App.tsx
+ * @module DarlekCaanUIIntegration
+ * @version 3.2.0
  */
 
-import React from 'react';
-import { DalekCaanUIComponent } from './components/DalekCaanUIComponent';
+import React, { Component, ReactNode, ErrorInfo } from 'react';
+import { DarlekCaanUIComponent } from './components/DarlekCaanUIComponent';
 
-// DALEK_UI_START
 /**
- * Renders the primary Dalek Caan UI component boundary.
- * Ensure all props passed to this wrapper are sanitized against injection vectors.
- *
- * @function RenderDalekUI
- * @returns {JSX.Element} The rendered Dalek Caan UI element.
+ * Prop boundary interface for evolution component ingestion.
  */
-export function RenderDalekUI(): JSX.Element {
-  return <DalekCaanUIComponent />;
+export interface EvolutionWrapperProps {
+  /** Optional cryptographic state tracking hash */
+  readonly stateSha?: string;
+  /** React child node overrides */
+  readonly children?: ReactNode;
 }
-// DALEK_UI_END
-```
+
+interface EvolutionWrapperState {
+  readonly hasError: boolean;
+  readonly error?: Error;
+}
+
+/**
+ * Encapsulating Error Boundary for evolved components.
+ */
+export class DarlekUIErrorBoundary extends Component<EvolutionWrapperProps, EvolutionWrapperState> {
+  public state: EvolutionWrapperState = { hasError: false };
+
+  public static getDerivedStateFromError(error: Error): EvolutionWrapperState {
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    console.error('[DARLEK_UI_ERROR_BOUNDARY] Component rendering failed:', error, errorInfo);
+  }
+
+  public render(): ReactNode {
+    if (this.state.hasError) {
+      return (
+        <div role="alert" className="darlek-fallback-container">
+          <h2>Darlek Caan Dynamic Component Failure</h2>
+          <pre>{this.state.error?.message}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// DARLEK_UI_START
+/**
+ * Primary rendering gateway for Darlek Caan UI evolution components.
+ * Guarantees boundary isolation and fallback protection.
+ *
+ * @param {EvolutionWrapperProps} props Component options including tracking SHA.
+ * @returns {JSX.Element} Isolated and boundary-protected UI element.
+ */
+export function RenderDarlekUI(props: EvolutionWrapperProps): JSX.Element {
+  return (
+    <DarlekUIErrorBoundary stateSha={props.stateSha}>
+      <section data-darlek-sha={props.stateSha ?? 'untracked'} className="darlek-ui-boundary">
+        <DarlekCaanUIComponent />
+      </section>
+    </DarlekUIErrorBoundary>
+  );
+}
+// DARLEK_UI_END
