@@ -45,7 +45,7 @@ function validateAndParseUrl(rawRequestUrl) {
   let parsedUrl;
   try {
     parsedUrl = new URL(rawRequestUrl);
-  } catch {
+  } catch (err) {
     throw new Error('Invalid URL format supplied to fetchContent.');
   }
 
@@ -105,7 +105,8 @@ function fetchContent(rawRequestUrl) {
  */
 function ensureWorkspaceContainment(targetFileSystemPath) {
   const resolvedPath = path.resolve(targetFileSystemPath);
-  if (!resolvedPath.startsWith(BASE_WORKSPACE_DIRECTORY + path.sep) && resolvedPath !== BASE_WORKSPACE_DIRECTORY) {
+  const normalizedBase = path.normalize(BASE_WORKSPACE_DIRECTORY + path.sep);
+  if (!resolvedPath.startsWith(normalizedBase) && resolvedPath !== BASE_WORKSPACE_DIRECTORY) {
     throw new Error('Security violation: Target path escapes root workspace directory.');
   }
 }
@@ -135,7 +136,9 @@ function getFirstNLines(str, maxLines) {
   let index = -1;
   for (let i = 0; i < maxLines; i++) {
     index = str.indexOf('\n', index + 1);
-    if (index === -1) break;
+    if (index === -1) {
+      break;
+    }
   }
   return index === -1 ? str : str.slice(0, index);
 }
