@@ -544,3 +544,22 @@ Line 3, Col 969: Unclosed opening delimiter '{'.
 Line 6, Col 24: Type annotations can only be used in TypeScript files.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on patch.js.
+
+### ❌ [2026-09-12] patch_alignment.js `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 29, Col 54: ',' expected.
+Line 29, Col 56: Expression expected.
+Line 32, Col 53: Type annotations can only be used in TypeScript files.
+Line 32, Col 62: Type annotations can only be used in TypeScript files.
+Line 39, Col 49: Type annotations can only be used in TypeScript files.
+Line 39, Col 58: Type annotations can only be used in TypeScript files.
+Line 58, Col 34: Type annotations can only be used in TypeScript files.
+Line 58, Col 59: Type annotations can only be used in TypeScript files.
+Line 58, Col 87: Type annotations can only be used in TypeScript files.
+Line 58, Col 96: Type annotations can only be used in TypeScript files.
+Line 63, Col 33: Type annotations can only be used in TypeScript files.
+[OUTPUT_LIKELY_TRUNCATED] The output is < 80% of original length and syntactically invalid. The model likely hit its output token limit.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on patch_alignment.js.
