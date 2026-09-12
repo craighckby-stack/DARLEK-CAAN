@@ -21,7 +21,9 @@ interface GitHubBlobResponse {
   encoding?: string;
 }
 
-// Safe base64 decoding supporting newlines and multi-byte UTF-8
+/**
+ * Safely decodes a base64 string supporting newlines and multi-byte UTF-8 character encodings.
+ */
 function safeBase64Decode(base64Str: string): string {
   try {
     const clean = base64Str.replace(/\s+/g, '');
@@ -48,14 +50,14 @@ export function useGithubScanner() {
   const [statusMessage, setStatusMessage] = useState('');
   const abortController = useRef<AbortController | null>(null);
 
-  // Stats
+  // Scan Metrics
   const [filesScanned, setFilesScanned] = useState(0);
   const [filesSkipped, setFilesSkipped] = useState(0);
   const [scanDuration, setScanDuration] = useState(0);
   const startTime = useRef<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Live timer effect during scan
+  // Live timer effect during scan operations
   useEffect(() => {
     if (isScanning) {
       timerRef.current = setInterval(() => {
@@ -85,7 +87,7 @@ export function useGithubScanner() {
     startTime.current = Date.now();
     
     abortController.current = new AbortController();
-    const signal = abortController.current.signal;
+    const { signal } = abortController.current;
 
     try {
       let cleanToken = (token || '').trim();
@@ -133,7 +135,6 @@ export function useGithubScanner() {
       let treeSha = '';
       let effectiveBranch = initialBranch || 'main';
 
-      // Candidate list of branch names to check
       const candidates = [
         initialBranch,
         'main',
@@ -162,8 +163,7 @@ export function useGithubScanner() {
             break;
           } else {
             lastErrorStatus = commitRes.status;
-            const errBody = await commitRes.text();
-            lastErrorMessage = errBody;
+            lastErrorMessage = await commitRes.text();
           }
         } catch (err: unknown) {
           if (err instanceof Error && err.name === 'AbortError') throw err;
@@ -194,8 +194,7 @@ export function useGithubScanner() {
             }
           } else {
             lastErrorStatus = repoMetaRes.status;
-            const errBody = await repoMetaRes.text();
-            lastErrorMessage = errBody;
+            lastErrorMessage = await repoMetaRes.text();
           }
         } catch (err: unknown) {
           if (err instanceof Error && err.name === 'AbortError') throw err;
@@ -216,7 +215,6 @@ export function useGithubScanner() {
               effectiveBranch = firstBranch.name;
               commitSha = firstBranch.commit?.sha;
               if (commitSha) {
-                // Fetch commit to get tree SHA
                 const cRes = await fetch(
                   `https://api.github.com/repos/${cleanOwner}/${cleanRepo}/commits/${encodeURIComponent(commitSha)}`,
                   { headers, signal }
@@ -234,7 +232,7 @@ export function useGithubScanner() {
       }
 
       // Strategy 4: Fallback unauthenticated check for public repos if token was rejected
-      if ((!commitSha || !treeSha) && cleanToken && (lastErrorStatus === 404 || lastErrorStatus === 401 || lastErrorStatus === 403)) {
+      if ((!commitSha || !treeSha) && cleanToken && [404, 401, 403].includes(lastErrorStatus ?? 0)) {
         try {
           const unauthRes = await fetch(`https://api.github.com/repos/${cleanOwner}/${cleanRepo}`, {
             headers: { Accept: 'application/vnd.github.v3+json' },
@@ -252,7 +250,6 @@ export function useGithubScanner() {
               commitSha = ucData.sha;
               treeSha = ucData.commit?.tree?.sha || ucData.sha;
               effectiveBranch = defBranch;
-              // Clear Authorization header since token was rejected but public repo access works
               delete headers.Authorization;
             }
           }
@@ -319,12 +316,11 @@ export function useGithubScanner() {
         return;
       }
 
-      const CONCURRENCY = 4; // Safe concurrency to prevent triggering GitHub secondary rate limits
+      const CONCURRENCY = 4;
       const MAX_FILE_SIZE = 6 * 1024 * 1024; // 6MB cap
       let completed = 0;
       const allFindings: ScanResult[] = [];
 
-      // Process with cooperative event-loop yields
       for (let i = 0; i < scanQueue.length; i += CONCURRENCY) {
         if (signal.aborted) break;
 
@@ -343,7 +339,6 @@ export function useGithubScanner() {
 
             const res = await fetch(file.url, { headers, signal });
 
-            // Handle rate limit detection
             const remaining = res.headers.get('X-RateLimit-Remaining');
             const reset = res.headers.get('X-RateLimit-Reset');
             if (res.status === 403 || res.status === 429 || (remaining && parseInt(remaining, 10) < 3)) {
@@ -386,17 +381,18 @@ export function useGithubScanner() {
           }
         }));
 
-        // Flush findings update to state
         setResults([...allFindings]);
-
-        // Non-blocking yield to browser event loop to guarantee screen never freezes
         await new Promise((resolve) => setTimeout(resolve, 30));
       }
 
       setScanDuration(Math.floor((Date.now() - startTime.current) / 1000));
       setIsScanning(false);
       setCurrentFile('');
-      setStatusMessage(allFindings.length === 0 ? 'Scan completed. No sensitive secrets or PII detected.' : `Scan complete: ${allFindings.length} files with findings.`);
+      setStatusMessage(
+        allFindings.length === 0
+          ? 'Scan completed. No sensitive secrets or PII detected.'
+          : `Scan complete: ${allFindings.length} files with findings.`
+      );
 
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== 'AbortError') {
