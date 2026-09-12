@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, JSX } from 'react';
 import { sanitizeContent, Finding, SENSITIVE_PATTERNS } from '@/lib/scanner';
 import { Shield, Sparkles, Copy, Check, Download, AlertTriangle, FileCode, Trash2 } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
@@ -66,7 +66,7 @@ const CONFIDENCE_STYLES: Record<string, string> = {
   low: 'bg-cyan-950/60 text-cyan-400 border-cyan-500/30'
 };
 
-export default function SnippetScanner() {
+export default function SnippetScanner(): JSX.Element {
   const [inputCode, setInputCode] = useState<string>(SAMPLE_SNIPPETS[0].code);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -89,7 +89,7 @@ export default function SnippetScanner() {
     URL.revokeObjectURL(url);
   }, [sanitized]);
 
-  const renderSeverityBadge = (severity: string) => {
+  const renderSeverityBadge = (severity: string): JSX.Element => {
     const styleClass = SEVERITY_STYLES[severity] || SEVERITY_STYLES.Default;
     return (
       <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${styleClass}`}>
@@ -98,7 +98,7 @@ export default function SnippetScanner() {
     );
   };
 
-  const renderConfidenceBadge = (confidence: string) => {
+  const renderConfidenceBadge = (confidence: string): JSX.Element | null => {
     const styleClass = CONFIDENCE_STYLES[confidence];
     if (!styleClass) return null;
     return (
@@ -262,7 +262,7 @@ export default function SnippetScanner() {
           </div>
         ) : (
           <div className="divide-y divide-neutral-900 max-h-[300px] overflow-y-auto">
-            {findings.map((finding, idx) => (
+            {findings.map((finding: Finding, idx: number) => (
               <div
                 key={idx}
                 className="p-3 hover:bg-neutral-900/40 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs"
