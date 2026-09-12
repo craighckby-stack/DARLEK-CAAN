@@ -422,3 +422,11 @@ Line 75, Col 1: Decorators are not valid here.
 Line 65, Col 1: Unexpected closing delimiter '}' with no matching opening pair.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on firestore.rules.
+
+### ❌ [2026-09-12] src/components/ui/sidebar.tsx `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 482, Col 8: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/ui/sidebar.tsx.
