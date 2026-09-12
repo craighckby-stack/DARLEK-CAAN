@@ -143,15 +143,15 @@ export const ALL_SUPPORTED_LANGUAGES: readonly LanguageOption[] = Object.freeze(
   { id: 'welsh', name: 'Welsh', nativeName: 'Cymraeg', serviceId: 'cy' },
   { id: 'yiddish', name: 'Yiddish', nativeName: 'ייִדיש', serviceId: 'yi' },
   { id: 'yoruba', name: 'Yoruba', nativeName: 'Yorùbá', serviceId: 'yo' },
-]) as readonly LanguageOption[];
+]);
 
 // Internal storage key constant to eliminate magic strings and optimize memory lookup
 const STORAGE_KEY_LANGUAGE = 'darlek_cann_language';
 const MAX_LANG_ID_LENGTH = 64;
 
 interface WindowTranslate {
-  translate?: {
-    changeLanguage(langId: string): void;
+  readonly translate?: {
+    readonly changeLanguage: (langId: string) => void;
   };
 }
 
