@@ -1,4 +1,4 @@
-# DARLEK CANN v3.2: Autonomous Evolution Protocol
+# DARLEK CAAN v3.2: Autonomous Evolution Protocol
 
 > **CRITICAL SECURITY DIRECTIVE:** This protocol governs automated filesystem state mutation, GitHub API payload ingestion, and dynamic runtime component integration. Improper configuration or boundary enforcement failure can lead to severe DOM-based Cross-Site Scripting (XSS), state desynchronization, or unauthorized code execution. All mutations must strictly satisfy structural schema verification and cryptographic integrity checks prior to dispatch.
 
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-The **Autonomous Evolution Protocol (v3.2)** defines the structural framework for dynamic runtime mutation and self-refactoring across the **DARLEK CANN** ecosystem. Working in tandem with the *GitHub API Integration Module*, the protocol ingests verified repository states, calculates AST delta transformations, and safely injects generated UI components via idempotent marker boundaries (`DARLEK_UI_START` / `DARLEK_UI_END`). 
+The **Autonomous Evolution Protocol (v3.2)** defines the structural framework for dynamic runtime mutation and self-refactoring across the **DARLEK CAAN** ecosystem. Working in tandem with the *GitHub API Integration Module*, the protocol ingests verified repository states, calculates AST delta transformations, and safely injects generated UI components via idempotent marker boundaries (`DARLEK_UI_START` / `DARLEK_UI_END`).
 
 This document details integration schemas, state verification workflows, strict security boundaries, and reference TypeScript runtime interfaces.
 
@@ -25,7 +25,7 @@ This document details integration schemas, state verification workflows, strict 
 
 ## Architectural Blueprint
 
-The Evolution Protocol operates as the dynamic mutation phase of the DARLEK CANN self-refactoring pipeline:
+The Evolution Protocol operates as the dynamic mutation phase of the DARLEK CAAN self-refactoring pipeline:
 
 ```
 [ GitHub REST API v3 ]
@@ -54,16 +54,15 @@ By decoupling target state fetching (via the GitHub API module) from the local t
 
 ## Integration Schema & Marker Governance
 
-| Parameter | Specification |
-| :--- | :--- |
-| **Primary Target File** | `src/App.tsx` |
-| **Boundary Markers** | `// DARLEK_UI_START` and `// DARLEK_UI_END` |
-| **Backup Path** | `.evolve_backups/` (POSIX Mode `0600`) |
-| **Timeout Protection** | 15,000 ms limit for upstream state retrieval |
-| **State Tracking** | Git Blob SHA matching + Base64 content decoding |
-| **Mutation Engine** | Idempotent AST/Regex Boundary Replacement |
-
----
+| Parameter               | Specification                                   |
+| :---------------------- | :---------------------------------------------- |
+| **Primary Target File** | `src/App.tsx`                                   |
+| **Boundary Markers**   | `// DARLEK_UI_START` and `// DARLEK_UI_END`     |
+| **Backup Path**         | `.evolve_backups/` (POSIX Mode `0600`)          |
+| **Timeout Protection** | 15,000 ms limit for upstream state retrieval    |
+| **State Tracking**      | Git Blob SHA matching + Base64 content decoding |
+| **Mutation Engine**     | Idempotent AST/Regex Boundary Replacement       |
+-
 
 ## Autonomous Execution Lifecycle
 
@@ -88,10 +87,10 @@ By decoupling target state fetching (via the GitHub API module) from the local t
 
 ## Vulnerability Disclosure Protocol
 
-Security vulnerabilities regarding dynamic runtime injection or filesystem mutation within the DARLEK CANN ecosystem must follow standard coordinated disclosure:
+Security vulnerabilities regarding dynamic runtime injection or filesystem mutation within the DARLEK CAAN ecosystem must follow standard coordinated disclosure:
 
 1. **Private Reporting Only**: Do not open public GitHub issues or publicly disclose reproduction scripts.
-2. **Direct Incident Vector**: Transmit report payloads directly to the designated DARLEK CANN Security Team.
+2. **Direct Incident Vector**: Transmit report payloads directly to the designated DARLEK CAAN Security Team.
 3. **Payload Trace & PoC**: Include target Git SHA, AST output snippets, and concrete steps to reproduce.
 4. **Validation Grace Period**: Allow a minimum 90-day window for team validation, patch compilation, and emergency protocol deployment.
 
@@ -171,3 +170,4 @@ export function RenderDarlekUI(props: EvolutionWrapperProps): JSX.Element {
   );
 }
 // DARLEK_UI_END
+```
