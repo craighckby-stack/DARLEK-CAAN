@@ -168,23 +168,25 @@
     will-change: opacity, box-shadow;
   }
 
-  @keyframes pulse-cyan-anim {
-    0%, 100% { opacity: 1; box-shadow: 0 0 4px #00ffcc; }
-    50% { opacity: 0.4; box-shadow: 0 0 10px #00ffcc; }
+  @keyframes pulse-white-anim {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px #ffffff; }
+    50% { opacity: 0.4; box-shadow: 0 0 10px #ffffff; }
   }
 
+  .pulse-white,
   .pulse-cyan {
-    animation: pulse-cyan-anim 2s infinite ease-in-out;
+    animation: pulse-white-anim 2s infinite ease-in-out;
     will-change: opacity, box-shadow;
   }
 
-  @keyframes pulse-gold-anim {
-    0%, 100% { opacity: 1; box-shadow: 0 0 4px #ffaa00; }
-    50% { opacity: 0.4; box-shadow: 0 0 10px #ffaa00; }
+  @keyframes pulse-red-anim {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px #ff2020; }
+    50% { opacity: 0.4; box-shadow: 0 0 10px #ff2020; }
   }
 
+  .pulse-red,
   .pulse-gold {
-    animation: pulse-gold-anim 2s infinite ease-in-out;
+    animation: pulse-red-anim 2s infinite ease-in-out;
     will-change: opacity, box-shadow;
   }
 
@@ -255,7 +257,7 @@
     position: absolute;
     inset: 8px;
     border: 2px solid transparent;
-    border-bottom-color: #ffaa00;
+    border-bottom-color: #ffffff;
     border-radius: 50%;
     animation: spin-counter 1.2s linear infinite;
   }
@@ -264,7 +266,7 @@
     position: absolute;
     inset: 16px;
     border: 2px solid transparent;
-    border-left-color: #00ffcc;
+    border-left-color: #ff2020;
     border-radius: 50%;
     animation: spin-clockwise 0.8s linear infinite;
   }

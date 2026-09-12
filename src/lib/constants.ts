@@ -7,22 +7,26 @@
 
 export const COLORS = {
   dalekRed: '#ff2020',
-  pureBlack: '#0d0d0d',
-  gold: '#ffaa00',
-  cyan: '#00ffcc',
-  purple: '#cc00ff',
-  electricBlue: '#0066ff',
+  brightRed: '#ff4444',
+  pureBlack: '#0a0a0a',
+  pureWhite: '#ffffff',
+  offWhite: '#f5f5f5',
+  silver: '#d1d5db',
+  gold: '#ff3333',
+  cyan: '#ffffff',
+  purple: '#ff2020',
+  electricBlue: '#e5e7eb',
   darkRed: '#660000',
   darkestRed: '#110000',
-  darkPanel: '#181818',
-  darkerPanel: '#141414',
-  panelBorder: '#2a2a2a',
-  panelBg: 'rgba(13,13,13,0.98)',
-  redGlow: 'rgba(255, 32, 32, 0.15)',
-  cyanGlow: 'rgba(0, 255, 204, 0.15)',
-  textMuted: '#c0c0c0',
-  textDim: '#dddddd',
-  green: '#00cc44',
+  darkPanel: '#141414',
+  darkerPanel: '#0a0a0a',
+  panelBorder: '#262626',
+  panelBg: 'rgba(10,10,10,0.98)',
+  redGlow: 'rgba(255, 32, 32, 0.20)',
+  cyanGlow: 'rgba(255, 255, 255, 0.15)',
+  textMuted: '#9ca3af',
+  textDim: '#d1d5db',
+  green: '#ffffff',
 } as const;
 
 export type ColorKey = keyof typeof COLORS;
@@ -103,8 +107,8 @@ export const SATURATION_THRESHOLDS = {
 } as const satisfies Record<string, ThresholdConfig>;
 
 export const HEALTH_STATUS_COLORS = {
-  healthy: COLORS.cyan,
-  warning: COLORS.gold,
+  healthy: COLORS.pureWhite,
+  warning: COLORS.brightRed,
   critical: COLORS.dalekRed,
 } as const;
 
@@ -122,14 +126,14 @@ export const LOG_TYPE_ICONS = {
 export type LogType = keyof typeof LOG_TYPE_ICONS;
 
 export const LOG_TYPE_COLORS: Record<LogType, ColorValue> = {
-  SCAN: COLORS.cyan,
-  MUTATE: COLORS.purple,
-  APPROVE: COLORS.green,
+  SCAN: COLORS.pureWhite,
+  MUTATE: COLORS.dalekRed,
+  APPROVE: COLORS.pureWhite,
   REJECT: COLORS.dalekRed,
-  ERROR: COLORS.dalekRed,
-  HEALTH: COLORS.gold,
-  SYSTEM: COLORS.cyan,
-  CONNECT: COLORS.gold,
+  ERROR: COLORS.brightRed,
+  HEALTH: COLORS.silver,
+  SYSTEM: COLORS.pureWhite,
+  CONNECT: COLORS.brightRed,
 } as const;
 
 export interface DebateAgent {
@@ -141,18 +145,18 @@ export interface DebateAgent {
 }
 
 export const DEFAULT_DEBATE_AGENTS: readonly DebateAgent[] = [
-  { id: 'archivist', name: 'ARCHIVIST', status: 'active', color: COLORS.gold, icon: '\u25C9' },
+  { id: 'archivist', name: 'ARCHIVIST', status: 'active', color: COLORS.pureWhite, icon: '\u25C9' },
   { id: 'security', name: 'SECURITY', status: 'active', color: COLORS.dalekRed, icon: '\u25C9' },
-  { id: 'pragmatist', name: 'PRAGMATIST', status: 'active', color: COLORS.cyan, icon: '\u25C9' },
-  { id: 'code_as_law', name: 'CODE-AS-LAW', status: 'active', color: COLORS.purple, icon: '\u25C9' },
-  { id: 'algorithmic_determinism', name: 'ALGORITHMIC DETERMINISM', status: 'active', color: COLORS.electricBlue, icon: '\u25C9' },
-  { id: 'open_source_altruism', name: 'OPEN-SOURCE ALTRUISM', status: 'active', color: COLORS.green, icon: '\u25C9' },
-  { id: 'software_as_capital', name: 'SOFTWARE-AS-CAPITAL', status: 'active', color: COLORS.gold, icon: '\u25C9' },
-  { id: 'tech_solutionism', name: 'TECH-SOLUTIONISM', status: 'active', color: COLORS.cyan, icon: '\u25C9' },
-  { id: 'human_in_the_loop_ethics', name: 'HUMAN-IN-THE-LOOP ETHICS', status: 'active', color: COLORS.purple, icon: '\u25C9' },
-  { id: 'binary_logic_absolutism', name: 'BINARY-LOGIC ABSOLUTISM', status: 'active', color: COLORS.electricBlue, icon: '\u25C9' },
-  { id: 'cybernetic_cognitivism', name: 'CYBERNETIC COGNITIVISM', status: 'active', color: COLORS.cyan, icon: '\u25C9' },
-  { id: 'temporal_chronology', name: 'TEMPORAL CHRONOLOGY', status: 'active', color: COLORS.gold, icon: '\u25C9' },
+  { id: 'pragmatist', name: 'PRAGMATIST', status: 'active', color: COLORS.silver, icon: '\u25C9' },
+  { id: 'code_as_law', name: 'CODE-AS-LAW', status: 'active', color: COLORS.brightRed, icon: '\u25C9' },
+  { id: 'algorithmic_determinism', name: 'ALGORITHMIC DETERMINISM', status: 'active', color: COLORS.pureWhite, icon: '\u25C9' },
+  { id: 'open_source_altruism', name: 'OPEN-SOURCE ALTRUISM', status: 'active', color: COLORS.silver, icon: '\u25C9' },
+  { id: 'software_as_capital', name: 'SOFTWARE-AS-CAPITAL', status: 'active', color: COLORS.dalekRed, icon: '\u25C9' },
+  { id: 'tech_solutionism', name: 'TECH-SOLUTIONISM', status: 'active', color: COLORS.pureWhite, icon: '\u25C9' },
+  { id: 'human_in_the_loop_ethics', name: 'HUMAN-IN-THE-LOOP ETHICS', status: 'active', color: COLORS.brightRed, icon: '\u25C9' },
+  { id: 'binary_logic_absolutism', name: 'BINARY-LOGIC ABSOLUTISM', status: 'active', color: COLORS.silver, icon: '\u25C9' },
+  { id: 'cybernetic_cognitivism', name: 'CYBERNETIC COGNITIVISM', status: 'active', color: COLORS.pureWhite, icon: '\u25C9' },
+  { id: 'temporal_chronology', name: 'TEMPORAL CHRONOLOGY', status: 'active', color: COLORS.dalekRed, icon: '\u25C9' },
 ] as const;
 
 export interface OrchestraAgent {
@@ -167,7 +171,7 @@ export const ORCHESTRA_AGENTS: readonly OrchestraAgent[] = [
   {
     id: 'architect',
     name: 'ARCHITECT',
-    color: COLORS.cyan,
+    color: COLORS.pureWhite,
     icon: '◇',
     systemInstruction: `[ROLE] You are an Agent Orchestra member in the AHI framework.
 [DIRECTIVE] Analyze the provided ENCYCLOPEDIA_JSON. Respond according to your assigned profile. Be direct, precise, and concise. No conversational padding.
@@ -178,7 +182,7 @@ Identify which stubs have the strongest historical lineage and are ready for syn
   {
     id: 'disruptor',
     name: 'DISRUPTOR',
-    color: COLORS.purple,
+    color: COLORS.brightRed,
     icon: '◆',
     systemInstruction: `[ROLE] You are an Agent Orchestra member in the AHI framework.
 [DIRECTIVE] Analyze the provided ENCYCLOPEDIA_JSON. Respond according to your assigned profile. Be direct, precise, and concise. No conversational padding.

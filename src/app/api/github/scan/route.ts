@@ -118,6 +118,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: GITHUB_API_VERSION_HEADER,
+        'User-Agent': 'Dalek-Cognition-Architecture/1.0',
       },
     });
 

@@ -29,6 +29,7 @@ interface GitHubHeaders extends Record<string, string> {
   Authorization: string;
   Accept: string;
   'Content-Type': string;
+  'User-Agent': string;
 }
 
 const GLOBAL_HEADERS_CACHE = new Map<string, GitHubHeaders>();
@@ -43,6 +44,7 @@ function createGitHubHeaders(token: string): GitHubHeaders {
       Authorization: `Bearer ${token}`,
       Accept: GITHUB_API_VERSION,
       'Content-Type': 'application/json',
+      'User-Agent': 'Dalek-Cognition-Architecture/1.0',
     };
     GLOBAL_HEADERS_CACHE.set(token, headers);
   }

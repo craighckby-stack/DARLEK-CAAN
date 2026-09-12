@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
           headers: {
             'Authorization': `Bearer ${effectiveKey}`,
             'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Dalek-Cognition-Architecture/1.0',
           },
         });
         if (res.ok) {

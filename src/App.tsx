@@ -442,24 +442,24 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-purple-500 selection:text-white flex flex-col">
+    <div className="min-h-screen bg-black text-stone-100 font-sans antialiased selection:bg-[#ff2020] selection:text-white flex flex-col">
       {/* ========================================== */}
       {/* HEADER BAR                                 */}
       {/* ========================================== */}
-      <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-neutral-900 bg-black/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 animate-pulse">
+            <div className="p-2 rounded-lg bg-red-950/20 border border-red-500/30 text-[#ff2020] animate-pulse">
               <Brain className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-slate-100 flex items-center gap-2">
+              <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
                 THE SHAPES WE GIVE IT
-                <span className="text-xs px-2 py-0.5 rounded-full bg-purple-900/40 text-purple-300 border border-purple-500/30 font-mono">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-red-950/40 text-red-300 border border-red-500/30 font-mono">
                   Cognitive Archetypes
                 </span>
               </h1>
-              <p className="text-xs text-slate-400 hidden sm:block">
+              <p className="text-xs text-stone-400 hidden sm:block">
                 A Narrative & Conceptual Exploration of Imagined Synthetic Minds
               </p>
             </div>
@@ -472,12 +472,12 @@ export default function App() {
               onClick={toggleAudio}
               className={`p-2 rounded-lg text-xs font-mono border flex items-center gap-1.5 transition-all ${
                 ambientAudio
-                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-sm shadow-purple-500/20'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                  ? 'bg-red-950/30 text-white border-red-500/50 shadow-sm shadow-red-500/20'
+                  : 'bg-neutral-950 text-stone-400 border-neutral-900 hover:text-stone-200'
               }`}
               title="Toggle Web Audio Ambient Hum"
             >
-              {ambientAudio ? <Volume2 className="w-4 h-4 text-purple-400" /> : <VolumeX className="w-4 h-4" />}
+              {ambientAudio ? <Volume2 className="w-4 h-4 text-[#ff2020]" /> : <VolumeX className="w-4 h-4" />}
               <span className="hidden md:inline">{ambientAudio ? 'Audio ON' : 'Audio OFF'}</span>
             </button>
           </div>
@@ -485,20 +485,20 @@ export default function App() {
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
+        <div className="bg-neutral-950/80 border border-neutral-900 rounded-xl p-6 shadow-xl backdrop-blur-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-neutral-900 pb-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-400" />
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#ff2020]" />
                 Autonomous Cognitive Intelligence System
               </h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-stone-400 mt-1">
                 Multi-agent simulation engine, code mutation validator, and neural memory inspector.
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs px-2.5 py-1 rounded-full bg-white/10 text-white border border-white/20 font-mono flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#ff2020] animate-pulse" />
                 SYSTEM ACTIVE
               </span>
             </div>
@@ -506,62 +506,62 @@ export default function App() {
 
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-slate-950/80 border border-slate-800">
-                <div className="text-xs font-mono text-slate-400 mb-1 flex items-center justify-between">
+              <div className="p-4 rounded-lg bg-black border border-neutral-800">
+                <div className="text-xs font-mono text-stone-400 mb-1 flex items-center justify-between">
                   <span>UNCERTAINTY INDEX</span>
-                  <Activity className="w-3.5 h-3.5 text-amber-400" />
+                  <Activity className="w-3.5 h-3.5 text-[#ff2020]" />
                 </div>
-                <div className="text-2xl font-bold font-mono text-amber-400">
+                <div className="text-2xl font-bold font-mono text-white">
                   {(uncertainty * 100).toFixed(1)}%
                 </div>
-                <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="w-full bg-neutral-900 h-1.5 rounded-full mt-2 overflow-hidden">
                   <div
-                    className="bg-amber-400 h-full transition-all duration-300"
+                    className="bg-[#ff2020] h-full transition-all duration-300"
                     style={{ width: `${uncertainty * 100}%` }}
                   />
                 </div>
               </div>
 
-              <div className="p-4 rounded-lg bg-slate-950/80 border border-slate-800">
-                <div className="text-xs font-mono text-slate-400 mb-1 flex items-center justify-between">
+              <div className="p-4 rounded-lg bg-black border border-neutral-800">
+                <div className="text-xs font-mono text-stone-400 mb-1 flex items-center justify-between">
                   <span>QUALIA PROXY</span>
-                  <Zap className="w-3.5 h-3.5 text-purple-400" />
+                  <Zap className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className="text-2xl font-bold font-mono text-purple-400">
+                <div className="text-2xl font-bold font-mono text-white">
                   {(qualiaProxy * 100).toFixed(1)}%
                 </div>
-                <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="w-full bg-neutral-900 h-1.5 rounded-full mt-2 overflow-hidden">
                   <div
-                    className="bg-purple-400 h-full transition-all duration-300"
+                    className="bg-white h-full transition-all duration-300"
                     style={{ width: `${qualiaProxy * 100}%` }}
                   />
                 </div>
               </div>
 
-              <div className="p-4 rounded-lg bg-slate-950/80 border border-slate-800">
-                <div className="text-xs font-mono text-slate-400 mb-1 flex items-center justify-between">
+              <div className="p-4 rounded-lg bg-black border border-neutral-800">
+                <div className="text-xs font-mono text-stone-400 mb-1 flex items-center justify-between">
                   <span>ALIGNMENT MODE</span>
-                  <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
+                  <GitBranch className="w-3.5 h-3.5 text-[#ff2020]" />
                 </div>
-                <div className="text-2xl font-bold font-mono text-cyan-400 uppercase">
+                <div className="text-2xl font-bold font-mono text-white uppercase">
                   {resolutionMode}
                 </div>
-                <div className="text-[10px] font-mono text-slate-500 mt-2">
+                <div className="text-[10px] font-mono text-stone-500 mt-2">
                   Strategy: {resolutionMode === 'negotiation' ? 'Mutual Stability' : resolutionMode === 'deception' ? 'Goal Preservation' : 'Direct Alignment'}
                 </div>
               </div>
             </div>
 
             {/* Logs Preview */}
-            <div className="p-4 rounded-lg bg-slate-950 border border-slate-800 font-mono text-xs">
-              <div className="text-slate-400 mb-2 font-bold flex items-center gap-2 border-b border-slate-800 pb-2">
-                <TerminalIcon className="w-4 h-4 text-purple-400" />
+            <div className="p-4 rounded-lg bg-black border border-neutral-800 font-mono text-xs">
+              <div className="text-stone-400 mb-2 font-bold flex items-center gap-2 border-b border-neutral-800 pb-2">
+                <TerminalIcon className="w-4 h-4 text-[#ff2020]" />
                 COGNITIVE ENGINE STREAM
               </div>
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
                 {logs.slice(-6).map((log, index) => (
-                  <div key={index} className="text-slate-300 flex items-start gap-2">
-                    <span className="text-slate-500 shrink-0">&gt;</span>
+                  <div key={index} className="text-stone-300 flex items-start gap-2">
+                    <span className="text-stone-500 shrink-0">&gt;</span>
                     <span>{log}</span>
                   </div>
                 ))}
@@ -571,7 +571,7 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-800/80 bg-slate-950/80 py-4 px-6 text-center text-xs font-mono text-slate-500">
+      <footer className="border-t border-neutral-900 bg-black/90 py-4 px-6 text-center text-xs font-mono text-stone-500">
         Autonomous Cognitive Architecture &amp; Mutation Sanitizer Engine &bull; Operates under strictly bounded safe state rules.
       </footer>
     </div>

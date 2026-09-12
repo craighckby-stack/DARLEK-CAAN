@@ -63,6 +63,7 @@ function createGitHubHeaders(token: string, acceptType: 'json' | 'raw'): Record<
   return {
     Authorization: `Bearer ${token}`,
     Accept: acceptType === 'json' ? 'application/vnd.github.v3+json' : 'application/vnd.github.v3.raw',
+    'User-Agent': 'Dalek-Cognition-Architecture/1.0',
   };
 }
 

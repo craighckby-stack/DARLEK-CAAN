@@ -200,13 +200,13 @@ export default function ChatPanel({
         <div className="space-y-3 p-4 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <GitBranch size={14} style={{ color: COLORS.gold }} />
+              <GitBranch size={14} style={{ color: COLORS.dalekRed }} />
               <span
                 style={{
                   fontFamily: 'var(--font-orbitron), sans-serif',
                   fontSize: '10px',
                   letterSpacing: '0.1em',
-                  color: COLORS.gold,
+                  color: COLORS.pureWhite,
                 }}
               >
                 SELECT BRANCH
@@ -217,9 +217,9 @@ export default function ChatPanel({
               disabled={branchesLoading}
               className="flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-all"
               style={{
-                color: COLORS.cyan,
-                background: 'rgba(0, 255, 204, 0.05)',
-                border: '1px solid rgba(0, 255, 204, 0.15)',
+                color: COLORS.pureWhite,
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
                 cursor: branchesLoading ? 'not-allowed' : 'pointer',
                 opacity: branchesLoading ? 0.5 : 1,
               }}
@@ -247,8 +247,8 @@ export default function ChatPanel({
                     onClick={() => handleBranchSelect(branch.name)}
                     className="w-full text-left px-3 py-2.5 rounded flex items-center justify-between group transition-all"
                     style={{
-                      background: isSelected ? 'rgba(185, 28, 28, 0.15)' : 'rgba(20, 10, 10, 0.6)',
-                      border: `1px solid ${isSelected ? 'rgba(185, 28, 28, 0.4)' : 'rgba(185, 28, 28, 0.1)'}`,
+                      background: isSelected ? 'rgba(255, 32, 32, 0.15)' : 'rgba(20, 10, 10, 0.6)',
+                      border: `1px solid ${isSelected ? 'rgba(255, 32, 32, 0.4)' : 'rgba(255, 32, 32, 0.1)'}`,
                       cursor: 'pointer',
                     }}
                   >
@@ -256,7 +256,7 @@ export default function ChatPanel({
                       <GitBranch
                         size={12}
                         style={{
-                          color: branch.default ? COLORS.gold : isSelected ? COLORS.dalekRed : COLORS.textMuted,
+                          color: branch.default ? COLORS.pureWhite : isSelected ? COLORS.dalekRed : COLORS.textMuted,
                         }}
                       />
                       <span
@@ -275,9 +275,9 @@ export default function ChatPanel({
                           fontFamily: 'var(--font-orbitron), sans-serif',
                           fontSize: '8px',
                           letterSpacing: '0.08em',
-                          color: COLORS.gold,
-                          background: 'rgba(212, 160, 23, 0.1)',
-                          border: '1px solid rgba(212, 160, 23, 0.2)',
+                          color: COLORS.pureWhite,
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
                           padding: '1px 6px',
                           borderRadius: '2px',
                         }}
@@ -292,8 +292,8 @@ export default function ChatPanel({
                           fontSize: '8px',
                           letterSpacing: '0.08em',
                           color: COLORS.dalekRed,
-                          background: 'rgba(185, 28, 28, 0.1)',
-                          border: '1px solid rgba(185, 28, 28, 0.2)',
+                          background: 'rgba(255, 32, 32, 0.1)',
+                          border: '1px solid rgba(255, 32, 32, 0.2)',
                           padding: '1px 6px',
                           borderRadius: '2px',
                         }}
@@ -358,9 +358,9 @@ export default function ChatPanel({
           <div
             className="px-3 py-2 rounded text-xs mb-2"
             style={{
-              color: COLORS.cyan,
-              background: 'rgba(0, 255, 204, 0.03)',
-              border: '1px solid rgba(0, 255, 204, 0.1)',
+              color: COLORS.pureWhite,
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
             }}
           >
             Dalek Brain Engine: ONLINE (built-in) | No external APIs
@@ -400,9 +400,9 @@ export default function ChatPanel({
             <div
               className="px-3 py-2 rounded text-xs"
               style={{
-                color: status === 'connected' ? COLORS.cyan : COLORS.dalekRed,
-                background: status === 'connected' ? 'rgba(0, 255, 204, 0.05)' : 'rgba(255, 32, 32, 0.05)',
-                border: `1px solid ${status === 'connected' ? 'rgba(0, 255, 204, 0.1)' : 'rgba(255, 32, 32, 0.1)'}`,
+                color: status === 'connected' ? COLORS.pureWhite : COLORS.dalekRed,
+                background: status === 'connected' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 32, 32, 0.06)',
+                border: `1px solid ${status === 'connected' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 32, 32, 0.15)'}`,
               }}
             >
               {getStatusText(status)} — GitHub {status === 'connected' ? 'connected.' : 'connection failed. Try again.'}
@@ -425,13 +425,13 @@ export default function ChatPanel({
         <div className="space-y-3 p-4 flex-shrink-0" style={{ borderTop: `1px solid ${COLORS.panelBorder}` }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Languages size={14} style={{ color: COLORS.cyan }} />
+              <Languages size={14} style={{ color: COLORS.dalekRed }} />
               <span
                 style={{
                   fontFamily: 'var(--font-orbitron), sans-serif',
                   fontSize: '10px',
                   letterSpacing: '0.1em',
-                  color: COLORS.cyan,
+                  color: COLORS.pureWhite,
                 }}
               >
                 INTERFACE DISPLAY LANGUAGE
@@ -442,9 +442,9 @@ export default function ChatPanel({
                 fontFamily: 'var(--font-orbitron), sans-serif',
                 fontSize: '8px',
                 letterSpacing: '0.08em',
-                color: COLORS.cyan,
-                background: 'rgba(0, 255, 204, 0.1)',
-                border: '1px solid rgba(0, 255, 204, 0.2)',
+                color: COLORS.pureWhite,
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 padding: '1px 6px',
                 borderRadius: '2px',
               }}

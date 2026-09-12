@@ -33,10 +33,16 @@ function prepareRequestHeaders(token: string, customHeaders?: Record<string, str
     ? new Headers(customHeaders) 
     : new Headers(customHeaders);
 
-  headers.set('Authorization', `Bearer ${token}`);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
   
   if (!headers.has('Accept')) {
     headers.set('Accept', DEFAULT_GITHUB_ACCEPT_HEADER);
+  }
+
+  if (!headers.has('User-Agent')) {
+    headers.set('User-Agent', 'Dalek-Cognition-Architecture/1.0');
   }
 
   return headers;

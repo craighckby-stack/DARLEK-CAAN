@@ -114,6 +114,7 @@ function sampleArray<T>(items: readonly T[], count: number): T[] {
 function buildGitHubHeaders(githubToken?: string): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
+    "User-Agent": "Dalek-Cognition-Architecture/1.0",
   };
   if (githubToken && githubToken.trim().length > 0) {
     headers['Authorization'] = `Bearer ${githubToken.trim()}`;

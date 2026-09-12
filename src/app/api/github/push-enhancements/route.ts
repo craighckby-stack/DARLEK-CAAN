@@ -78,6 +78,7 @@ function createGitHubHeaders(token: string): Record<string, string> {
     Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
+    'User-Agent': 'Dalek-Cognition-Architecture/1.0',
   };
 }
 
