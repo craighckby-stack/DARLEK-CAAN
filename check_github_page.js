@@ -48,69 +48,56 @@ function logError(label, message) {
  * @returns {URL | null}
  */
 function validateAndParseUrl(inputUrl) {
-  if (typeof inputUrl !== 'string' || !inputUrl || inputUrl.length > 2048) {
+  if (typeof inputUrl !== 'string' || !inputUrl.trim() || inputUrl.length > 2048) {
     return null;
   }
 
   try {
-    const parsed = new URL(inputUrl);
-    if (parsed.protocol !== 'https:') {
+    const parsedUrl = new URL(inputUrl);
+    if (parsedUrl.protocol !== 'https:') {
       return null;
     }
 
-    const isAllowedHost = NETWORK_CONFIG.ALLOWED_HOSTNAMES.some(
-      (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+    const isHostAllowed = NETWORK_CONFIG.ALLOWED_HOSTNAMES.some(
+      (allowedHost) => parsedUrl.hostname === allowedHost || parsedUrl.hostname.endsWith(`.${allowedHost}`)
     );
 
-    return isAllowedHost ? parsed : null;
+    return isHostAllowed ? parsedUrl : null;
   } catch {
     return null;
   }
 }
 
 /**
- * Performs low-overhead line extraction for preview generation without array allocation overhead.
+ * Extracts preview lines (head/tail) and structural line metrics from raw text content.
  * 
  * @param {string} data 
  * @param {number} lineLimit 
  * @returns {{ firstLines: string, lastLines: string, lineCount: number }}
  */
 function extractLineMetrics(data, lineLimit = NETWORK_CONFIG.PREVIEW_LINE_COUNT) {
-  const len = data.length;
-  if (len === 0) {
+  const totalLength = data.length;
+  if (totalLength === 0) {
     return { firstLines: '', lastLines: '', lineCount: 0 };
   }
 
-  let totalLines = 1;
-  let firstEndIndex = -1;
-
-  for (let i = 0; i < len; i++) {
-    if (data.charCodeAt(i) === 10) { // '\n'
-      if (totalLines === lineLimit) {
-        firstEndIndex = i;
-      }
-      totalLines++;
+  const newlineIndices = [];
+  for (let index = 0; index < totalLength; index++) {
+    if (data.charCodeAt(index) === 10) { // '\n'
+      newlineIndices.push(index);
     }
   }
 
-  const firstLines = firstEndIndex !== -1 ? data.slice(0, firstEndIndex) : data;
-  
-  let lastLines = data;
-  if (totalLines > lineLimit) {
-    const targetNewlineCount = totalLines - lineLimit;
-    let currentNewline = 0;
-    for (let i = 0; i < len; i++) {
-      if (data.charCodeAt(i) === 10) {
-        currentNewline++;
-        if (currentNewline === targetNewlineCount) {
-          lastLines = data.slice(i + 1);
-          break;
-        }
-      }
-    }
-  }
+  const lineCount = newlineIndices.length + 1;
+  const isTruncated = lineCount > lineLimit;
 
-  return { firstLines, lastLines, lineCount: totalLines };
+  const firstLinesEnd = isTruncated ? newlineIndices[lineLimit - 1] : totalLength;
+  const firstLines = data.slice(0, firstLinesEnd);
+
+  const lastLinesStart = isTruncated ? newlineIndices[lineCount - lineLimit - 1] + 1 : 0;
+  const lastLines = data.slice(lastLinesStart);
+
+  return { firstLines, lastLines, lineCount };
 }
 
 /**
@@ -165,7 +152,7 @@ async function checkPage(url, label) {
     }
 
     const contentLength = response.headers.get('content-length');
-    if (contentLength && parseInt(contentLength, 10) > NETWORK_CONFIG.MAX_RESPONSE_BYTES) {
+    if (contentLength && Number.parseInt(contentLength, 10) > NETWORK_CONFIG.MAX_RESPONSE_BYTES) {
       logError(label, 'Content-Length exceeds maximum allowed response threshold.');
       return null;
     }
