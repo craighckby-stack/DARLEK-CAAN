@@ -24,8 +24,8 @@ const INDICATOR_STYLES = "flex items-center justify-center text-current transiti
 const DEFAULT_CHECK_ICON = <CheckIcon className="size-3.5" />
 
 /**
- * Modernized Checkbox component utilizing Radix UI primitives and Tailwind CSS.
- * Optimized for readability, maintainability, and clean architectural separation.
+ * Checkbox component utilizing Radix UI primitives and Tailwind CSS.
+ * Structured for clarity, maintainability, and architectural separation.
  */
 const Checkbox = React.memo(
   React.forwardRef<
