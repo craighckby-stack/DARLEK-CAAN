@@ -184,8 +184,8 @@ function AgentConfigModal({
 // ─────────────────────────────────────────────
 
 function DiagnosticConsole({
-  logs,
-  visible,
+  logs = [],
+  visible = false,
 }: {
   logs: OrchestraDiagnosticLog[];
   visible: boolean;
@@ -245,7 +245,7 @@ function DiagnosticConsole({
         style={{ fontFamily: 'var(--font-share-tech-mono), monospace', fontSize: '10px', lineHeight: 1.4 }}
       >
         {logs.length === 0 && (
-          <div style={{ color: COLORS.textMuted, padding: '8px', textAlign: 'center' }}>
+          <div key="empty-log" style={{ color: COLORS.textMuted, padding: '8px', textAlign: 'center' }}>
             No diagnostic entries yet. Run the orchestra to generate logs.
           </div>
         )}
@@ -285,7 +285,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
   const [showDiagnostic, setShowDiagnostic] = useState(false);
 
   const [agentConfigs, setAgentConfigs] = useState<OrchestraAgentConfig[]>(
-    ORCHESTRA_AGENTS.map((a) => ({
+    (ORCHESTRA_AGENTS || []).map((a) => ({
       id: a.id,
       name: a.name,
       color: a.color,
@@ -295,7 +295,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
   );
 
   const [agents, setAgents] = useState<AgentState[]>(
-    ORCHESTRA_AGENTS.map((a) => ({
+    (ORCHESTRA_AGENTS || []).map((a) => ({
       id: a.id,
       name: a.name,
       color: a.color,
@@ -329,7 +329,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
   }, []);
 
   // ── Run orchestra ──
-  const runOrchestra = useCallback(async () => {
+  const runOrchestra = useCallback(async (): Promise<void> => {
     if (!topic.trim() || isRunning) return;
     setIsRunning(true);
 
@@ -396,7 +396,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
           );
         } else if (mode === 'debate' && data.turns) {
           // Debate: animate through turns
-          const turns: OrchestraDebateTurn[] = data.turns;
+          const turns: OrchestraDebateTurn[] = data.turns || [];
           for (let i = 0; i < turns.length; i++) {
             const turn = turns[i];
             // Brief delay between rounds for visual effect
@@ -405,7 +405,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
             setDebateTurns((prev) => [...prev, turn]);
 
             // Update agent states with latest response
-            for (const resp of turn.responses) {
+            for (const resp of (turn.responses || [])) {
               setAgents((prev) =>
                 prev.map((a) =>
                   a.id === resp.agentId
@@ -440,7 +440,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
   }, [topic, mode, rounds, apiKeys, agentConfigs, isRunning, addLog]);
 
   // ── Update agent config ──
-  const handleUpdateConfig = useCallback((idx: number, instruction: string) => {
+  const handleUpdateConfig = useCallback((idx: number, instruction: string): void => {
     setAgentConfigs((prev) =>
       prev.map((cfg, i) => (i === idx ? { ...cfg, systemInstruction: instruction } : cfg))
     );
@@ -575,7 +575,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
             ◉ AGENT STATUS
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {agents.map((agent) => (
+            {(agents || []).map((agent) => (
               <div
                 key={agent.id}
                 className="rounded-lg p-3 card-animate transition-all duration-300"
@@ -704,7 +704,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
                   DEBATE ROUNDS
                 </span>
                 <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((r) => (
+                  {[1, 2, 3, 4, 5].map((r: number) => (
                     <button
                       key={r}
                       onClick={() => setRounds(r)}
@@ -813,7 +813,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
               PARALLEL ANALYSIS OUTPUT
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {agents.map((agent) => (
+              {(agents || []).map((agent) => (
                 <div
                   key={agent.id}
                   className="dalek-panel rounded-lg overflow-hidden message-animate"
@@ -886,7 +886,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
               DEBATE TRANSCRIPT — {debateTurns.length}/{rounds} ROUNDS
             </div>
             <div className="space-y-4">
-              {debateTurns.map((turn) => (
+              {(debateTurns || []).map((turn) => (
                 <div key={turn.round} className="space-y-2">
                   {/* Round header */}
                   <div
@@ -903,7 +903,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
                     <div className="flex-1 h-px" style={{ background: `${COLORS.gold}20` }} />
                   </div>
                   {/* Agent responses */}
-                  {turn.responses.map((resp, idx) => {
+                  {(turn.responses || []).map((resp, idx) => {
                     const agentDef = agents.find((a) => a.id === resp.agentId);
                     return (
                       <div
@@ -970,7 +970,7 @@ export default function AgentOrchestra({ apiKeys, onClose }: AgentOrchestraProps
         )}
 
         {/* ── Empty State ── */}
-        {!isRunning && !agents.some((a) => a.response) && debateTurns.length === 0 && (
+        {!isRunning && !(agents || []).some((a) => a.response) && debateTurns.length === 0 && (
           <div className="px-4 pt-6 pb-8 text-center">
             <div style={{ fontFamily: 'var(--font-orbitron), sans-serif', fontSize: '10px', color: COLORS.textMuted, letterSpacing: '0.08em', marginBottom: '8px' }}>
               ORCHESTRA STANDBY
