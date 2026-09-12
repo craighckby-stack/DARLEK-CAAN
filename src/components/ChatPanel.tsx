@@ -25,6 +25,9 @@ interface ChatPanelProps {
   onFetchBranches: () => void;
 }
 
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB bounds check
+const MAX_INPUT_LENGTH = 10000;
+
 export default function ChatPanel({
   messages,
   onSendMessage,
@@ -69,6 +72,14 @@ export default function ChatPanel({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      alert('File size exceeds the 5MB safety limit.');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     setIsExtracting(true);
     try {
       const formData = new FormData();
@@ -82,25 +93,25 @@ export default function ChatPanel({
       const contentType = response.headers.get('content-type') || '';
       if (response.ok && contentType.includes('application/json')) {
         const extractedData = await response.json();
-        if (extractedData?.success && extractedData.text) {
-          setAttachedFile({ name: file.name, content: extractedData.text });
+        if (extractedData?.success && typeof extractedData.text === 'string') {
+          setAttachedFile({ name: file.name, content: extractedData.text.slice(0, MAX_INPUT_LENGTH) });
           return;
         }
       }
       
       const fallbackContent = await readFileAsText(file);
-      setAttachedFile({ name: file.name, content: fallbackContent });
+      setAttachedFile({ name: file.name, content: fallbackContent.slice(0, MAX_INPUT_LENGTH) });
     } catch (error) {
       console.error('File extraction failed:', error);
       const fallbackContent = await readFileAsText(file);
-      setAttachedFile({ name: file.name, content: fallbackContent });
+      setAttachedFile({ name: file.name, content: fallbackContent.slice(0, MAX_INPUT_LENGTH) });
     } finally {
       setIsExtracting(false);
     }
   };
 
   const handleSend = useCallback(() => {
-    const trimmedInput = input.trim();
+    const trimmedInput = input.trim().slice(0, MAX_INPUT_LENGTH);
     if ((trimmedInput || attachedFile) && !isLoading) {
       onSendMessage(trimmedInput, attachedFile ?? undefined);
       setInput('');
@@ -131,8 +142,9 @@ export default function ChatPanel({
   };
 
   const handleBranchSelect = useCallback((branchName: string) => {
-    onUpdateRepoConfig('branch', branchName);
-    onSendMessage(`branch: ${branchName}`);
+    const sanitizedBranch = branchName.trim().slice(0, 255);
+    onUpdateRepoConfig('branch', sanitizedBranch);
+    onSendMessage(`branch: ${sanitizedBranch}`);
   }, [onUpdateRepoConfig, onSendMessage]);
 
   const renderSetupInput = () => {
@@ -154,12 +166,14 @@ export default function ChatPanel({
             type="text"
             placeholder={setupStep.placeholder}
             defaultValue="craighckby-stack/DARLEK-CAAN-Cognitive-Engine"
+            maxLength={255}
             className="dalek-input w-full px-4 py-3 text-sm"
             style={{ unicodeBidi: 'normal', direction: 'ltr' }}
             onChange={(e) => {
-              const [owner = '', ...repoParts] = e.target.value.split('/');
-              onUpdateRepoConfig('owner', owner);
-              onUpdateRepoConfig('repo', repoParts.join('/'));
+              const val = e.target.value.slice(0, 255);
+              const [owner = '', ...repoParts] = val.split('/');
+              onUpdateRepoConfig('owner', owner.trim());
+              onUpdateRepoConfig('repo', repoParts.join('/').trim());
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleRepoSubmit();
@@ -307,17 +321,19 @@ export default function ChatPanel({
                 type="text"
                 placeholder="branch name..."
                 defaultValue="main"
+                maxLength={255}
                 className="dalek-input flex-1 px-3 py-2 text-xs"
                 style={{ unicodeBidi: 'normal', direction: 'ltr' }}
-                onChange={(e) => onUpdateRepoConfig('branch', e.target.value)}
+                onChange={(e) => onUpdateRepoConfig('branch', e.target.value.slice(0, 255))}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    onSendMessage(`branch: ${e.currentTarget.value || 'main'}`);
+                    const branchVal = e.currentTarget.value.trim().slice(0, 255) || 'main';
+                    onSendMessage(`branch: ${branchVal}`);
                   }
                 }}
               />
               <button
-                onClick={() => onSendMessage(`branch: ${systemState?.repoConfig?.branch || 'main'}`)}
+                onClick={() => onSendMessage(`branch: ${systemState?.repoConfig?.branch?.slice(0, 255) || 'main'}`)}
                 className="dalek-btn dalek-btn-primary px-3 py-2 text-xs"
               >
                 SET
@@ -349,10 +365,11 @@ export default function ChatPanel({
               dir="ltr"
               type="password"
               placeholder={setupStep.placeholder}
+              maxLength={512}
               className="dalek-input flex-1 px-4 py-3 text-sm"
               style={{ unicodeBidi: 'normal', direction: 'ltr' }}
               value={currentValue}
-              onChange={(e) => onUpdateKey('github', e.target.value)}
+              onChange={(e) => onUpdateKey('github', e.target.value.slice(0, 512))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && currentValue.trim()) {
                   onTestConnection('github', currentValue);
@@ -532,9 +549,10 @@ export default function ChatPanel({
                 dir="ltr"
                 type="password"
                 placeholder="AIza... (or leave blank for Dalek Brain)"
+                maxLength={512}
                 className="dalek-input flex-1 px-3 py-2 text-xs"
                 value={geminiKey}
-                onChange={(e) => onUpdateKey('gemini', e.target.value)}
+                onChange={(e) => onUpdateKey('gemini', e.target.value.slice(0, 512))}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleGeminiSubmit(e.currentTarget.value);
@@ -742,7 +760,8 @@ export default function ChatPanel({
               ref={textareaRef}
               dir="ltr"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              maxLength={MAX_INPUT_LENGTH}
+              onChange={(e) => setInput(e.target.value.slice(0, MAX_INPUT_LENGTH))}
               onFocus={() => {
                 setTimeout(() => {
                   if (textareaRef.current) {
