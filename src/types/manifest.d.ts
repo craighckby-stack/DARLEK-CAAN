@@ -1,7 +1,7 @@
 /**
  * @file src/types/manifest.d.ts
- * @module Darlek Caan
- * @description Sovereign type definitions for project manifests, enforcing deep readonly immutability and robust extensible literal structures with strict bounds.
+ * @module DarlekCaanManifest
+ * @description Sovereign type definitions for project manifests, enforcing strict readonly immutability and robust extensible literal structures with verified bounds.
  */
 
 // ============================================================================
