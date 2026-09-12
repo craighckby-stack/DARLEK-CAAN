@@ -32,3 +32,12 @@ Line 178, Col 55: Type annotations can only be used in TypeScript files.
 Line 178, Col 77: Type annotations can only be used in TypeScript files.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on compare.js.
+
+### ❌ [2026-09-12] .next_dev/types/app/api/brain/route.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 35, Col 12: Property declaration is missing its type annotation.
+[OUTPUT_LIKELY_TRUNCATED] The output is < 80% of original length and syntactically invalid. The model likely hit its output token limit.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on .next_dev/types/app/api/brain/route.ts.
