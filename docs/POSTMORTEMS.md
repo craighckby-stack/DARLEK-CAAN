@@ -871,3 +871,11 @@ Line 180, Col 8: Property declaration is missing its type annotation.
 Line 193, Col 8: Property declaration is missing its type annotation.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/FolderScanner.tsx.
+
+### ❌ [2026-09-12] src/types/omega-core.d.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 68, Col 16: Type alias declaration is missing a type definition after '='.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/types/omega-core.d.ts.
