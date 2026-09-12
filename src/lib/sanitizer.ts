@@ -111,7 +111,7 @@ const CODE_SECRET_ASSIGNMENTS: readonly CodeSecretAssignment[] = [
   {
     type: 'Hardcoded Token Assignment',
     regex: /((?:const|let|var)\s+([A-Za-z0-9_]*(?:token|api_?key|secret|gh_token|github_token|gemini_key)[A-Za-z0-9_]*)\s*=\s*)(['"`])([a-zA-Z0-9_\-\.+=/]{20,})\3/gi,
-    replace: (_match, p1, p2, _quote) => {
+    replace: (_match: string, p1: string, p2: string, _quote: string, _p4: string): string => {
       const varName = p2.toLowerCase();
       if (varName.includes('gh') || varName.includes('git')) {
         return `${p1}process.env.GITHUB_TOKEN || ''`;
@@ -125,7 +125,7 @@ const CODE_SECRET_ASSIGNMENTS: readonly CodeSecretAssignment[] = [
   {
     type: 'Hardcoded Object Secret Property',
     regex: /((?:['"]?(?:apiKey|api_key|token|secret|access_token|ghToken)['"]?\s*:\s*))(['"`])([a-zA-Z0-9_\-\.+=/]{20,})\2/gi,
-    replace: (_match, p1, _quote) => {
+    replace: (_match: string, p1: string, _quote: string, _p3: string): string => {
       const propName = p1.toLowerCase();
       if (propName.includes('ghtoken') || propName.includes('git')) {
         return `${p1}process.env.GITHUB_TOKEN || ''`;
@@ -182,7 +182,7 @@ export function sanitizeCode(
             preview: (m[0] ?? '').slice(0, 40) + '...',
           });
         }
-        code = code.replace(item.regex, (m, p1, p2, p3, p4) => item.replace(m, p1, p2, p3, p4));
+        code = code.replace(item.regex, (m: string, p1: string, p2: string, p3: string, p4: string) => item.replace(m, p1, p2, p3, p4));
       }
     }
 
