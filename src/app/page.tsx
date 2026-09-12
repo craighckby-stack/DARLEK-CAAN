@@ -7,7 +7,7 @@ export const revalidate = 0;
 
 /**
  * Fallback skeleton for the initial suspension boundary.
- * Memoized to prevent redundant renders and optimized for minimal paint overhead.
+ * Memoized to prevent redundant renders and structured for minimal paint overhead.
  */
 const PageLoadingSkeleton = memo(function PageLoadingSkeleton(): JSX.Element {
   return (
@@ -23,7 +23,7 @@ const PageLoadingSkeleton = memo(function PageLoadingSkeleton(): JSX.Element {
 PageLoadingSkeleton.displayName = 'PageLoadingSkeleton';
 
 /**
- * Root server page component enforcing strict type safety and robust suspense architecture.
+ * Root server page component enforcing strict type safety and suspense architecture.
  */
 export default function Page(): JSX.Element {
   return (
