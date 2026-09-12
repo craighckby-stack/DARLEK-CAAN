@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const TARGET_FILE = 'src/App.tsx';
 
@@ -137,15 +137,15 @@ const REPLACEMENT_CONTENT = `            {/* Dynamic AI Speech Module */}
 
 const executePatch = () => {
   try {
-    const data = readFileSync(TARGET_FILE, 'utf8');
-    const prefix = TARGET_CONTENT.substring(0, 100);
+    const fileData = readFileSync(TARGET_FILE, 'utf8');
+    const searchPrefix = TARGET_CONTENT.substring(0, 100);
     
-    if (typeof data === 'string' && data.includes(prefix)) {
-      const updatedData = data.replace(TARGET_CONTENT, REPLACEMENT_CONTENT);
-      writeFileSync(TARGET_FILE, updatedData, 'utf8');
+    if (typeof fileData === 'string' && fileData.includes(searchPrefix)) {
+      const updatedFileData = fileData.replace(TARGET_CONTENT, REPLACEMENT_CONTENT);
+      writeFileSync(TARGET_FILE, updatedFileData, 'utf8');
     }
-  } catch (err) {
-    console.error('Failed to execute patch safely:', err);
+  } catch (error) {
+    console.error('Failed to execute patch safely:', error);
   }
 };
 
