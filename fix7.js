@@ -98,7 +98,6 @@ function executeCodeSanitization() {
       encoding: SYSTEM_CONFIG.fileEncoding 
     });
   } catch (error) {
-    // Standardized operational error boundary for autonomous agents
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[EMG-CORE-V49] Fatal execution failure in executeCodeSanitization: ${errorMessage}`);
     process.exitCode = 1;
