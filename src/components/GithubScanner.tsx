@@ -23,6 +23,13 @@ interface GithubScannerProps {
   onFileClick?: (file: string) => void;
 }
 
+interface ActiveFindingState {
+  finding: Finding;
+  file: string;
+  content?: string;
+  sanitized?: string;
+}
+
 export default function GithubScanner({ token: initialToken, owner: initialOwner, repo: initialRepo, branch: initialBranch, onFileClick }: GithubScannerProps) {
   const { toast } = useToast();
   const { results, isScanning, progress, currentFile, statusMessage, startScan, stopScan, filesScanned, filesSkipped, scanDuration } = useGithubScanner();
@@ -51,7 +58,7 @@ export default function GithubScanner({ token: initialToken, owner: initialOwner
   }, [initialOwner, initialRepo, initialBranch, initialToken]);
 
   // Selected finding/file detail modal state
-  const [activeFinding, setActiveFinding] = useState<{ finding: Finding; file: string; content?: string; sanitized?: string } | null>(null);
+  const [activeFinding, setActiveFinding] = useState<ActiveFindingState | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'original' | 'sanitized'>('original');
 
@@ -92,7 +99,7 @@ export default function GithubScanner({ token: initialToken, owner: initialOwner
   };
 
   const flatFindings = useMemo(() => {
-    const all: (Finding & { file: string; content?: string; sanitized?: string })[] = [];
+    const all: ActiveFindingState[] = [];
     results.forEach((res: ScanResult) => {
       res.findings.forEach(f => {
         all.push({ ...f, file: res.file, content: res.content, sanitized: res.sanitized });
@@ -716,7 +723,7 @@ echo "git push origin --force --all"
         ) : (
           flatFindings.map((f, i) => (
             <div 
-              key={i} 
+              key={`${f.file}-${f.lineNum}-${i}`} 
               onClick={() => handleCardClick(f)}
               className="bg-[#11141a] border border-gray-800/90 hover:border-rose-500/70 rounded-lg p-3.5 text-xs transition-all cursor-pointer group shadow-sm hover:shadow-rose-950/20"
             >
