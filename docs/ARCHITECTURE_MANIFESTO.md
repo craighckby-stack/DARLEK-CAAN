@@ -63,3 +63,4 @@ cann-evolve --strategy omega --mode=type-safe --timeout=15s
 
 # 3. Validate structural state, type contracts, and execution coverage
 npm run test:coverage
+```
