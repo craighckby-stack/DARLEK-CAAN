@@ -109,3 +109,15 @@ Line 179, Col 8: Property declaration is missing its type annotation.
 Line 192, Col 8: Property declaration is missing its type annotation.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/FolderScanner.tsx.
+
+### ❌ [2026-09-12] src/components/ui/button.tsx `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 19, Col 8: Property declaration is missing its type annotation.
+Line 21, Col 12: Property declaration is missing its type annotation.
+Line 23, Col 8: Property declaration is missing its type annotation.
+Line 25, Col 10: Property declaration is missing its type annotation.
+Line 27, Col 6: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/components/ui/button.tsx.
