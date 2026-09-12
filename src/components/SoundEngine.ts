@@ -3,10 +3,10 @@
 
 let audioContextInstance: AudioContext | null = null;
 
-const BRACKET_REGEX = /\[.*?\]/g;
-const QUOTE_REGEX = /["'"]/g;
+const BRACKET_REGEX: RegExp = /\[.*?\]/g;
+const QUOTE_REGEX: RegExp = /["'"]/g;
 
-const ARPEGGIO_NOTES = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50] as const;
+const ARPEGGIO_NOTES: readonly number[] = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
 
 function getAudioContext(): AudioContext {
   if (!audioContextInstance) {
@@ -292,7 +292,7 @@ export function cleanupSpeechAudio(): void {
   }
 }
 
-let globalChronosLoadValue = 0;
+let globalChronosLoadValue: number = 0;
 
 export function setChronosLoadValue(val: number): void {
   globalChronosLoadValue = val;
