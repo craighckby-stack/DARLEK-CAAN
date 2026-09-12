@@ -912,3 +912,11 @@ Line 8, Col 12: Unclosed double-quote string literal.
 Line 31, Col 1: Unclosed double-quote string literal.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on fix_orchestra.sh.
+
+### ❌ [2026-09-12] src/app/api/brain/route.ts `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 214, Col 8: Property declaration is missing its type annotation.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/app/api/brain/route.ts.
