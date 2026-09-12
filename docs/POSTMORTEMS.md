@@ -516,3 +516,11 @@ Line 204, Col 2: Expression expected.
 Line 37, Col 13: Type alias declaration is missing a type definition after '='.
 ```
 **CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on src/hooks/use-toast.ts.
+
+### ❌ [2026-09-12] firestore.rules `source: mutation-cycle`
+**Symptom:** AST / TypeScript Compiler Validation Rejected
+**EVIDENCE (Machine-Copied Fact):**
+```
+Line 65, Col 1: Unexpected closing delimiter '}' with no matching opening pair.
+```
+**CONSTRAINT (Model Generalization):** Never repeat code patterns that produce this compiler/linter error on firestore.rules.
