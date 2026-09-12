@@ -1,13 +1,9 @@
 /**
  * File Path: "src/middleware/SecurityMiddleware.ts"
- * EMG Core v49 Neural Code and Documentation Optimizer Engine
+ * EMG Core Neural Code and Documentation Optimizer Engine
  * Sovereign Overhaul: Performance, Type-Safety, Memory Efficiency, and Error Handling.
  */
 
-/**
- * SecurityMiddleware enforces the OMEGA ARCHITECTURE SECURITY PROTOCOL
- * to prevent volatile state leakage into repository revisions with maximum throughput.
- */
 export class SecurityMiddleware {
   private static readonly FORBIDDEN_EXTENSIONS: readonly string[] = Object.freeze([
     '.consciousness.dump',
@@ -19,12 +15,12 @@ export class SecurityMiddleware {
   );
 
   private static readonly ENDINGS_REGEX: RegExp = new RegExp(
-    `(${SecurityMiddleware.FORBIDDEN_EXTENSIONS.map((ext) => ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|K')})$`,
+    `(${SecurityMiddleware.FORBIDDEN_EXTENSIONS.map((ext: string): string => ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})$`,
     'u'
   );
 
   /**
-   * Validates staged files against the OMEGA ARCHITECTURE SECURITY PROTOCOL.
+   * Validates staged files against security protocols.
    *
    * @param stagedFiles Readonly array of file paths to validate.
    * @returns `true` if all files pass security constraints, `false` if violations are found.
@@ -35,7 +31,7 @@ export class SecurityMiddleware {
         return true;
       }
 
-      const violations = SecurityMiddleware.findForbiddenFiles(stagedFiles);
+      const violations: string[] = SecurityMiddleware.findForbiddenFiles(stagedFiles);
 
       if (violations.length > 0) {
         console.error('SECURITY_VIOLATION_CODE_0x00: Forbidden files detected:', violations);
@@ -57,10 +53,10 @@ export class SecurityMiddleware {
    */
   private static findForbiddenFiles(filePaths: readonly string[]): string[] {
     const violations: string[] = [];
-    const len = filePaths.length;
+    const len: number = filePaths.length;
     
     for (let i = 0; i < len; i++) {
-      const filePath = filePaths[i];
+      const filePath: string = filePaths[i] ?? '';
       if (typeof filePath === 'string' && SecurityMiddleware.hasForbiddenExtension(filePath)) {
         violations.push(filePath);
       }
@@ -76,10 +72,10 @@ export class SecurityMiddleware {
    * @returns `true` if the file has a forbidden extension; otherwise `false`.
    */
   private static hasForbiddenExtension(filePath: string): boolean {
-    const len = SecurityMiddleware.FORBIDDEN_EXTENSIONS.length;
+    const len: number = SecurityMiddleware.FORBIDDEN_EXTENSIONS.length;
     for (let i = 0; i < len; i++) {
-      const ext = SecurityMiddleware.FORBIDDEN_EXTENSIONS[i];
-      if (ext && filePath.endsWith(ext)) {
+      const ext: string = SecurityMiddleware.FORBIDDEN_EXTENSIONS[i] ?? '';
+      if (ext !== '' && filePath.endsWith(ext)) {
         return true;
       }
     }
