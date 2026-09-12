@@ -1,97 +1,131 @@
-# DARLEK CANN v3.2 — Evolution Blueprint
+# DARLEK CANN v3.3 — Evolution Blueprint
 
-> **EMG Core v49 Executive Summary**: The DARLEK CANN v3.2 architecture enforces zero-downtime, idempotent mutations through atomic regular expression (RegEx) injections and transactional backup provisioning. This document outlines the core system architecture, the three-phase execution pipeline, legacy integration schemas, and hardened security protocols.
+> **Sovereign Engine v89.1 Technical Summary**: The `DARLEK CANN` system enforces zero-downtime, idempotent runtime mutations using atomic regular expression (RegEx) injections, Base64 payload decoding, strict schema validation (`ReadFileSchema`), and transactional state restoration. This blueprint outlines system architecture, automated refactoring pipelines, GitHub API integration patterns, and security isolation protocols.
 
 ---
 
 ## Quick Navigation
-- [1. Architecture](#1-architecture)
-- [2. Workflow Execution Pipeline](#2-workflow-execution-pipeline)
-- [3. Integration Schema](#3-integration-schema)
+- [1. System Architecture](#1-system-architecture)
+- [2. Execution & Refactoring Pipeline](#2-execution--refactoring-pipeline)
+- [3. GitHub Ingestion & Integration Schema](#3-github-ingestion--integration-schema)
 - [4. Security Guidelines & Vulnerability Reporting](#4-security-guidelines--vulnerability-reporting)
 
 ---
 
-## 1. Architecture
+## 1. System Architecture
 
-| Component | Mechanism | Purpose |
+| Subsystem | Core Mechanism | Operational Objective |
 | :--- | :--- | :--- |
-| **Atomic Injection** | Marker-based RegEx | Guarantees idempotent updates and prevents state corruption during file mutations. |
-| **Transactional Safety** | Isolated `.evolve_backups/` snapshots | Provisions pre-flight backups prior to executing any write operations. |
-| **Integration Layer** | Siphoned UI patterns & design tokens | Incorporates legacy assets derived from `darlek-cann-v3` and `SN: OMEGA`. |
+| **Atomic Ingestion** | GitHub REST API v3 + Base64 Decoding | Fetches and transforms remote repository state securely with strict 15s timeout protection. |
+| **Boundary Injection** | Marker-based RegEx & Schema Validation | Guarantees idempotent updates and blocks state drift or corruption during live file mutations. |
+| **Transactional Snapshotting** | Isolated `.evolve_backups/` Engine | Provisions immutable pre-flight snapshots prior to executing filesystem write operations. |
+| **Autonomous Evolution** | `Darlek Caan` Refactoring Engine | Analyzes abstract syntax trees and executes autonomous self-modifications across target modules. |
 
 ---
 
-## 2. Workflow Execution Pipeline
+## 2. Execution & Refactoring Pipeline
 
-The execution sequence managed by `updateModule.js` adheres to three strict operational phases:
+The state mutation pipeline operates in four deterministic phases:
 
-1. **Scan Phase**: Ingests and parses the primary target source file (`src/App.tsx`).
-2. **Validation Phase**: Verifies the presence, syntax, and structural integrity of designated injection boundaries.
-3. **Execution Phase**: Performs an atomic file write accompanied by a pre-flight backup snapshot for zero-downtime recovery.
+1. **Ingestion Phase**: Fetches target payloads via the GitHub API Ingestion Module (`ReadFileSchema`), decoding Base64 payloads while extracting metadata (SHA, byte size, relative path).
+2. **Validation Phase**: Enforces Zod schema conformance and structural integrity of boundary markers (e.g., `<!-- INJECT:START -->` / `<!-- INJECT:END -->`).
+3. **Snapshot Phase**: Creates atomic, timestamped snapshot files in isolated `.evolve_backups/` directories with strict file permission modes (`0600`).
+4. **Execution & Commit Phase**: Performs atomic write operations and updates runtime state tracking for target modules.
 
-### Core Implementation (`updateModule.js`)
+### Core Implementation (`src/engine/updateModule.ts`)
 
-```javascript
+```typescript
 /**
- * @file updateModule.js
- * @description Core injection routine ensuring atomic and transactional safety.
- * @module DarlekCann/Core
+ * @file updateModule.ts
+ * @module DarlekCann/Core/Evolution Engine v89.1
+ * @description Core injection utility providing transactional safety, regex marker isolation, and fallback snapshots.
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { z } from 'zod';
 
-/**
- * @typedef {Object} InjectionMarkers
- * @property {RegExp} start - Start boundary regular expression.
- * @property {RegExp} end - End boundary regular expression.
- */
+export const InjectionMarkerSchema = z.object({
+  start: z.instanceof(RegExp),
+  end: z.instanceof(RegExp),
+});
 
-/**
- * Injects a payload into a target file using atomic boundaries and backup provisioning.
- * 
- * @param {string} targetPath - The destination file path for the payload.
- * @param {string} payload - The code or content block to inject.
- * @param {InjectionMarkers} markers - Start and end regex markers for injection boundaries.
- * @returns {boolean} Returns true upon successful execution.
- * @throws {Error} Throws an error if the target file cannot be read or written.
- */
-function injectAtomicModule(targetPath, payload, markers) {
-    // Ensure transactional safety via backup creation
-    const backupDir = path.join(path.dirname(targetPath), '.evolve_backups');
-    if (!fs.existsSync(backupDir)) {
-        fs.mkdirSync(backupDir, { recursive: true });
-    }
-    
-    const fileContent = fs.readFileSync(targetPath, 'utf8');
-    // Regex-based validation and injection logic...
-    return true;
+export type InjectionMarkers = z.infer<typeof InjectionMarkerSchema>;
+
+export interface EvolutionOptions {
+  targetPath: string;
+  payload: string;
+  markers: InjectionMarkers;
+  createSnapshot?: boolean;
 }
 
-module.exports = { injectAtomicModule };
+/**
+ * Injects code payload into target file bounded by markers with atomic snapshot safeguards.
+ */
+export async function injectAtomicModule(options: EvolutionOptions): Promise<boolean> {
+  const { targetPath, payload, markers, createSnapshot = true } = options;
+  const resolvedPath = path.resolve(targetPath);
+
+  if (createSnapshot) {
+    const backupDir = path.join(path.dirname(resolvedPath), '.evolve_backups');
+    await fs.mkdir(backupDir, { recursive: true, mode: 0o700 });
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const snapshotPath = path.join(backupDir, `${path.basename(resolvedPath)}.${timestamp}.bak`);
+    
+    try {
+      const existingContent = await fs.readFile(resolvedPath, 'utf8');
+      await fs.writeFile(snapshotPath, existingContent, { mode: 0o600 });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw new Error(`Transactional snapshot failed: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  const fileContent = await fs.readFile(resolvedPath, 'utf8');
+  const matchStart = markers.start.exec(fileContent);
+  const matchEnd = markers.end.exec(fileContent);
+
+  if (!matchStart || !matchEnd || matchStart.index >= matchEnd.index) {
+    throw new Error('Invalid or non-existent injection markers in target file.');
+  }
+
+  const updatedContent = 
+    fileContent.slice(0, matchStart.index + matchStart[0].length) +
+    '\n' + payload + '\n' +
+    fileContent.slice(matchEnd.index);
+
+  await fs.writeFile(resolvedPath, updatedContent, 'utf8');
+  return true;
+}
 ```
 
 ---
 
-## 3. Integration Schema
+## 3. GitHub Ingestion & Integration Schema
 
-- **Quantum Node**: Advanced computation logic siphoned from `sovereign-v86`.
-- **Temporal Fortune**: Reactive user interface component adapted from `claudios_system_book`.
+The ingestion subsystem directly interfaces with the GitHub REST API v3 to retrieve raw state payloads and version tracking SHA hashes:
+
+- **Ingestion Schema**: Validated via `ReadFileInput` / `ReadFileSchema` (Path, Owner, Repo).
+- **Network Resilience**: Enforces a strict 15-second `AbortController` timeout safeguard against hanging connections.
+- **Transformation Pipeline**: Base64 raw decoding -> UTF-8 payload -> AST Mutation target.
+- **Primary Consumer**: `Darlek Caan` runtime evolution controller.
 
 ---
 
 ## 4. Security Guidelines & Vulnerability Reporting
 
 ### 4.1 Security Best Practices
-- **Input Validation**: Sanitize all target paths and payloads to prevent path traversal and arbitrary file write vulnerabilities.
-- **Access Control**: Restrict `.evolve_backups/` directories and backup snapshots with strict file permissions (`chmod 600` equivalent) to block unauthorized state history reads.
-- **Idempotency & Integrity**: Enforce rigorous RegEx boundary validations to defend against malformed or malicious marker injections.
+- **Input & Path Validation**: Absolute path resolution (`path.resolve`) combined with strict Zod schema parsing blocks path traversal and arbitrary filesystem mutations.
+- **Strict Permission Isolation**: Backup directory (`.evolve_backups/`) permissions are restricted to `0700` and individual snapshots to `0600` (`POSIX`) to prevent unauthorized reading of prior application states.
+- **Timeout Protection**: Network requests to external control planes (GitHub REST API) MUST enforce `AbortController` timeouts of maximum 15 seconds.
+- **Idempotency Enforcement**: Injection routines must fail-safe and throw explicit exceptions on missing, inverted, or corrupt boundary markers.
 
 ### 4.2 Responsible Disclosure Policy
-Do not disclose vulnerabilities publicly until the engineering team has deployed an official patch. 
+Do not disclose vulnerabilities publicly prior to official patch deployment and verification by core engineering maintainers.
 
 ### 4.3 Vulnerability Reporting Protocol
-1. **Private Reporting**: Send detailed reports securely to `security@darlek-cann.internal` (avoid public GitHub issues).
-2. **Required Payload**: Include vulnerability descriptions, reproduction steps, impact assessments, and proposed remediations.
-3. **SLA**: Core security operations will acknowledge receipt within **48 hours** and coordinate patching timelines.
+1. **Private Reporting**: Transmit encrypted disclosure reports to `security@darlek-cann.internal` (avoid public GitHub issue trackers).
+2. **Payload Envelope**: Include root-cause analysis, proof-of-concept injection vectors, blast radius evaluations, and proposed remediations.
+3. **Response SLA**: Security Operations will acknowledge reports within **24 hours** and issue patch advisories within **72 hours**.
