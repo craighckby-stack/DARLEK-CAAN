@@ -1,14 +1,5 @@
+# Clean up existing processes bound to port 3000
+npx kill-port 3000
 
-> nextjs_tailwind_shadcn_ts@0.2.0 start
-> next start -H 0.0.0.0 -p 3000
-
- ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
- ⨯ Failed to start server
-Error: listen EADDRINUSE: address already in use 0.0.0.0:3000
-    at <unknown> (Error: listen EADDRINUSE: address already in use 0.0.0.0:3000) {
-  code: 'EADDRINUSE',
-  errno: -98,
-  syscall: 'listen',
-  address: '0.0.0.0',
-  port: 3000
-}
+# Start server cleanly with standard environment configuration
+NODE_ENV=production next start -H 0.0.0.0 -p 3000
